@@ -352,11 +352,11 @@ class Tests(unittest.TestCase):
     sos.update("Other")  # integrate tracked files and tracking pattern from second branch into working state of master branch
     _.assertTrue(os.path.exists("." + os.sep + "file1"))
     _.assertTrue(os.path.exists("." + os.sep + "a123a"))
-    
+
     _.createFile("axxxa")  # new file that should be tracked on "test" now that we integrated "Other"
     sos.commit("fifth")  # create new revision after integrating updates from second branch
     _.assertEqual(3, len(os.listdir(branchFolder(0, 4))))  # one new file from other branch + one new in current folder + meta file
-    import pdb; pdb.set_trace()
+#    import pdb; pdb.set_trace()
     sos.switch("Other")  # switch back to just integrated branch that tracks only "a*a" - shouldn't do anything
     _.assertTrue(os.path.exists("." + os.sep + "file1"))
     _.assertTrue(os.path.exists("." + os.sep + "a123a"))
