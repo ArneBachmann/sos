@@ -10,7 +10,7 @@
 If you (love or have to) work with *Subversion*, but need/lack the flexibility of committing and branching files offline similar to how *Git* is able to, SOS is your straight-forward and super simple command-line solution:
 SOS allows performing offline operations just like distributed VCS (a.k.a. SCM) can do, not only inside a Subversion base folder, but in any (and even multiple) folders of your file system, be it inside or outside of repository checkouts.
 
-[SOS](https://github.com/ArneBachmann/sos) augments [SVN](http://subversion.apache.org) with offline operation and thus serves the same need as [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [Gitless](http://gitless.com), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
+[SOS](https://github.com/ArneBachmann/sos) augments [SVN](http://subversion.apache.org) with offline operation and thus serves the same need as [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
 
 
 ## How it works ##
@@ -21,7 +21,7 @@ Once you executed `sos offline`, however, all commands are interpreted by the SO
 
 SOS supports three different file handling approaches that you may use to your liking, thus being able to mirror the file handling philosophies of different VCSs, including one new mode for super quick and easy version management.
 - **Simple mode** (default): All files are automatically committed and "tracked", but changes between branches/revisions will always be replayed in the life file tree (files will always be added or removed depending on operation)
-- **Tracking mode**: Only files that match certain file name tracking patterns are respected at `commit`, `update` and `branch` (just like SVN, Gitless, and Fossil do), requiring users to specifically add or remove files to a branch
+- **Tracking mode**: Only files that match certain file name tracking patterns are respected at `commit`, `update` and `branch` (just like SVN, gitless, and Fossil do), requiring users to specifically add or remove files to a branch
 - **Picky mode**: Each operation needs the explicit declaration of file name patterns to work on (like Git does).
 
 
@@ -50,6 +50,10 @@ There are several level of consideration:
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN)
 - `texttype`: Semicolon-separated list of glob patterns for file names that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library can do. Default: Empty
 - `bintype`: Semicolon-separated list of glob patterns for file names that should be recognized as binary files that cannot be merged through textual diff. Default: Empty
+- `ignores`: List of glob patterns for files to ignore during commit/diff/changes/update etc.
+- `ignoresWhitelist`: List of glob patterns that allow files to be added although captured by a blacklist pattern from `ignores`
+- `ignoreDirs`: As `ignores`, but for folder names
+- `ignoreDirsWhitelist`: As `ignoresWhitelist`, but for folder names
 
 ## Branch semantics ##
 - SOS always branches from a branch's last revision. Exception: Simple mode always considers current file tree instead, unless TODO --last for tracked mode?
@@ -76,39 +80,15 @@ It's also possible to define a per-user global defaults for file and folder excl
 
 
 ## Tipps ##
-- It may be a good idea to go offline one folder higher than your base working folder to care for potential deletions or renames
+- It may be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
 
 
 ## Todos ##
+- diff and merge ignore EOL style during combination
+- all doctests have been moved to `tests.py`
+- `sos.coco` should be <= 1000 LOC, but is currently larger
 - create better looking landing page to build community support
 - branching may be expensive as all files are copied
 - diffCommand = "diff -d {old!s} {new!s}"  # requires diffutils on OpenSUSE
 - mergeCommand = "merge -A -L z -L a -L b c a b"  # requires rce on OpenSUSE
 - [Answer](https://stackoverflow.com/questions/4934208/working-offline-with-svn-on-local-machine-temporary) when published
-
-```
--1   a  both
--1 - b  not in curr -> insert
-0   c   both
-1   d   both
-2   e   both
-3 + g   only in curr -> potentially remove
-4   f   both
-4 - g   remove, but doesn't exist: must be a replacement
-5 + x   added in curr -> keep or remove
-6   h   in bot hother 
-
-    _.createFile(10, "a\nb\nc\nd\ne\nf\ng\nh")
-    _.createFile(11, "a\nc\nd\ne\ng\nf\nx\nh")  # missing "b", inserted g, modified g->x
-
-S:0 T:0   a  mem = 0 "acdegfxh"
-S:0 T:1 - b  -> insert(T, "b"); mem += 1 "abcdegfxh"
-S:1 T:2   c  "abcdegfxh"
-S:2 T:3   d  "abcdegfxh"
-S:3 T:4   e  "abcdegfxh"
-S:4 T:4 + g  -> del(S, 4 + mem); mem -= 1 "abcdefxh"
-S:5 T:5   f  "abcdefxh"
-S:5 T:6 - g  -> insert(T + mem, "g") "abcdefgxh"; mem += 1
-S:6 T:6 + x  -> del(T + mem) "abcdefgh"
-S:7 T:7   h
-```

@@ -1,21 +1,14 @@
 # SOS test suite  (C) Arne Bachmann
 
-import builtins
-import doctest
-import logging
-import os
-import shutil
-import sys
-import time
-import traceback
-import unittest
+import builtins, doctest, logging, os, shutil, sys, time, traceback, unittest
+StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
 try:  from unittest import mock  # Py3
 except: import mock  # installed via pip
 try:
   from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
-  Number = Union[int,float]  # TODO find workaround for older Python typing information when using mypy
 except: pass  # Python 2
-StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
+try: import configr  # optional dependency
+except: configr = None  # declare as undefined
 
 assert 0 == os.system("coconut --target %d --line-numbers sos.coco" % (2 if any([_ in " ".join(sys.argv) for _ in ['-t2', '-t 2', '--target2', '--target 2']]) else 3))
 import sos  # just created module
@@ -439,16 +432,17 @@ class Tests(unittest.TestCase):
     _.assertEqual("    foo", out[1][-7:])
 
   def testWhitelist(_):
+    # TODO do same for simple mode, easy
     _.createFile(1)
-    sos.defaults.ignores = ["file*"]
-    sos.offline("xx", ["--track"])
+    sos.defaults.ignores[:] = ["file*"]  # replace in-place
+    sos.offline("xx", ["--track"])  # because nothing to commit due to ignore pattern
     sos.add("file*")
-    sos.commit()  # attempt to commit the file
+    sos.commit(options = ["--force"])  # attempt to commit the file
     _.assertEqual(1, len(os.listdir(sos.metaFolder + os.sep + "b0" + os.sep + "r1")))  # only meta data, file1 was ignored
     sos.online(["--force"])
     _.assertFalse(os.path.exists(sos.metaFolder))
     _.createFile(1)
-    sos.defaults.ignoresWhitelist = ["file*"]
+    sos.defaults.ignoresWhitelist[:] = ["file*"]
     sos.offline("xx", ["--track"])
     sos.add("file*")
     sos.commit()
@@ -488,4 +482,7 @@ class Tests(unittest.TestCase):
 
 if __name__ == '__main__':
   logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else logging.INFO , stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else "%(message)s")
+  if configr:
+    c = configr.Configr("sos"); c.loadSettings()
+    if len(c.keys()) > 0: sos.Exit("Cannot run test suite with local SOS user configuration")
   unittest.main(testRunner = debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")
