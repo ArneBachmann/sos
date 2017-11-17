@@ -1,18 +1,28 @@
 # SOS test suite  (C) Arne Bachmann
 
+import builtins
+import doctest
+import logging
 import os
 import shutil
 import sys
 import time
 import traceback
 import unittest
+try:  from unittest import mock  # Py3
+except: import mock  # installed via pip
+try:
+  from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
+  Number = Union[int,float]  # TODO find workaround for older Python typing information when using mypy
+except: pass  # Python 2
+StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
 
-assert 0 == os.system("coconut --target %d --line-numbers --keep-lines --minify sos.coco" % sys.version_info.major)
-import sos
+assert 0 == os.system("coconut --target %d --line-numbers sos.coco" % (2 if any([_ in " ".join(sys.argv) for _ in ['-t2', '-t 2', '--target2', '--target 2']]) else 3))
+import sos  # just created module
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
 
-def debugTestRunner(post_mortem=None):
+def debugTestRunner(post_mortem = None) =
   ''' Unittest runner doing post mortem debugging on failing tests. '''
   import pdb
   if post_mortem is None: post_mortem = pdb.post_mortem
@@ -25,10 +35,26 @@ def debugTestRunner(post_mortem=None):
       traceback.print_exception(*err)
       post_mortem(err[2])
       super(DebugTestResult, self).addFailure(test, err)
-  return unittest.TextTestRunner(resultclass=DebugTestResult)
-
+  unittest.TextTestRunner(resultclass = DebugTestResult)
 
 def branchFolder(branch:int, revision:int) -> str = "." + os.sep + sos.metaFolder + os.sep + "b%d" % branch + os.sep + "r%d" % revision
+
+
+def wrapChannels(func: -> Any) =
+  ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
+  oldv, oldo, olde = sys.argv, sys.stdout, sys.stderr
+  buf = StringIO()
+  sys.stdout = sys.stderr = buf
+  handler = logging.StreamHandler(buf)
+  logging.getLogger().addHandler(handler)
+  try: func()  # capture output into buf
+  except Exception as E: buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
+  logging.getLogger().removeHandler(handler)
+  sys.argv, sys.stdout, sys.stderr = oldv, oldo, olde
+  buf.getvalue()
+
+def mockInput(datas:str[], func) -> Any:
+  with mock.patch('builtins.input' if sys.version_info.major >= 3 else '__builtin__.raw_input', side_effect = datas): return func()
 
 
 class Tests(unittest.TestCase):
@@ -52,12 +78,20 @@ class Tests(unittest.TestCase):
     [_.assertIn(what, w) for w in where]
 
   def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None) -> None:
-    with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "w") as fd: fd.write(contents)
+    with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "wb") as fd: fd.write(contents if isinstance(contents, bytes) else contents.encode("cp1252"))
 
   def existsFile(_, number:int, expectedContents:str = None) -> bool:
     if not os.path.exists("." + os.sep + "file%d" % number): return False
     if expectedContents is None: return True
     with open("." + os.sep + "file%d" % number, "wb") as fd: return fd.read() == expectedContents
+
+  def testAccessor(_):
+     a = sos.Accessor({"a": 1})
+     _.assertEqual((1, 1), (a["a"], a.a))
+
+  def testFirstofmap(_):
+    _.assertEqual(2, sos.firstOfMap({"a": 1, "b": 2}, ["x", "b"]))
+    _.assertIsNone(sos.firstOfMap({"a": 1, "b": 2}, []))
 
   def testFindChanges(_):
     m = sos.Metadata(os.getcwd())
@@ -156,7 +190,7 @@ class Tests(unittest.TestCase):
 
   def testOfflineEmpty(_):
     os.mkdir("." + os.sep + sos.metaFolder)
-    try: sos.offline(); _.fail()
+    try: sos.offline("trunk"); _.fail()
     except SystemExit: pass
     os.rmdir("." + os.sep + sos.metaFolder)
     sos.offline("test")
@@ -252,49 +286,82 @@ class Tests(unittest.TestCase):
     _.assertTrue(_.existsFile(1))  # was restored from branch's revision r1
     _.assertFalse(_.existsFile(3))  # was restored from branch's revision r1
 
+  def testAutoDetectVCS(_):
+    os.mkdir(".git")
+    sos.offline(sos.vcsBranches[sos.findSosVcsBase()[2]])  # create initial branch
+    with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: meta = fd.read()
+    _.assertTrue("\"master\"" in meta)
+    os.rmdir(".git")
+
   def testUpdate(_):
-    sos.offline()  # create initial branch
+    sos.offline("trunk")  # create initial branch b0/r0
     _.createFile(1, "x" * 100)
     sos.commit("second")  # create b0/r1
+
     sos.switch("/0")  # go back to b0/r0 - deletes file1
     _.assertFalse(_.existsFile(1))
-    sos.update("/1")  # re-add file1 into file tree
+
+    sos.update("/1")  # recreate file1
     _.assertTrue(_.existsFile(1))
+
     sos.commit("third", ["--force"])  # force because nothing to commit. should create r2 with same contents as r1, but as differential from r1, not from r0 (= no changes in meta folder)
     _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2"))
     _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2" + os.sep + sos.metaFile))
     _.assertEqual(1, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2")))  # only meta data file, no differential files
-    sos.update("/1")  # do nothing, as nothing was changed
+
+    sos.update("/1")  # do nothing, as nothing has changed
     _.assertTrue(_.existsFile(1))
+
     _.createFile(2, "y" * 100)
-    sos.branch("other")  # including file 2
-    sos.update("trunk")  # integrate r2 from trunk into other - removes file2? TODO
-    _.assertFalse(_.existsFile(2)) # TODO or have update only perform in-file integration?
-    _.createFile(10, "a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj")
-    _.createFile(11, "a\nc\nd\ne\ng\nf\nx\nh\ny\ny\nj")  # missing "b", inserted g, modified g->x
-    _.assertEqual("a\nb\nc\nd\ne\nf\ng\nh", sos.merge("." + os.sep + "file10", "." + os.sep + "file11"))
+#    out = wrapChannels(lambda: sos.branch("other"))  # won't comply as there are changes
+#    _.assertIn("--force", out)
+    sos.branch("other", ["--force"])  # automatically including file 2 (as we are in simple mode)
+    _.assertTrue(_.existsFile(2))
+    sos.update("trunk", ["--add"])  # only add stuff
+    _.assertTrue(_.existsFile(2))
+    sos.update("trunk")  # nothing to do
+    _.assertFalse(_.existsFile(2))  # removes file not present in original branch
+
+    theirs = b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk"
+    _.createFile(10, theirs)
+    mine = b"a\nc\nd\ne\ng\nf\nx\nh\ny\ny\nj"  # missing "b", inserted g, modified g->x, replace x/x -> y/y, removed k
+    _.createFile(11, mine)
+    _.assertEqual(b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk",    sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))  # completely recreated other file
+    _.assertEqual(b"a\nb\nc\nd\ne\ng\nf\ng\nx\nh\nx\nx\ny\ny\nj\nk", sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.INSERT, conflictResolution = sos.ConflictResolution.MINE))
+
+  def testEolDet(_):
+    _.assertEqual(b"\n", sos.eoldet(b"a\nb"))
+    _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))
+    _.assertIsNone(sos.eoldet(b""))
+    _.assertIsNone(sos.eoldet(b"sdf"))
 
   def testMerge(_):
-    a = "a b cc d".replace(" ", "\n")
-    b = "a b ee d".replace(" ", "\n")
-    _.assertEqual(sos.safeSplit("a b cc ee d", " "), sos.merge(a, b, sos.MergeOperation.INSERT))  # means insert changes from a into b, but don't replace
-    _.assertEqual(sos.safeSplit("a b d", " "),      sos.merge(a, b, sos.MergeOperation.REMOVE))
-    _.assertEqual(sos.safeSplit("a b cc d", " "),   sos.merge(a, b, sos.MergeOperation.BOTH))
+    a = b"a\nb\ncc\nd"
+    b = b"a\nb\nee\nd"
+    _.assertEqual(b"a\nb\ncc\nee\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT))  # means insert changes from a into b, but don't replace
+    _.assertEqual(b"a\nb\nd",         sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE))
+    _.assertEqual(b"a\nb\ncc\nd",     sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH))
     # Now test intra-line merging without conflicts
-    _.assertEqual(["a", "bc d", "e"], sos.merge("\n".join(["a", "bc d", "e"]), "\n".join(["a", "bcd", "e"]), sos.MergeOperation.INSERT))  # because it's a deletion ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
-    _.assertEqual(["a", "bcd", "e"],  sos.merge("\n".join(["a", "bc d", "e"]), "\n".join(["a", "bcd", "e"]), sos.MergeOperation.REMOVE))  # ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
-    _.assertEqual(["a", "bc d", "e"], sos.merge("\n".join(["a", "bcd", "e"]), "\n".join(["a", "bc d", "e"]), sos.MergeOperation.INSERT))  # nothing to insert
-    _.assertEqual(["a", "bcd", "e"],  sos.merge("\n".join(["a", "bcd", "e"]), "\n".join(["a", "bc d", "e"]), sos.MergeOperation.REMOVE))  # remove space
+    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbc d\ne", b"a\nbcd\ne", mergeOperation = sos.MergeOperation.INSERT))  # because it's a deletion ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
+    _.assertEqual(b"a\nbcd\ne",  sos.merge(b"a\nbc d\ne", b"a\nbcd\ne", mergeOperation = sos.MergeOperation.REMOVE))  # ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
+    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.INSERT))  # nothing to insert
+    _.assertEqual(b"a\nbcd\ne",  sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.REMOVE))  # remove space
     # Test with change + insert (conflict)
-    _.assertEqual(["a", "b fdd d", "e"], sos.merge("\n".join(["a", "b cd d", "e"]), "\n".join(["a", "b fdd d", "e"]), conflictResolution = sos.ConflictResolution.MINE))
-    _.assertEqual(["a", "b cd d", "e"],  sos.merge("\n".join(["a", "b cd d", "e"]), "\n".join(["a", "b fdd d", "e"]), conflictResolution = sos.ConflictResolution.THEIRS))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"a\nb fdd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.MINE))
+    _.assertEqual(b"a\nb cd d\ne",  sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.THEIRS))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"a\nb fdd d\ne", mockInput(["i"], lambda: sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"a\nb cd d\ne",  mockInput(["t"], lambda: sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"abbc", sos.merge(b"abbc", b"addc", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))
+    _.assertEqual(b"a\nbb\nc", sos.merge(b"a\nbb\nc", b"a\ndd\nc", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))
+    _.assertIn("Differing EOL-styles", wrapChannels(lambda: sos.merge(b"a\nb", b"a\r\nb")))  # expect warning
+    _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb"))  # in doubt, use "mine" CR-LF
 
   def testPickyMode(_):
     pass
 
   def testTrackedSubfolder(_):
     os.mkdir("." + os.sep + "sub")
-    sos.offline(options = ["--track"])
+    sos.offline("trunk", options = ["--track"])
     _.createFile(1, "x")
     _.createFile(1, "x", prefix = "sub")
     sos.add("file?")  # add glob pattern to track
@@ -356,15 +423,40 @@ class Tests(unittest.TestCase):
     _.createFile("axxxa")  # new file that should be tracked on "test" now that we integrated "Other"
     sos.commit("fifth")  # create new revision after integrating updates from second branch
     _.assertEqual(3, len(os.listdir(branchFolder(0, 4))))  # one new file from other branch + one new in current folder + meta file
-#    import pdb; pdb.set_trace()
     sos.switch("Other")  # switch back to just integrated branch that tracks only "a*a" - shouldn't do anything
     _.assertTrue(os.path.exists("." + os.sep + "file1"))
     _.assertTrue(os.path.exists("." + os.sep + "a123a"))
     _.assertFalse(os.path.exists("." + os.sep + "axxxa"))  # because tracked in both branches, but not present in other -> delete in file tree TODO document
+    # TODO test switch --meta
+
+  def testLs(_):
+    sos.offline("test", options = ["--track"])  # set up repo in tracking mode (SVN- or gitless-style)
+    _.createFile(1)
+    _.createFile("foo")
+    sos.add("file*")  # capture one file
+    out = sos.safeSplit(wrapChannels(lambda: sos.ls()).replace("\r", ""), "\n")
+    _.assertEqual('TRK file1 by "./file*"', out[0][-22:])
+    _.assertEqual("    foo", out[1][-7:])
+
+  def testWhitelist(_):
+    _.createFile(1)
+    sos.defaults.ignores = ["file*"]
+    sos.offline("xx", ["--track"])
+    sos.add("file*")
+    sos.commit()  # attempt to commit the file
+    _.assertEqual(1, len(os.listdir(sos.metaFolder + os.sep + "b0" + os.sep + "r1")))  # only meta data, file1 was ignored
+    sos.online(["--force"])
+    _.assertFalse(os.path.exists(sos.metaFolder))
+    _.createFile(1)
+    sos.defaults.ignoresWhitelist = ["file*"]
+    sos.offline("xx", ["--track"])
+    sos.add("file*")
+    sos.commit()
+    _.assertEqual(2, len(os.listdir(sos.metaFolder + os.sep + "b0" + os.sep + "r1")))  # meta data and "file1", file1 was whitelisted
 
   def testRemove(_):
     _.createFile(1, "x" * 100)
-    sos.offline()
+    sos.offline("trunk")
     try: sos.delete("trunk"); _fail()
     except: pass
     _.createFile(2, "y" * 10)
@@ -395,6 +487,5 @@ class Tests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  import logging
-  if '-v' in sys.argv: logging.basicConfig(level = logging.DEBUG, stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s")
-  unittest.main(testRunner = debugTestRunner() if '-v' in sys.argv else None)  # warnings = "ignore")
+  logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else logging.INFO , stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else "%(message)s")
+  unittest.main(testRunner = debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")

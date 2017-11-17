@@ -1,4 +1,5 @@
 > License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+> Python 3
 
 ### Abbreviations ###
 - **SCM**: *Source Control Management*
@@ -38,6 +39,17 @@ There are several level of consideration:
 - File addition/removal per revision, e.g. when updating from another branch and/or revision or switching to them
 - Line insertion/deletion per file, e.g. when merging file modifications during update
 - Character insertion/deletion per line, e.g. when non-conflicting intra-line differences are detected
+- Updating in track or picky mode will always integrate tracked file patterns. To revert this, use the `switch --meta` command to pull back in another branch's or revision's tracking patterns.
+
+
+## Config options ##
+- `strict`: Flag for always performing full file comparsion, not relying on file size and modification timestamp only. Default: False
+- `track`: Flag for always going offline in tracking mode (SVN-style). Default: False
+- `picky`: Flag for always going offline in picky mode (Git-styly). Default: False
+- `compress`: Flag for compressing versioned artifacts. Default: True
+- `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN)
+- `texttype`: Semicolon-separated list of glob patterns for file names that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library can do. Default: Empty
+- `bintype`: Semicolon-separated list of glob patterns for file names that should be recognized as binary files that cannot be merged through textual diff. Default: Empty
 
 ## Branch semantics ##
 - SOS always branches from a branch's last revision. Exception: Simple mode always considers current file tree instead, unless TODO --last for tracked mode?
@@ -55,7 +67,7 @@ Levels of interactive merging:
 - There is no relation between a checkout, branch point and any committed revision.
 - Branches are always created from current file system state and have no reference to other branches or specific revisions
 - Updating is allowed even if uncommitted changes are connected (no matter if from last revision or after switching to any other revision)
-
+- Python 2 support was ditched completely, as type safety was difficult to guarantee and external library support also missing
 
 ## User configuration and defaults ##
 SOS optionally uses the [`configr`]() library to manage per-user global defaults for the `--strict`, `--track` and `--picky` parameters that the `offline` command takes.
@@ -68,6 +80,7 @@ It's also possible to define a per-user global defaults for file and folder excl
 
 
 ## Todos ##
+- create better looking landing page to build community support
 - branching may be expensive as all files are copied
 - diffCommand = "diff -d {old!s} {new!s}"  # requires diffutils on OpenSUSE
 - mergeCommand = "merge -A -L z -L a -L b c a b"  # requires rce on OpenSUSE
