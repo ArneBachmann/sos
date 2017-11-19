@@ -5,7 +5,7 @@ import time
 import unittest
 from setuptools import setup, find_packages
 
-if 'install' not in sys.argv:
+if os.getenv("BUILD", "false").lower() == "true":
   # First compile Coconut down to Python 3 source
   assert 0 == os.system("coconut --target 3 --line-numbers sos%ssos.coco" % os.sep)
   assert 0 == os.system("coconut --target 3 --line-numbers sos%stests.coco" % os.sep)
