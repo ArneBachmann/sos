@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS) #
+# Subversion Offline Solution (SOS 0.9) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos-vcs.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![PyPI badge](https://badge.fury.io/py/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
@@ -87,7 +87,7 @@ It's also possible to define a per-user global defaults for file and folder excl
 ## FAQ ##
 > Q: I don't want to risk data loss in case SOS has some undiscovered bugs. What can I do?
 >
-> A: Configure SOS to store all versioned files in plain text instead of compressed: `sos config set compress off` should do the trick. All offline repositories created after that will simply copy files when branching and/or versioning.
+> A: Configure SOS to store all versioned files as plain file copies instead of compressed files: `sos config set compress off` should do the trick. All offline repositories created after that will simply copy files when branching and/or versioning: note, however, that the filenames will be hashed and stored in the metadata file.
 
 
 ## Tipps ##
