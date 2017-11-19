@@ -1,4 +1,4 @@
-# SOS 2017.2119.3137 #
+# SOS 0.9 #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos-vcs.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![PyPI badge](https://badge.fury.io/py/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)

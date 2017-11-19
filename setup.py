@@ -9,12 +9,13 @@ RELEASE = "0.9"
 
 if os.getenv("BUILD", "false").lower() == "true":
   # First compile Coconut down to Python 3 source
+  print("Transpiling Coconut for packaging...")
   assert 0 == os.system("coconut --target 3 --line-numbers sos%ssos.coco" % os.sep)
   assert 0 == os.system("coconut --target 3 --line-numbers sos%stests.coco" % os.sep)
 
   if os.path.exists(".git"):
     try:
-      p = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE)
+      p = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE)  # use tag or hash
       so, se = p.communicate()
       extra = (so.strip() if sys.version_info.major < 3 else so.strip().decode(sys.stdout.encoding)).replace("\n", "-")
       if "\x0d" in extra: extra = extra.split("\x0d")[1]
