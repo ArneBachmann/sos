@@ -46,7 +46,7 @@ class Accessor(dict):
     except: return dict.__getattribute__(_, name)
 
 # Constants
-APPNAME:str = "Subversion Offline Solution  V.%s  (C) Arne Bachmann" % version.__version__
+APPNAME:str = "Subversion Offline Solution  V.%s  (C) Arne Bachmann" % version.__release__
 CONFIGURABLE_FLAGS = ["strict", "track", "picky", "compress"]
 CONFIGURABLE_LISTS = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
@@ -988,17 +988,7 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
       if choice: return (sos, path, choice)
   (None, vcs[0], vcs[1])
 
-
-if __name__ == '__main__':
-  level = logging.DEBUG if os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv else logging.INFO
-  logging.basicConfig(level = level, stream = sys.stderr if '--log' in sys.argv else sys.stdout, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
-  sos = '--sos' in sys.argv
-  for option in (o for o in ['--log', '--verbose', '-v', '--sos'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
-
-logger = Logger(logging.getLogger(__name__)); debug, info, warn, error = logger.debug, logger.info, logger.warn, logger.error
-
-
-if __name__ == '__main__':
+def main():
   if '--help' in sys.argv or len(sys.argv) < 2: usage(); Exit()
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
@@ -1022,3 +1012,14 @@ if __name__ == '__main__':
       m.loadBranches()  # read repo
       m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], insync = True)  # mark as committed
       m.saveBranches()
+
+
+if __name__ == '__main__':
+  level = logging.DEBUG if os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv else logging.INFO
+  logging.basicConfig(level = level, stream = sys.stderr if '--log' in sys.argv else sys.stdout, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
+  sos = '--sos' in sys.argv
+  for option in (o for o in ['--log', '--verbose', '-v', '--sos'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
+
+logger = Logger(logging.getLogger(__name__)); debug, info, warn, error = logger.debug, logger.info, logger.warn, logger.error
+
+if __name__ == '__main__': main()

@@ -26,6 +26,7 @@ if os.getenv("BUILD", "false").lower() == "true":
     fd.write("""\
 __version_info__ = ({version[0]}, {version[1]}, {version[2]})
 __version__ = r'{fullName}'
+__release_version__ = r'0.9'
   """.format(version = version, fullName = versionString + "-" + extra))
 
   README = "\n".join(["# SOS %s #" % versionString] + open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')).read().split("\n")[1:])  # replace title in README.md
@@ -77,5 +78,15 @@ setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   packages = ["sos"],
   package_data = {"": ["../LICENSE", "../README", "*.coco"]},
   include_package_data = False,  # if True, will *NOT* package the data!
-  zip_safe = False
+  zip_safe = False,
+  entry_points = {
+    'console_scripts': [
+      'sos=sos.sos:main',
+      'vcos=sos.sos:main'
+    ]
+  },
+#  extras_require = {
+#    'key1':  ["library>=version", "option"],
+#    'key2': ["library>=version"]
+#  }
 )

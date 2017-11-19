@@ -85,6 +85,11 @@ SOS optionally uses the [`configr`]() library to manage per-user global defaults
 By means of the `sos config set <key> <value>` command, you can set the `strict`, `track` or `picky` flag with values like `1`, `yes`, `on`, `true`.
 It's also possible to define a per-user global defaults for file and folder exclude patterns.
 
+## FAQ ##
+> Q: I don't want to risk data loss in case SOS has some undiscovered bugs. What can I do?
+>
+> A: Configure SOS to store all versioned files in plain text instead of compressed: `sos config set compress off` should do the trick. All offline repositories created after that will simply copy files when branching and/or versioning.
+
 
 ## Tipps ##
 - It may be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
