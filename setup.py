@@ -5,6 +5,8 @@ import time
 import unittest
 from setuptools import setup, find_packages
 
+RELEASE = "0.9"
+
 if os.getenv("BUILD", "false").lower() == "true":
   # First compile Coconut down to Python 3 source
   assert 0 == os.system("coconut --target 3 --line-numbers sos%ssos.coco" % os.sep)
@@ -26,10 +28,10 @@ if os.getenv("BUILD", "false").lower() == "true":
     fd.write("""\
 __version_info__ = ({version[0]}, {version[1]}, {version[2]})
 __version__ = r'{fullName}'
-__release_version__ = r'0.9'
-  """.format(version = version, fullName = versionString + "-" + extra))
+__release_version__ = '{release}'
+  """.format(version = version, fullName = versionString + "-" + extra, release = RELEASE))
 
-  README = "\n".join(["# SOS %s #" % versionString] + open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')).read().split("\n")[1:])  # replace title in README.md
+  README = "\n".join(["# SOS %s #" % RELEASE] + open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')).read().split("\n")[1:])  # replace title in README.md
   with open("README.md", "w") as fd: fd.write(README)
 
   # Ensure unit tests are fine
