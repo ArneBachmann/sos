@@ -1,6 +1,5 @@
 # Byte-compiled / optimized / DLL files
 .sos/
-test/
 __pycache__/
 *.py[cod]
 *$py.class

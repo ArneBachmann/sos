@@ -1,4 +1,4 @@
-# SOS 0.9 #
+# Subversion Offline Solution (SOS) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos-vcs.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![PyPI badge](https://badge.fury.io/py/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
@@ -8,28 +8,27 @@
 
 License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 
-### Abbreviations ###
+#### Abbreviations ####
 - **SCM**: *Source Control Management*
 - **SVN**: Subversion
 - **VCS**: *Version Control Systems*
 
-# Subversion Offline Solution (SOS) #
-If you (love or have to) work with *Subversion*, but need/lack the flexibility of committing and branching files offline similar to how *Git* is able to, SOS is your straight-forward and super simple command-line solution:
-SOS allows performing offline operations just like distributed VCS (a.k.a. SCM) can do, not only inside a Subversion base folder, but in any (and even multiple) folders of your file system, be it inside or outside of repository checkouts.
 
-[SOS](https://github.com/ArneBachmann/sos) augments [SVN](http://subversion.apache.org) with offline operation and thus serves the same need as [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
+## Introduction ##
+If you (love, or simply have to) work with the *Subversion* VCS, but need (or lack) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
 
+SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline extension of those VCSs that don't support offline branching and committing, and *c)* as a standalone VCS.
+You may run `sos offline` not only inside a Subversion checkout, but in any (and also multiple) folders of your file system, even outside of VCS repository checkouts/clones.
 
-## How it works ##
-This tool can be used *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline VCS extension for those that don't support it natively, or *c)* as a standalone VCS.
+[SOS](https://github.com/ArneBachmann/sos) thus augments [SVN](http://subversion.apache.org) with offline operation and serves the same need as [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
 
-SOS will double as any popular SCM command line tool and can execute any `svn`, `git` or other VCS commands by simply calling `sos <command> [<arguments-and-options>]`, e.g. `sos commit -m "Message"` instead of `svn commit -m "Message"`. This works by auto-detecting the type of encompassing VCS of the folder you are running `sos` from.
-Once you executed `sos offline`, however, all commands are interpreted by the SOS tool instead, until leaving the offline mode by `sos online` (details below).
+As an additional practical benefit, the `sos` command will double as the command line interface of any popular SCM and will execute any `svn`, `git`, etc. commands by via `sos <command> [<arguments-and-options>]`, e.g. `sos commit -m "Message"` instead of `svn commit -m "Message"` or `git commit -m "Message"`.
+Once you executed `sos offline`, however, all commands are interpreted by the SOS tool instead, until leaving the offline mode via `sos online` (with the exception of `sos config`, cf. details below).
 
-SOS supports three different file handling approaches that you may use to your liking, thus being able to mirror the file handling philosophies of different VCSs, including one new mode for super quick and easy version management.
-- **Simple mode** (default): All files are automatically committed and "tracked", but changes between branches/revisions will always be replayed in the life file tree (files will always be added or removed depending on operation)
-- **Tracking mode**: Only files that match certain file name tracking patterns are respected at `commit`, `update` and `branch` (just like SVN, gitless, and Fossil do), requiring users to specifically add or remove files to a branch
-- **Picky mode**: Each operation needs the explicit declaration of file name patterns to work on (like Git does).
+SOS supports three different file handling approaches that you may use to your liking, thus being able to mirror the file handling philosophies of different traditional VCSs, plus a new default mode for super quick and easy version management.
+- **Simple mode**: All files are automatically versioned and tracked
+- **Tracking mode**: Only files that match certain file name tracking patterns are respected during `commit`, `update` and `branch` (just like in SVN, gitless, and Fossil), requiring users to specifically add or remove files per branch
+- **Picky mode**: Each operation needs the explicit declaration of file name patterns to stage for versioning (like Git does).
 
 
 ## Comparison with traditional VCS ##

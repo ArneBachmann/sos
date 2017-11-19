@@ -32,7 +32,7 @@ __version__ = r'{fullName}'
 __release_version__ = '{release}'
   """.format(version = version, fullName = versionString + "-" + extra, release = RELEASE))
 
-  README = "\n".join(["# SOS %s #" % RELEASE] + open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')).read().split("\n")[1:])  # replace title in README.md
+  README = "\n".join(["# Subversion Offline Solution (SOS %s) #" % RELEASE] + open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')).read().split("\n")[1:])  # replace title in README.md
   with open("README.md", "w") as fd: fd.write(README)
 
   # Ensure unit tests are fine
