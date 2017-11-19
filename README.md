@@ -1,4 +1,4 @@
-> License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+= SOS 2017.2119.2438 =
 > Python 3
 
 ### Abbreviations ###
@@ -81,6 +81,7 @@ It's also possible to define a per-user global defaults for file and folder excl
 
 ## Tipps ##
 - It may be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
+- Switching inside a branch never modifies the tracking patterns, as they are not linked to any specific revision
 
 
 ## Todos ##

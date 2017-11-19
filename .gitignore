@@ -1,9 +1,13 @@
 # Byte-compiled / optimized / DLL files
+.sos/
+test/
 __pycache__/
 *.py[cod]
 *$py.class
-sos.py
-sunamount.py
+sos/sos.py
+sos/tests.py
+sos/version.py
+sos/__pycache__/
 __coconut__.py
 AUTHORS
 ChangeLog

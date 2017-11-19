@@ -10,7 +10,7 @@ except: pass  # Python 2
 try: import configr  # optional dependency
 except: configr = None  # declare as undefined
 
-assert 0 == os.system("coconut --target %d --line-numbers sos.coco" % (2 if any([_ in " ".join(sys.argv) for _ in ['-t2', '-t 2', '--target2', '--target 2']]) else 3))
+assert 0 == os.system("coconut --target %d --line-numbers sos%ssos.coco" % (2 if any([_ in " ".join(sys.argv) for _ in ['-t2', '-t 2', '--target2', '--target 2']]) else 3, os.sep))
 import sos  # just created module
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
@@ -105,8 +105,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(0, len(changes.additions))
     _.assertEqual(0, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
-    _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r1"))
-    _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r1" + os.sep + "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"))
+    _.assertTrue(os.path.exists(branchFolder(0, 1)))
+    _.assertTrue(os.path.exists(branchFolder(0, 1) + os.sep + "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"))
 
   def testDiffFunc(_):
     a = {"./a": sos.PathInfo("", 0, 0, "")}
@@ -147,11 +147,11 @@ class Tests(unittest.TestCase):
     _.assertEqual(0, len(changes.modifications))
 
   def testComputeSequentialPathSet(_):
-    os.makedirs("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r0")
-    os.makedirs("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r1")
-    os.makedirs("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2")
-    os.makedirs("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r3")
-    os.makedirs("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r4")
+    os.makedirs(branchFolder(0, 0))
+    os.makedirs(branchFolder(0, 1))
+    os.makedirs(branchFolder(0, 2))
+    os.makedirs(branchFolder(0, 3))
+    os.makedirs(branchFolder(0, 4))
     m = sos.Metadata(os.getcwd())
     m.branch = 0
     m.commit = 2
@@ -192,7 +192,7 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["r0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))
     _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # only branch folder and meta data file
     _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0")))  # only commit folder and meta data file
-    _.assertEqual(1, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r0")))  # only meta data file
+    _.assertEqual(1, len(os.listdir(branchFolder(0, 0))))  # only meta data file
 
   def testOfflineWithFiles(_):
     _.createFile(1, "x" * 100)
@@ -204,7 +204,7 @@ class Tests(unittest.TestCase):
     _.assertAllIn([sos.metaFile, "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2", "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r0"))
     _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # only branch folder and meta data file
     _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0")))  # only commit folder and meta data file
-    _.assertEqual(3, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r0")))  # only meta data file plus branch base file copies
+    _.assertEqual(3, len(os.listdir(branchFolder(0, 0))))  # only meta data file plus branch base file copies
 
   def testBranch(_):
     _.createFile(1, "x" * 100)
@@ -214,8 +214,8 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["b0", "b1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder))
     _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))),
                   list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b1"))))
-    _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r0"))),
-                  list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b1" + os.sep + "r0"))))
+    _.assertEqual(list(sorted(os.listdir(branchFolder(0, 0)))),
+                  list(sorted(os.listdir(branchFolder(1, 0)))))
     _.createFile(1, "z")  # modify file
     sos.branch()  # b2/r0  branch to unnamed branch with modified file tree contents
     _.assertNotEqual(os.stat("." + os.sep + sos.metaFolder + os.sep + "b1" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa").st_size,
@@ -242,8 +242,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(changes.modifications))
     sos.commit("message")
     _.assertAllIn(["r0", "r1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))
-    _.assertAllIn([sos.metaFile, "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r1"))
-    _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r1")))  # no further files, only the modified one
+    _.assertAllIn([sos.metaFile, "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir(branchFolder(0, 1)))
+    _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # no further files, only the modified one
     _.assertEqual(1, len(sos.changes("/0").modifications))  # vs. implicit (same) branch revision
     _.assertEqual(1, len(sos.changes("0/0").modifications))  # vs. explicit branch revision
     _.createFile(1, "")  # create empty file, mentioned in meta data, but not stored as own file
@@ -251,8 +251,7 @@ class Tests(unittest.TestCase):
     _.assertEqual(0, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
     sos.commit("modified")
-    print(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2"))
-    _.assertEqual(1, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2")))  # no further files, only the modified one
+    _.assertEqual(1, len(os.listdir(branchFolder(0, 2))))  # no further files, only the modified one
     try: sos.commit("nothing"); _.fail()  # expecting Exit due to no changes
     except: pass
 
@@ -298,9 +297,9 @@ class Tests(unittest.TestCase):
     _.assertTrue(_.existsFile(1))
 
     sos.commit("third", ["--force"])  # force because nothing to commit. should create r2 with same contents as r1, but as differential from r1, not from r0 (= no changes in meta folder)
-    _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2"))
-    _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2" + os.sep + sos.metaFile))
-    _.assertEqual(1, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r2")))  # only meta data file, no differential files
+    _.assertTrue(os.path.exists(branchFolder(0, 2)))
+    _.assertTrue(os.path.exists(branchFolder(0, 2) + os.sep + sos.metaFile))
+    _.assertEqual(1, len(os.listdir(branchFolder(0, 2))))  # only meta data file, no differential files
 
     sos.update("/1")  # do nothing, as nothing has changed
     _.assertTrue(_.existsFile(1))
@@ -350,11 +349,21 @@ class Tests(unittest.TestCase):
     _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb"))  # in doubt, use "mine" CR-LF
 
   def testPickyMode(_):
-    pass
+    sos.offline("trunk", ["--picky"])
+    sos.add("file?", ["--force"])
+    _.createFile(1, "aa")
+    sos.commit("First")  # add one file
+    _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))
+    _.createFile(2, "b")
+    sos.commit("Second", ["--force"])  # add nothing, because picky
+    _.assertEqual(1, len(os.listdir(branchFolder(0, 2))))
+    sos.add("file?")
+    sos.commit("Third")  # add nothing, because picky
+    _.assertEqual(2, len(os.listdir(branchFolder(0, 3))))
 
   def testTrackedSubfolder(_):
     os.mkdir("." + os.sep + "sub")
-    sos.offline("trunk", options = ["--track"])
+    sos.offline("trunk", ["--track"])
     _.createFile(1, "x")
     _.createFile(1, "x", prefix = "sub")
     sos.add("file?")  # add glob pattern to track
@@ -438,7 +447,7 @@ class Tests(unittest.TestCase):
     sos.offline("xx", ["--track"])  # because nothing to commit due to ignore pattern
     sos.add("file*")
     sos.commit(options = ["--force"])  # attempt to commit the file
-    _.assertEqual(1, len(os.listdir(sos.metaFolder + os.sep + "b0" + os.sep + "r1")))  # only meta data, file1 was ignored
+    _.assertEqual(1, len(os.listdir(branchFolder(0, 1))))  # only meta data, file1 was ignored
     sos.online(["--force"])
     _.assertFalse(os.path.exists(sos.metaFolder))
     _.createFile(1)
@@ -446,7 +455,7 @@ class Tests(unittest.TestCase):
     sos.offline("xx", ["--track"])
     sos.add("file*")
     sos.commit()
-    _.assertEqual(2, len(os.listdir(sos.metaFolder + os.sep + "b0" + os.sep + "r1")))  # meta data and "file1", file1 was whitelisted
+    _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # meta data and "file1", file1 was whitelisted
 
   def testRemove(_):
     _.createFile(1, "x" * 100)
