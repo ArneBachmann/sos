@@ -1,4 +1,4 @@
-# SOS 2017.2119.2459 #
+# SOS 2017.2119.2506 #
 
 License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
