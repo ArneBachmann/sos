@@ -11,7 +11,7 @@ try: import configr  # optional dependency
 except: configr = None  # declare as undefined
 
 assert 0 == os.system("coconut --target %d --line-numbers sos%ssos.coco" % (2 if any([_ in " ".join(sys.argv) for _ in ['-t2', '-t 2', '--target2', '--target 2']]) else 3, os.sep))
-import sos  # just created module
+from sos import sos  # just created module
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
 
