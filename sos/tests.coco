@@ -14,8 +14,7 @@ try:
   code = os.system("coconut --target %d --line-numbers sos%ssos.coco" % (2 if any([_ in " ".join(sys.argv) for _ in ['-t2', '-t 2', '--target2', '--target 2']]) else 3, os.sep))
   assert 0 == code
 except: pass  # CI
-try: from sos import sos  # just created module
-except: import sos  # or sys.path.insert("..")
+import sos
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
 

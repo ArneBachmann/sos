@@ -65,6 +65,7 @@ try: Splittable = TypeVar("Splittable", str, bytes)
 except: pass  # Python 2
 def safeSplit(s:Splittable, d:Splittable? = None) -> Splittable[]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 
+def ajoin(sep:str, seq:str[], nl = "") -> str = sep + (sep + nl).join(seq)
 def sjoin(*s:Tuple[Any]) -> str = " ".join([str(e) for e in s if e != ''])
 
 def hashStr(datas:str) -> str = hashlib.sha256(datas.encode(UTF8)).hexdigest()
@@ -277,8 +278,8 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
         elif conflictResolution == ConflictResolution.MINE:
           output.extend(block.lines)
         elif conflictResolution == ConflictResolution.ASK:
-          print("THR " + "\nTHR ".join(block.replaces.lines))
-          print("MIN " + "\nMIN ".join(block.lines))
+          print(ajoin("THR ", block.replaces.lines, "\n"))
+          print(ajoin("MIN ", block.lines, "\n"))
           reso:int? = {"i": ConflictResolution.MINE, "t": ConflictResolution.THEIRS, "m": ConflictResolution.NEXT, "u": None}.get(user_input(" Resolve: *M[I]ne, [T]heirs, [M]erge, [U]ser defined: ").strip().lower(), ConflictResolution.MINE)
           debug("User selected %d" % reso)
           match None in reso:
@@ -340,9 +341,9 @@ class Metadata:
 
   def listChanges(_, changes:ChangeSet, diffmode:bool = False, textglobs:str[] = []) -> None:
     ''' In diffmode, don't list modified files, because the diff is displayed elsewhere. '''
-    if len(changes.additions) > 0:     print("ADD " + "\nADD ".join(a for a in sorted(changes.additions.keys())))
-    if len(changes.deletions) > 0:     print("DEL " + "\nDEL ".join(d for d in sorted(changes.deletions.keys())))
-    if len(changes.modifications) > 0: print("MOD " + "\nMOD ".join(sorted(k for k in changes.modifications.keys() if not _.isTextType(k) or not diffmode)))  # only list binary files
+    if len(changes.additions) > 0:     print(ajoin("ADD ", sorted(changes.additions.keys()), "\n"))
+    if len(changes.deletions) > 0:     print(ajoin("DEL ", sorted(changes.deletions.keys()), "\n"))
+    if len(changes.modifications) > 0: print(ajoin("MOD ", sorted(k for k in changes.modifications.keys() if not _.isTextType(k) or not diffmode), "\n"))  # only list binary files
 
   def loadBranches(_) -> None:
     ''' Load list of branches and current branch info from metadata file. '''
@@ -704,7 +705,7 @@ def status() -> None:
     print("  %s b%d%s @%s (%s) with %d commits%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.insync else "dirty", len(m.commits), ". Last comment: '%s'" % m.commits[max(m.commits)].message if m.commits[max(m.commits)].message else ""))
   if m.track or m.picky and len(m.branches[m.branch].tracked) > 0:
     info("\nTracked file patterns:")
-    print("\n  | " + "\n  | ".join((path for path in m.branches[m.branch].tracked)))
+    print(ajoin("  | ", m.branches[m.branch].tracked, "\n"))
 
 def stopOnChanges(argument:str? = None, options:str[] = [], check:bool = True, commit:bool = False) -> Tuple[Metadata,int?,int,ChangeSet,bool,bool,FrozenSet[str]] =
   ''' Common behavior for switch, update, delete, commit.
@@ -989,12 +990,13 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
   (None, vcs[0], vcs[1])
 
 def main():
+  for option in (o for o in ['--log', '--verbose', '-v', '--sos'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
   if '--help' in sys.argv or len(sys.argv) < 2: usage(); Exit()
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Found root folders for SOS/VCS: %s/%s" % (root ?? "", vcs ?? ""))
   defaults["defaultbranch"] = vcsBranches.get(cmd, "trunk")  # sets dynamic default with SVN fallback
-  if sos or root is not None or (command ?? "") == "offline":  # in offline mode or just going offline TODO what about git config?
+  if force_sos or root is not None or (command ?? "") == "offline":  # in offline mode or just going offline TODO what about git config?
     os.chdir(os.getcwd() if command == "offline" else root ?? os.getcwd())  # since all operatiosn use os.getcwd() and we save one argument to each function
     parse(root)
   else:  # online mode - delegate to VCS
@@ -1014,12 +1016,9 @@ def main():
       m.saveBranches()
 
 
-if __name__ == '__main__':
-  level = logging.DEBUG if os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv else logging.INFO
-  logging.basicConfig(level = level, stream = sys.stderr if '--log' in sys.argv else sys.stdout, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
-  sos = '--sos' in sys.argv
-  for option in (o for o in ['--log', '--verbose', '-v', '--sos'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
-
+# Main part
+level = logging.DEBUG if os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv else logging.INFO
+force_sos = '--sos' in sys.argv
+if __name__ == '__main__': logging.basicConfig(level = level, stream = sys.stderr if '--log' in sys.argv else sys.stdout, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
 logger = Logger(logging.getLogger(__name__)); debug, info, warn, error = logger.debug, logger.info, logger.warn, logger.error
-
 if __name__ == '__main__': main()
