@@ -1,10 +1,11 @@
 = SOS 2017.2119.2438 =
+
 License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
-![https://travis-ci.org/ArneBachmann/sos.svg?branch=master](https://travis-ci.org/ArneBachmann/sos)
-![https://badge.fury.io/py/sos.svg](https://badge.fury.io/py/sos)
-![https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master](https://coveralls.io/github/ArneBachmann/sos?branch=master)
-![https://img.shields.io/pypi/pyversions/Django.svg](https://github.com/ArneBachmann/sos)
-![https://img.shields.io/github/license/mashape/apistatus.svg](https://github.com/ArneBachmann/sos)
+[Travis badge](![https://travis-ci.org/ArneBachmann/sos.svg?branch=master](https://travis-ci.org/ArneBachmann/sos))
+[PyPI badge](![https://badge.fury.io/py/sos.svg](https://badge.fury.io/py/sos))
+[Code coverage badge](![https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master](https://coveralls.io/github/ArneBachmann/sos?branch=master))
+[Python version badge](![https://img.shields.io/pypi/pyversions/Django.svg](https://github.com/ArneBachmann/sos))
+[License badge](![https://img.shields.io/github/license/mashape/apistatus.svg](https://github.com/ArneBachmann/sos))
 
 ### Abbreviations ###
 - **SCM**: *Source Control Management*
