@@ -1,11 +1,11 @@
-= SOS 2017.2119.2438 =
+# SOS 2017.2119.2459 #
 
 License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
-[![PyPI badge](https://badge.fury.io/py/sos.svg)](https://badge.fury.io/py/sos)
+[![PyPI badge](https://badge.fury.io/py/sos-vcs.svg)](https://badge.fury.io/py/sos)
+[![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos)
+[![Conda badge](https://img.shields.io/conda/pn/conda-forge/python.svg)]()
 [![Code coverage badge](https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master)](https://coveralls.io/github/ArneBachmann/sos?branch=master)
-[![Python version badge](https://img.shields.io/pypi/pyversions/Django.svg)](https://github.com/ArneBachmann/sos)
-[![License badge](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/ArneBachmann/sos)
 
 ### Abbreviations ###
 - **SCM**: *Source Control Management*
@@ -88,6 +88,13 @@ It's also possible to define a per-user global defaults for file and folder excl
 ## Tipps ##
 - It may be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
 - Switching inside a branch never modifies the tracking patterns, as they are not linked to any specific revision
+
+
+## Release management ##
+- Run `python3 setup.py build` to test the code and increment the version number
+- Run `git add`, `git commit` and `git push` and let Travis CI run the tests for different target platforms. If there were no problems, continue:
+- Run `python3 setup.py sdist` to package the module with previously generated version info
+- Run `twine upload dist/*.tar.gz` to upload the module to PyPI.
 
 
 ## Todos ##

@@ -27,7 +27,7 @@ __version_info__ = ({version[0]}, {version[1]}, {version[2]})
 __version__ = r'{fullName}'
 """.format(version = version, fullName = versionString + "-" + extra))
 
-README = "\n".join(["= SOS %s =" % versionString] + open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')).read().split("\n")[1:])  # replace title in README.md
+README = "\n".join(["# SOS %s #" % versionString] + open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')).read().split("\n")[1:])  # replace title in README.md
 with open("README.md", "w") as fd: fd.write(README)
 
 # Ensure unit tests are fine
@@ -46,7 +46,7 @@ except: pass
 
 print("Building SOS version " + sos.version.__version__)
 setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
-  name = 'sos',
+  name = 'sos-vcs',
   version = versionString,  # without extra
   install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2117.2635"],  # all of them are optional dependecies
   test_suite = "tests",  # is this executed automatically? Is also called above
