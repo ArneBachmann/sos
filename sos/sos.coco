@@ -46,7 +46,7 @@ class Accessor(dict):
     except: return dict.__getattribute__(_, name)
 
 # Constants
-APPNAME:str = "Subversion Offline Solution  V.%s  (C) Arne Bachmann" % version.__release__
+APPNAME:str = "Subversion Offline Solution  V.%s  (C) Arne Bachmann" % version.__release_version__
 CONFIGURABLE_FLAGS = ["strict", "track", "picky", "compress"]
 CONFIGURABLE_LISTS = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
