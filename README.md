@@ -1,11 +1,12 @@
 # SOS 2017.2119.2506 #
 
-License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
-[![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
-[![PyPI badge](https://badge.fury.io/py/sos-vcs.svg)](https://badge.fury.io/py/sos)
-[![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos)
+[![Travis badge](https://travis-ci.org/ArneBachmann/sos-vcs.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
+[![PyPI badge](https://badge.fury.io/py/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
+[![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 [![Conda badge](https://img.shields.io/conda/pn/conda-forge/python.svg)]()
 [![Code coverage badge](https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master)](https://coveralls.io/github/ArneBachmann/sos?branch=master)
+
+License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 
 ### Abbreviations ###
 - **SCM**: *Source Control Management*
