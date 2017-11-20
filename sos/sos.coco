@@ -46,7 +46,7 @@ class Accessor(dict):
     except: return dict.__getattribute__(_, name)
 
 # Constants
-APPNAME:str = "Subversion Offline Solution  V.%s  (C) Arne Bachmann" % version.__release_version__
+APPNAME:str = "Subversion Offline Solution  V%s  (C) Arne Bachmann" % version.__release_version__
 CONFIGURABLE_FLAGS = ["strict", "track", "picky", "compress"]
 CONFIGURABLE_LISTS = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
@@ -154,35 +154,38 @@ def eoldet(file:bytes) -> bytes? =
   cr:int = file.count(b"\r")
   crlf:int = file.count(b"\r\n")
   if crlf > 0:  # DOS/Windows/Symbian etc.
-    if lf != crlf or cr != crlf:
-      warn("Inconsistent CR/NL count. Mixed EOL style detected, may cause problems during merge")
+    if lf != crlf or cr != crlf: warn("Inconsistent CR/NL count. Mixed EOL style detected, may cause problems during merge")
     return b"\r\n"
-  if lf != 0 and cr != 0:
-    warn("Inconsistent CR/NL count. Mixed EOL style detected, may cause problems during merge")
+  if lf != 0 and cr != 0: warn("Inconsistent CR/NL count. Mixed EOL style detected, may cause problems during merge")
   if lf > cr: return b"\n"  # Linux/Unix
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
 
 def usage() -> None:
-  ''' Print helpful usage information. '''
-  print(APPNAME + """
-Usage: sos <command> [<argument>] [<option1>, ...]        For command "offline" and when in offline mode
-       sos <underlying vcs command and arguments>         Unless working in offline mode
+  print("""/// {appname}
+
+Usage: {cmd} <command> [<argument>] [<option1>, ...]        For command "offline" and when in offline mode
+       {cmd} <underlying vcs command and arguments>         Unless working in offline mode
 
   Available commands:
-    offline [<name>] [--track/--picky]                    Start working offline, creating a default branch
+    offline [<name>]                                      Start working offline, creating a branch (named <name>)
+      --track                                               Setup SVN-style mode: users add/remove tracking patterns per branch
+      --picky                                               Setup Git-style mode: users pick files for each operation
     online                                                Finish working offline
 
-    branch  [<name>] [--last] [--stay]                    Create a new branch from file tree and switch to it
+    branch  [<name>] [--last] [--stay]                    Create a new branch from current file tree and switch to it
+      --last                                                Use last revision, not current file tree, but keep file tree unchanged
+      --stay                                                Don't switch to new branch, continue on current one
     switch  [<branch>][/<revision>] [--meta]              Continue work on another branch
+      --meta                                                Only switch file tracking patterns for current branch, don't update any files
     update  [<branch>][/<revision>]                       Integrate work from another branch TODO add many merge and conflict resolution options
-    delete  [<branch>]                                    Remove branch entirely
+    delete  [<branch>]                                    Remove (current) branch entirely
 
-    commit  [<message>]                                   Create a new revision from current state file tree
+    commit  [<message>]                                   Create a new revision from current state file tree, with an optional commit message
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
     diff    [<branch>][/<revision>]                       List changes vs. last or specified revision
-    add     [<filename or glob pattern>]
-    rm      [<filename or glob pattern>]
+    add     [<filename or glob pattern>]                  Add a tracking pattern to current branch (path/filename or glob pattern)
+    rm      [<filename or glob pattern>]                  Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
 
     ls                                                    List file tree and mark changes and tracking status
     status                                                List branches and display repository status
@@ -194,31 +197,23 @@ Usage: sos <command> [<argument>] [<option1>, ...]        For command "offline" 
                                                             texttype, bintype, ignores, ignoreDirs, ignoresWhitelist, ignoreDirsWhitelist
                                                           Supported texts:
                                                             defaultbranch (dynamic default per discovered VCS)
-    help                                                  Show this usage information
+    help, --help                                          Show this usage information
 
   Arguments:
-    <name>                      Optional branch name
-    <message>                   Optional commit message
     <branch/revision>           Revision string. Branch is optional and may be a label or index
-                                Revision is an optional integer and may be negative to reference from the latest commits
-    <filename or glob pattern>  Path or glob pattern to track or untrack
+                                Revision is an optional integer and may be negative to reference from the latest commits (-1 is most recent revision)
 
-  Options:
+  Common options:
     --force                     Executes potentially harmful operations
                                   for offline: ignore being already offline, start from scratch (same as online --force; offline)
                                   for online: ignore uncommitted branches
                                   for commit, switch, update, add: ignore uncommitted changes before executing command
     --strict                    Perform full content comparison, don't rely only on file size and timestamp
-                                  for offline: persist strict mode
+                                  for offline: persist strict mode in repository
                                   for changes, diff, commit, switch, update, delete: perform operation in strict mode
-    --meta                      When switching, only switch file tracking patterns for current branch, don't update any files
-    --last                      When branching, use last revision, not current file tree, but keep file tree unchanged
-    --stay                      When branching, don't switch to new branch, continue on current one
-    --track                     When going offline, setup SVN-style mode: users add/remove tracking patterns per branch
-    --picky                     When going offline, setup Git-style mode: users pick files for each operation
-    --sos                       When executing SOS not being offline, pass arguments to SOS instead (e.g. sos --sos config set key value.)
+    --{cmd}                       When executing {cmd.upper()} not being offline, pass arguments to {cmd.upper() instead (e.g. {cmd} --{cmd} config set key value.)
     --log                       Enable internals logger
-    --verbose                   Enable debugging output""")
+    --verbose                   Enable debugging output""".format(appname = APPNAME, cmd = "sos"))
 
 def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname:str? = None, mergeOperation = MergeOperation.BOTH, conflictResolution = ConflictResolution.ASK) -> bytes =
   ''' Merges binary text contents 'file' into file 'into', returning merged result. '''
@@ -430,7 +425,7 @@ class Metadata:
     _.commits = {0: CommitInfo(0, ts, initialMessage ?? "Branched on %s" % strftime(ts))}  # store initial commit for new branch
     _.saveBranch(branch)  # save branch meta data (revisions) to branch folder
     _.saveCommit(branch, 0)  # save commit meta data to revision folder
-    _.branches[branch] = BranchInfo(branch, _.commits[0].ctime, name, _.branches[_.branch].insync if len(_.branches) > 0 else False, tracked)  # save branch info, in case it is needed
+    _.branches[branch] = BranchInfo(branch, _.commits[0].ctime, name, True if len(_.branches) == 0 else _.branches[_.branch].insync, tracked)  # save branch info, in case it is needed
 
   def removeBranch(_, branch:int) -> BranchInfo =
     ''' Entirely remove a branch and all its revisions from the file system. '''
@@ -689,9 +684,9 @@ def commit(argument:str? = None, options:str[] = []) -> None:
   m.saveBranch(m.branch)
   if m.picky:
     m.loadBranches()  # TODO is this necessary?
-    m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [])  # remove tracked patterns after commit in picky mode
+    m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], insync = False)  # remove tracked patterns after commit in picky mode
     m.saveBranches()
-  info("Created new revision r%d%s (+%d/-%d/~%d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications)))
+  info("Created new revision r%2d%s (+%d/-%d/~%d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications)))
 
 def status() -> None:
   ''' Show branches and current repository state. '''
@@ -733,7 +728,7 @@ def stopOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
   if argument is not None:  # branch/revision specified
     m.loadBranch(branch)  # knows commits of target branch
     revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
-    if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%d" % revision)
+    if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%2d" % revision)
     return (m, branch, revision, changes, strict, force, m.getTrackingPatterns(branch))
   (m, m.branch, max(m.commits) + (1 if commit else 0), changes, strict, force, trackingPatterns)
 
@@ -841,7 +836,7 @@ def add(argument:str, options:str[] = []) -> None:
     Exit("%s '%s' already tracked" % ("Glob" if isglob(pattern) else "File", pattern))
   if not force and len(fnmatch.filter(os.listdir(os.path.abspath(relpath)), os.path.basename(pattern.replace("/", os.sep)))) == 0:  # doesn't match any current file
     Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")
-  m.branches[m.branch].tracked.append(pattern)
+  m.branches[m.branch].tracked.append(pattern)  # TODO set insync flag to False? same for rm
   m.saveBranches()
   info("Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace("/", os.sep)), os.path.abspath(relpath)))
 
@@ -888,7 +883,7 @@ def log() -> None:
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()  # knows current branch
   m.loadBranch(m.branch)  # knows commit history
-  info("Offline commit history of branch '%s':" % m.branches[m.branch].name ?? "r%d" % m.branch)  # TODO also retain "from branch/revision" on branching?
+  info("Offline commit history of branch '%s':" % m.branches[m.branch].name ?? "r%2d" % m.branch)  # TODO also retain "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
   for commit in sorted(m.commits.values(), key = (co) -> co.number):
     print("  %s r%s @%s: %s" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), commit.message ?? ""))
@@ -989,14 +984,17 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
       if choice: return (sos, path, choice)
   (None, vcs[0], vcs[1])
 
-def main():
+def main() -> None:
+  global debug, info, warn, error
+  logging.basicConfig(level = level, stream = sys.stderr, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
+  _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
   for option in (o for o in ['--log', '--verbose', '-v', '--sos'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
   if '--help' in sys.argv or len(sys.argv) < 2: usage(); Exit()
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Found root folders for SOS/VCS: %s/%s" % (root ?? "", vcs ?? ""))
   defaults["defaultbranch"] = vcsBranches.get(cmd, "trunk")  # sets dynamic default with SVN fallback
-  if force_sos or root is not None or (command ?? "") == "offline":  # in offline mode or just going offline TODO what about git config?
+  if force_sos or root is not None or (command ?? "") in ["offline", "help"]:  # in offline mode or just going offline TODO what about git config?
     os.chdir(os.getcwd() if command == "offline" else root ?? os.getcwd())  # since all operatiosn use os.getcwd() and we save one argument to each function
     parse(root)
   else:  # online mode - delegate to VCS
@@ -1019,6 +1017,5 @@ def main():
 # Main part
 level = logging.DEBUG if os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv else logging.INFO
 force_sos = '--sos' in sys.argv
-if __name__ == '__main__': logging.basicConfig(level = level, stream = sys.stderr if '--log' in sys.argv else sys.stdout, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
-logger = Logger(logging.getLogger(__name__)); debug, info, warn, error = logger.debug, logger.info, logger.warn, logger.error
+_log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
 if __name__ == '__main__': main()
