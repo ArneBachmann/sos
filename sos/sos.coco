@@ -352,8 +352,8 @@ class Metadata:
       _.strict = flags["strict"]
       _.branches = {i.number: i for i in (BranchInfo(*item) for item in branches)}  # re-create type info
     except Exception as E:  # if not found, create metadata folder
-      try: os.makedirs(os.path.join(_.root, metaFolder)); _.branches = {}
-      except Exception as F: Exit("Error: Couldn't read branches metadata, but branches folder seems to already exist. %r %r" % (E, F))
+      _.branches = {}
+      warn("Couldn't read branches metadata, and couldn't create one either: %r" % E)
 
   def saveBranches(_) -> None:
     ''' Save list of branches and current branch info to metadata file. '''
@@ -957,7 +957,7 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
   vcs:Tuple[str?,str?] = (None, None)
   while not os.path.exists(os.path.join(path, metaFolder)):
     contents = set(os.listdir(path))
-    vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type
+    vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type from dot folder
     choice:str? = None
     if len(vcss) > 1:
       choice = "svn" if "svn" in vcss else vcss[0]
@@ -997,7 +997,7 @@ def main() -> None:
   if force_sos or root is not None or (command ?? "") in ["offline", "help"]:  # in offline mode or just going offline TODO what about git config?
     os.chdir(os.getcwd() if command == "offline" else root ?? os.getcwd())  # since all operatiosn use os.getcwd() and we save one argument to each function
     parse(root)
-  else:  # online mode - delegate to VCS
+  elif cmd is not None:  # online mode - delegate to VCS
     info("SOS: Running '%s %s'" % (cmd, " ".join(sys.argv[1:])))
     import subprocess  # only requuired in this section
     process = subprocess.Popen([cmd] + sys.argv[1:], shell = False, stdin = subprocess.PIPE, stdout = sys.stdout, stderr = sys.stderr)
@@ -1012,6 +1012,7 @@ def main() -> None:
       m.loadBranches()  # read repo
       m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], insync = True)  # mark as committed
       m.saveBranches()
+  else: Exit("No offline repository present, and unable to detect VCS file tree")
 
 
 # Main part
