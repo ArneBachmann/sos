@@ -13,7 +13,7 @@ except: configr = None  # declare as undefined
 try:
   code = os.system("coconut --target %d --line-numbers sos%ssos.coco" % (2 if any([_ in " ".join(sys.argv) for _ in ['-t2', '-t 2', '--target2', '--target 2']]) else 3, os.sep))
   assert 0 == code
-except: pass  # CI
+except: pass  # CI - code was transpiled prior to testing
 import sos
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
@@ -497,4 +497,4 @@ if __name__ == '__main__':
   if configr:
     c = configr.Configr("sos"); c.loadSettings()
     if len(c.keys()) > 0: sos.Exit("Cannot run test suite with local SOS user configuration")
-  unittest.main(testRunner = debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")
+  unittest.main(testRunner = debugTestRunner() if '-v' in sys.argv and not os.getenv("BUILD", "false").lower() == "true" else None)  # warnings = "ignore")

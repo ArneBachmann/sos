@@ -1,0 +1,3 @@
+*.coco eol=lf
+*.py eol=lf
+README.md text eol=lf

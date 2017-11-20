@@ -5,7 +5,7 @@ import time
 import unittest
 from setuptools import setup, find_packages
 
-RELEASE = "0.9"
+RELEASE = "0.9.1"
 
 File = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 if os.getenv("BUILD", "false").lower() == "true":
@@ -37,8 +37,9 @@ __release_version__ = '{release}'
   with open(File, "w") as fd: fd.write(README)
 
   # Ensure unit tests are fine
-  from sos import sos, tests  # needed for version strings
-  if os.getenv("NOTTEST", "false").lower() == "true":
+  import sos
+  from sos import tests  # needed for version strings
+  if os.getenv("NOTEST", "false").lower() != "true":
     testrun = unittest.defaultTestLoader.loadTestsFromModule(tests).run(unittest.TestResult())
     assert len(testrun.errors) == 0
     assert len(testrun.failures) == 0
@@ -49,8 +50,8 @@ __release_version__ = '{release}'
       try: os.unlink(os.path.join("dist", file))
       except: print("Cannot remove old distribution file " + file)
   except: pass
-else:  # install
-  from sos import sos
+else:  # during pip install only
+  import sos
   with open(File, "r") as fd: README = fd.read()
 
 print("Building SOS version " + sos.version.__version__)
@@ -79,7 +80,7 @@ setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   maintainer_email = 'ArneBachmann@users.noreply.github.com',
   url = 'http://github.com/ArneBachmann/configr',
   license = 'CC-BY-SA 4.0',
-  packages = ["sos"],
+  packages = find_packages(),  # ["sos"]
   package_data = {"": ["../LICENSE", "../README.md", "*.coco"]},
   include_package_data = False,  # if True, will *NOT* package the data!
   zip_safe = False,

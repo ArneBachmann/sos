@@ -211,9 +211,9 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        For command "offline
     --strict                    Perform full content comparison, don't rely only on file size and timestamp
                                   for offline: persist strict mode in repository
                                   for changes, diff, commit, switch, update, delete: perform operation in strict mode
-    --{cmd}                       When executing {cmd.upper()} not being offline, pass arguments to {cmd.upper() instead (e.g. {cmd} --{cmd} config set key value.)
+    --{cmd}                       When executing {CMD} not being offline, pass arguments to {CMD} instead (e.g. {cmd} --{cmd} config set key value.)
     --log                       Enable internals logger
-    --verbose                   Enable debugging output""".format(appname = APPNAME, cmd = "sos"))
+    --verbose                   Enable debugging output""".format(appname = APPNAME, cmd = "sos", CMD = "SOS"))
 
 def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname:str? = None, mergeOperation = MergeOperation.BOTH, conflictResolution = ConflictResolution.ASK) -> bytes =
   ''' Merges binary text contents 'file' into file 'into', returning merged result. '''
