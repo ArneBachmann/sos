@@ -52,7 +52,7 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
         try: os.unlink(os.path.join("dist", file))
         except: print("Cannot remove old distribution file " + file)
     except: pass
-  else: print("Warning: dist folder doesn't exist")
+  else: print("Warning: dist folder doesn't exist, probably need to run with elevated rights")
 else:  # during pip install only
   import sos
   with open(readmeFile, "r") as fd: README = fd.read()
