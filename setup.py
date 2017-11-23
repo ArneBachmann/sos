@@ -7,13 +7,14 @@ from setuptools import setup, find_packages
 
 RELEASE = "0.9.1"
 
-File = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
-if os.getenv("BUILD", "false").lower() == "true":
+readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.rst')
+if os.getenv("BUILD", "false").strip().lower() == "true":
   # First compile Coconut down to Python 3 source
   print("Transpiling Coconut for packaging...")
   assert 0 == os.system("coconut --target 3 --line-numbers sos%ssos.coco" % os.sep)
   assert 0 == os.system("coconut --target 3 --line-numbers sos%stests.coco" % os.sep)
 
+  if 0 != os.system("pandoc --from=markdown --to=rst --output=README.rst README.md"): print("Warning: Couldn't convert README.md to reStructuredText")
   if os.path.exists(".git"):
     try:
       p = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE)  # use tag or hash
@@ -30,29 +31,31 @@ if os.getenv("BUILD", "false").lower() == "true":
     fd.write("""\
 __version_info__ = ({version[0]}, {version[1]}, {version[2]})
 __version__ = r'{fullName}'
-__release_version__ = '{release}'
-  """.format(version = version, fullName = versionString + "-" + extra, release = RELEASE))
+__release_version__ = '{release}'""".format(version = version, fullName = versionString + "-" + extra, release = RELEASE))
 
-  README = "\n".join(["# Subversion Offline Solution (SOS %s) #" % RELEASE] + open(File).read().split("\n")[1:])  # replace title in README.md
-  with open(File, "w") as fd: fd.write(README)
+  README = "\n".join(["# Subversion Offline Solution (SOS %s) #" % RELEASE] + open(readmeFile).read().split("\n")[1:])  # replace title in README.md
+  with open(readmeFile, "w") as fd: fd.write(README)
 
   # Ensure unit tests are fine
   import sos
   from sos import tests  # needed for version strings
-  if os.getenv("NOTEST", "false").lower() != "true":
+  if os.getenv("NOTEST", "false").strip().lower() != "true":
     testrun = unittest.defaultTestLoader.loadTestsFromModule(tests).run(unittest.TestResult())
+    print("Test results: %r" % testrun)
     assert len(testrun.errors) == 0
     assert len(testrun.failures) == 0
 
   # Clean up old binaries for twine upload
-  try:
-    for file in (f for f in os.listdir("dist") if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
-      try: os.unlink(os.path.join("dist", file))
-      except: print("Cannot remove old distribution file " + file)
-  except: pass
+  if os.path.exists("dist"):
+    try:
+      for file in (f for f in os.listdir("dist") if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
+        try: os.unlink(os.path.join("dist", file))
+        except: print("Cannot remove old distribution file " + file)
+    except: pass
+  else: print("Warning: dist folder doesn't exist")
 else:  # during pip install only
   import sos
-  with open(File, "r") as fd: README = fd.read()
+  with open(readmeFile, "r") as fd: README = fd.read()
 
 print("Building SOS version " + sos.version.__version__)
 setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
@@ -64,12 +67,17 @@ setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   long_description = README,  # + '\n' + CHANGES,
   classifiers = [c.strip() for c in """
         Development Status :: 4 - Beta
+        License :: Free To Use But Restricted
         Intended Audience :: Developers
         Intended Audience :: Other Audience
         Intended Audience :: Science/Research
         Intended Audience :: System Administrators
         Operating System :: OS Independent
+        Programming Language :: Other
+        Programming Language :: Python
         Programming Language :: Python :: 3
+        Programming Language :: Python :: 3.6
+        Programming Language :: Python :: 3 :: Only
         """.split('\n') if c.strip()],  # https://pypi.python.org/pypi?:action=list_classifiers
 #        Programming Language :: Coconut
 #        License :: Creative Commons Attribution-ShareAlike 4.0
@@ -81,7 +89,7 @@ setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   url = 'http://github.com/ArneBachmann/sos',
   license = 'CC-BY-SA 4.0',
   packages = find_packages(),  # ["sos"]
-  package_data = {"": ["../LICENSE", "../README.md", "*.coco"]},
+  package_data = {"": ["../LICENSE", "../README.md", "../README.rst", "*.coco"]},
   include_package_data = False,  # if True, will *NOT* package the data!
   zip_safe = False,
   entry_points = {
