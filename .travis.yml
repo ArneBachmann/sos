@@ -3,13 +3,13 @@ matrix:
   include:
     - os: linux
       dist: trusty
-      python: 3.0
+      python: 3.2
       env:
         - BUILD=true
         - UBUNTU=trusty
     - os: linux
       dist: precise
-      python: 3.0
+      python: 3.2
       env:
         - BUILD=true
         - UBUNTU=precise
@@ -27,6 +27,18 @@ matrix:
         - UBUNTU=precise
     - os: linux
       dist: trusty
+      python: 3.4
+      env:
+        - BUILD=true
+        - UBUNTU=trusty
+    - os: linux
+      dist: precise
+      python: 3.4
+      env:
+        - BUILD=true
+        - UBUNTU=precise
+    - os: linux
+      dist: trusty
       python: 3.5
       env:
         - BUILD=true
@@ -34,6 +46,30 @@ matrix:
     - os: linux
       dist: precise
       python: 3.5
+      env:
+        - BUILD=true
+        - UBUNTU=precise
+    - os: linux
+      dist: trusty
+      python: 3.6
+      env:
+        - BUILD=true
+        - UBUNTU=trusty
+    - os: linux
+      dist: precise
+      python: 3.6
+      env:
+        - BUILD=true
+        - UBUNTU=precise
+    - os: linux
+      dist: trusty
+      python: "3.7-dev"
+      env:
+        - BUILD=true
+        - UBUNTU=trusty
+    - os: linux
+      dist: precise
+      python: "3.7-dev"
       env:
         - BUILD=true
         - UBUNTU=precise
