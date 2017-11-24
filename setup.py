@@ -12,11 +12,11 @@ readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.rs
 if os.getenv("BUILD", "false").strip().lower() == "true":
   # First compile Coconut down to Python 3 source
   print("Transpiling Coconut for packaging...")
-  assert 0 == os.system("coconut --target 3 --line-numbers sos%ssos.coco" % os.sep)
-  assert 0 == os.system("coconut --target 3 --line-numbers sos%stests.coco" % os.sep)
+  assert 0 == os.system("coconut --target 3.2 --line-numbers sos%ssos.coco" % os.sep)
+  assert 0 == os.system("coconut --target 3.2 --line-numbers sos%stests.coco" % os.sep)
 
   if 0 != os.system("pandoc --from=markdown --to=rst --output=README.rst README.md"):
-    print("Warning: Couldn't convert README.md to reStructuredText")
+    print("Warning: Couldn't convert README.md to reStructuredText - OK if on CI")
     shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
   if os.path.exists(".git"):
     try:
