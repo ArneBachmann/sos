@@ -4,7 +4,8 @@ try:
   from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = Union[int,float]
 except: pass  # typing not available (e.g. Python 2)
-import sos.version as version
+try: import sos.version
+except: import version
 
 # External dependencies
 try: import configr  # optional dependency

@@ -5,55 +5,46 @@ matrix:
       dist: trusty
       python: 3.3
       env:
-        - BUILD=true
         - UBUNTU=trusty
     - os: linux
       dist: precise
       python: 3.3
       env:
-        - BUILD=true
         - UBUNTU=precise
     - os: linux
       dist: trusty
       python: 3.4
       env:
-        - BUILD=true
         - UBUNTU=trusty
     - os: linux
       dist: precise
       python: 3.4
       env:
-        - BUILD=true
         - UBUNTU=precise
     - os: linux
       dist: trusty
       python: 3.5
       env:
-        - BUILD=true
         - UBUNTU=trusty
     - os: linux
       dist: precise
       python: 3.5
       env:
-        - BUILD=true
         - UBUNTU=precise
     - os: linux
       dist: trusty
       python: 3.6
       env:
-        - BUILD=true
         - UBUNTU=trusty
     - os: linux
       dist: precise
       python: 3.6
       env:
-        - BUILD=true
         - UBUNTU=precise
     - os: linux
       dist: trusty
       python: "3.7-dev"
       env:
-        - BUILD=true
         - UBUNTU=trusty
     - os: linux
       dist: precise

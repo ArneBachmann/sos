@@ -7,7 +7,8 @@ except: pass  # Python 2
 try: import configr  # optional dependency
 except: configr = None  # declare as undefined
 
-import sos.sos as sos
+try: import sos.sos as sos
+except: import sos
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
 
