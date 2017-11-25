@@ -3,15 +3,14 @@ import bz2, codecs, collections, difflib, fnmatch, hashlib, io, json, logging, m
 try:
   from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = Union[int,float]
-except: pass  # Python 2
-try: import sos.version as version  # if run as package
-except: exec("import version")  # Python 2 logic, or if run inside package
+except: pass  # typing not available (e.g. Python 2)
+import sos.version as version
 
 # External dependencies
 try: import configr  # optional dependency
 except: configr = None  # declare as undefined
 #from enforce import runtime_validation  # https://github.com/RussBaz/enforce  TODO doesn't work for "data" types
-UTF8 = "utf_8"  # early used constant
+UTF8 = "utf_8"  # early used constant, not defined in standard library
 try:
   import chardet  # https://github.com/chardet/chardet
   def detect(binary:bytes) -> str = chardet.detect(binary)["encoding"]
@@ -49,6 +48,7 @@ APPNAME:str = "Subversion Offline Solution  V%s  (C) Arne Bachmann" % version.__
 CONFIGURABLE_FLAGS = ["strict", "track", "picky", "compress"]
 CONFIGURABLE_LISTS = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
+PROGRESS_MARKER = ["|", "/", "-", "\\"]
 metaFolder:str = ".sos"
 metaFile:str = ".meta"
 bufSize:int = 1 << 20  # 1 MiB
@@ -410,7 +410,7 @@ class Metadata:
     debug("Creating branch '%s'..." % name ?? "b%d" % branch)
     _.paths:Dict[str, PathInfo] = {}
     if simpleMode:
-      changes:ChangeSet = _.findChanges(branch, 0)  # creates revision folder and versioned files
+      changes:ChangeSet = _.findChanges(branch, 0, progress = simpleMode)  # creates revision folder and versioned files
       _.listChanges(changes)
       _.paths.update(changes.additions.items())
     else:  # tracking or picky mode
@@ -452,17 +452,19 @@ class Metadata:
     with codecs.open(os.path.join(target, metaFile), "w", encoding = UTF8) as fd:
       json.dump(_.paths, fd, ensure_ascii = False)
 
-  def findChanges(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None) -> ChangeSet =
+  def findChanges(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None, progress:bool = False) -> ChangeSet =
     ''' Find changes on the file system vs. in-memory paths (which should reflect the latest commit state).
         Only if both branch and revision are *not* None, write modified/added files to the specified revision folder (thus creating a new revision)
         The function returns the state of file tree *differences*, unless "inverse" is True -> then return original data
         checkContent: also computes file content hashes
         inverse: retain original state (size, mtime, hash) instead of updated one
         considerOnly: set of tracking patterns. For update operation, union of other and current branch
+        progress: Show file names during processing
     '''
     write = branch is not None and revision is not None
     if write: os.makedirs(os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision))
     changes:ChangeSet = ChangeSet({}, {}, {})
+    counter = 0; timer = time.time()
     for path, dirnames, filenames in os.walk(_.root):
       dirnames[:]  = [f for f in dirnames  if len([n for n in _.c.ignoreDirs if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoreDirsWhitelist if fnmatch.fnmatch(f, p)]) > 0]
       filenames[:] = [f for f in filenames if len([n for n in _.c.ignores    if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoresWhitelist    if fnmatch.fnmatch(f, p)]) > 0]
@@ -472,7 +474,10 @@ class Metadata:
         filename = relpath + "/" + file
         filepath = os.path.join(path, file)
         stat = os.stat(filepath)
-        size, mtime = stat.st_size, int(stat.st_mtime * 1000)
+        size, mtime, newtime = stat.st_size, int(stat.st_mtime * 1000), time.time()
+        if progress and newtime - timer > .1:
+          outstring = "\r%s  %s" % (PROGRESS_MARKER[counter % 4], filename)
+          sys.stdout.write(outstring + " " * max(0, 80 - len(outstring))); counter += 1; timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
         if filename not in _.paths:  # detected file not present (or untracked) in other branch
           namehash = hashStr(filename)
           changes.additions[filename] = PathInfo(namehash, size, mtime, hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, namehash) if write else None) if size > 0 else None)
@@ -931,22 +936,22 @@ def parse(root:str):
   argument = sys.argv[2].strip() if len(sys.argv) > 2 else None
   options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
   debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
-  if command == "offline":   offline(argument, options)
-  elif command == "online":  online(options)
-  elif command == "branch":  branch(argument, options)
-  elif command == "changes": changes(argument, options)
-  elif command == "diff":    diff(argument, options)
-  elif command == "status":  status()
-  elif command == "commit":  commit(argument, options)
-  elif command == "switch":  switch(argument, options)
-  elif command == "update":  update(argument, options)
-  elif command == "delete":  delete(argument, options)
-  elif command == "add":     add(argument, options)
-  elif command == "rm":      rm(argument)
-  elif command == 'ls':      ls(argument)
-  elif command == "log":     log()
-  elif command == 'config':  config(argument, options)
-  elif command == "help":    usage()
+  if   command[:1] == "a":   add(argument, options)      # a
+  elif command[:1] == "b":   branch(argument, options)   # b
+  elif command[:2] == "ch":  changes(argument, options)  # ch
+  elif command[:3] == "com" or command[:2] == "ci": commit(argument, options)   # com, ci
+  elif command[:3] == 'con': config(argument, options)   # con
+  elif command[:2] == "de":  delete(argument, options)   # de
+  elif command[:2] == "di":  diff(argument, options)     # di
+  elif command[:1] == "h":   usage()                     # h
+  elif command[:2] == "lo":  log()                       # lo
+  elif command[:2] in ["li", "ls"]:  ls(argument)        # li, ls
+  elif command[:2] == "of":  offline(argument, options)  # of
+  elif command[:2] == "on":  online(options)             # on
+  elif command[:1] == "r":   rm(argument)                # r
+  elif command[:2] == "st":  status()                    # st
+  elif command[:2] == "sw":  switch(argument, options)   # sw
+  elif command[:2] == "up":  update(argument, options)   # up
   else: Exit("Unknown command '%s'" % command)
   sys.exit(0)
 
@@ -994,8 +999,8 @@ def main() -> None:
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Found root folders for SOS/VCS: %s/%s" % (root ?? "", vcs ?? ""))
   defaults["defaultbranch"] = vcsBranches.get(cmd, "trunk")  # sets dynamic default with SVN fallback
-  if force_sos or root is not None or (command ?? "") in ["offline", "help"]:  # in offline mode or just going offline TODO what about git config?
-    os.chdir(os.getcwd() if command == "offline" else root ?? os.getcwd())  # since all operatiosn use os.getcwd() and we save one argument to each function
+  if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] == "h":  # in offline mode or just going offline TODO what about git config?
+    os.chdir(os.getcwd() if command[:2] == "of" else root ?? os.getcwd())  # since all operatiosn use os.getcwd() and we save one argument to each function
     parse(root)
   elif cmd is not None:  # online mode - delegate to VCS
     info("SOS: Running '%s %s'" % (cmd, " ".join(sys.argv[1:])))
@@ -1006,7 +1011,7 @@ def main() -> None:
       so, se = process.communicate(input = inp)
       if process.returncode is not None: break
       inp = sys.stdin.read()
-    if sys.argv[1] == "commit" and process.returncode == 0:  # successful commit - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")
+    if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")
       if root is None: Exit("Cannot determine VCS root folder: Unable to mark repository as synchronized and will show a warning when leaving offline mode")
       m = Metadata(root)
       m.loadBranches()  # read repo

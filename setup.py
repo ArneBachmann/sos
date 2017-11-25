@@ -6,7 +6,7 @@ import time
 import unittest
 from setuptools import setup, find_packages
 
-RELEASE = "0.9.1"
+RELEASE = "0.9.2"
 
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.rst')
 if os.getenv("BUILD", "false").strip().lower() == "true":
@@ -15,9 +15,9 @@ if os.getenv("BUILD", "false").strip().lower() == "true":
   assert 0 == os.system("coconut --target 3.2 --line-numbers sos%ssos.coco" % os.sep)
   assert 0 == os.system("coconut --target 3.2 --line-numbers sos%stests.coco" % os.sep)
 
-  if 0 != os.system("pandoc --from=markdown --to=rst --output=README.rst README.md"):
-    print("Warning: Couldn't convert README.md to reStructuredText - OK if on CI")
-    shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
+  # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
+  assert os.getenv("CI", "false").strip().lower() != "true" or os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
+  if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
   if os.path.exists(".git"):
     try:
       p = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE)  # use tag or hash
@@ -27,8 +27,8 @@ if os.getenv("BUILD", "false").strip().lower() == "true":
       print("Found Git hash %s" % extra)  # TODO use logging module instead
     except: extra = "svn"
   else: extra = "svn"
-  md = time.localtime()
-  version = (md.tm_year, (10 + md.tm_mon) * 100 + md.tm_mday, (10 + md.tm_hour) * 100 + md.tm_min)
+  lt = time.localtime()
+  version = (lt.tm_year, (10 + lt.tm_mon) * 100 + lt.tm_mday, (10 + lt.tm_hour) * 100 + lt.tm_min)
   versionString = '.'.join(map(str, version))
   with open("sos%sversion.py" % os.sep, "w") as fd:  # create version string at build time
     fd.write("""\
@@ -50,24 +50,26 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
 
   # Clean up old binaries for twine upload
   if os.path.exists("dist"):
+    rmFiles = list(sorted(os.listdir("dist")))
+    debug(rmFiles)
     try:
-      for file in (f for f in os.listdir("dist") if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
+      for file in (f for f in rmFiles[:-1] if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
         try: os.unlink(os.path.join("dist", file))
         except: print("Cannot remove old distribution file " + file)
     except: pass
   else: print("Warning: dist folder doesn't exist, probably need to run with elevated rights")
 else:  # during pip install only
-  import sos
+  import sos.version
   with open(readmeFile, "r") as fd: README = fd.read()
 
-print("Building SOS version " + sos.version.__version__)
+print("Running setup.py for SOS version " + sos.version.__version__)
 setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2117.2635"],  # all of them are optional dependecies
+  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2117.2635"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8
   test_suite = "tests",  # is this executed automatically? Is also called above
   description = "Subversion Offline Solution (SOS)",
-  long_description = README,  # + '\n' + CHANGES,
+  long_description = README,
   classifiers = [c.strip() for c in """
         Development Status :: 4 - Beta
         License :: Free To Use But Restricted
@@ -91,14 +93,15 @@ setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   maintainer_email = 'ArneBachmann@users.noreply.github.com',
   url = 'http://github.com/ArneBachmann/sos',
   license = 'CC-BY-SA 4.0',
-  packages = find_packages(),  # ["sos"]
+  packages = find_packages(),  # should return ["sos"]
   package_data = {"": ["../LICENSE", "../README.md", "../README.rst", "*.coco"]},
   include_package_data = False,  # if True, will *NOT* package the data!
   zip_safe = False,
   entry_points = {
     'console_scripts': [
-      'sos=sos.sos:main',
-      'vcos=sos.sos:main'
+      'sos=sos.sos:main',  # Subversion offline solution
+      'vcos=sos.sos:main',  # version control offline solution
+      'mvcs=sos.sos:main'  # meta version control system
     ]
   },
 #  extras_require = {

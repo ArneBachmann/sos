@@ -1,20 +1,13 @@
-# SOS test suite  (C) Arne Bachmann
-
 import builtins, doctest, logging, os, shutil, sys, time, traceback, unittest
 StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
-try:  from unittest import mock  # Py3
+try: from unittest import mock  # Py3
 except: import mock  # installed via pip
-try:
-  from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
+try: from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
 except: pass  # Python 2
 try: import configr  # optional dependency
 except: configr = None  # declare as undefined
 
-try:
-  code = os.system("coconut --target %d --line-numbers sos%ssos.coco" % (2 if any([_ in " ".join(sys.argv) for _ in ['-t2', '-t 2', '--target2', '--target 2']]) else 3, os.sep))
-  assert 0 == code
-except: pass  # CI - code was transpiled prior to testing
-import sos
+import sos.sos as sos
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
 
