@@ -16,7 +16,7 @@ if os.getenv("BUILD", "false").strip().lower() == "true":
   assert 0 == os.system("coconut --target 3.2 --line-numbers sos%stests.coco" % os.sep)
 
   # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
-  assert os.getenv("BUILD", "false").strip().lower() != "true" or 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
+  assert os.getenv("BUILD", "false").strip().lower() == "true" or 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
   if os.path.exists(".git"):
     try:

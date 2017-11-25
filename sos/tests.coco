@@ -29,7 +29,6 @@ def debugTestRunner(post_mortem = None) =
 
 def branchFolder(branch:int, revision:int) -> str = "." + os.sep + sos.metaFolder + os.sep + "b%d" % branch + os.sep + "r%d" % revision
 
-
 def wrapChannels(func: -> Any) =
   ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
   oldv, oldo, olde = sys.argv, sys.stdout, sys.stderr
