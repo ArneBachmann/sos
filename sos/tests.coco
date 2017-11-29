@@ -1,16 +1,17 @@
-import builtins, doctest, logging, os, shutil, sys, time, traceback, unittest
+import builtins, logging, os, shutil, sys, time, traceback, unittest
 StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
 try: from unittest import mock  # Py3
 except: import mock  # installed via pip
-try: from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
-except: pass  # Python 2
-try: import configr  # optional dependency
-except: configr = None  # declare as undefined
-
-try: import sos.sos as sos
-except: import sos
+try: from typing import Any, Union  # only required for mypy
+except: pass
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
+try:
+  import configr  # optional dependency
+  os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
+except: configr = None  # declare as undefined
+import sos
+
 
 def debugTestRunner(post_mortem = None) =
   ''' Unittest runner doing post mortem debugging on failing tests. '''
@@ -59,12 +60,13 @@ class Tests(unittest.TestCase):
   def tearDown(_):
     pass
 
-  def assertAllIn(_, what, where):
-    ''' Helper assert. '''
-    [_.assertIn(w, where) for w in what]
+  def assertAllIn(_, what:str, where:str[]) -> None: [_.assertIn(w, where) for w in what]
 
-  def assertInAll(_, what, where):
-    [_.assertIn(what, w) for w in where]
+  def assertInAll(_, what:str, where:str[]) -> None: [_.assertIn(what, w) for w in where]
+
+  def assertInAny(_, what:str, where:str[]) -> None: _.assertTrue(any(what in w for w in where))
+
+  def assertNotInAny(_, what:str, where:str[]) -> None: _.assertFalse(any(what in w for w in where))
 
   def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None) -> None:
     with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "wb") as fd: fd.write(contents if isinstance(contents, bytes) else contents.encode("cp1252"))
@@ -301,7 +303,7 @@ class Tests(unittest.TestCase):
     _.assertTrue(_.existsFile(1))
 
     _.createFile(2, "y" * 100)
-#    out = wrapChannels(lambda: sos.branch("other"))  # won't comply as there are changes
+#    out = wrapChannels(() -> sos.branch("other"))  # won't comply as there are changes
 #    _.assertIn("--force", out)
     sos.branch("other", ["--force"])  # automatically including file 2 (as we are in simple mode)
     _.assertTrue(_.existsFile(2))
@@ -337,11 +339,11 @@ class Tests(unittest.TestCase):
     # Test with change + insert (conflict)
     _.assertEqual(b"a\nb fdd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.MINE))
     _.assertEqual(b"a\nb cd d\ne",  sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.THEIRS))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
-    _.assertEqual(b"a\nb fdd d\ne", mockInput(["i"], lambda: sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
-    _.assertEqual(b"a\nb cd d\ne",  mockInput(["t"], lambda: sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"a\nb fdd d\ne", mockInput(["i"], () -> sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"a\nb cd d\ne",  mockInput(["t"], () -> sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
     _.assertEqual(b"abbc", sos.merge(b"abbc", b"addc", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))
     _.assertEqual(b"a\nbb\nc", sos.merge(b"a\nbb\nc", b"a\ndd\nc", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))
-    _.assertIn("Differing EOL-styles", wrapChannels(lambda: sos.merge(b"a\nb", b"a\r\nb")))  # expect warning
+    _.assertIn("Differing EOL-styles", wrapChannels(() -> sos.merge(b"a\nb", b"a\r\nb")))  # expect warning
     _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb"))  # in doubt, use "mine" CR-LF
 
   def testPickyMode(_):
@@ -427,30 +429,44 @@ class Tests(unittest.TestCase):
     _.assertFalse(os.path.exists("." + os.sep + "axxxa"))  # because tracked in both branches, but not present in other -> delete in file tree TODO document
     # TODO test switch --meta
 
-  def testLs(_):
+  def testLsTracked(_):
     sos.offline("test", options = ["--track"])  # set up repo in tracking mode (SVN- or gitless-style)
     _.createFile(1)
     _.createFile("foo")
     sos.add("file*")  # capture one file
-    out = sos.safeSplit(wrapChannels(lambda: sos.ls()).replace("\r", ""), "\n")
-    _.assertEqual('TRK file1 by "./file*"', out[0][-22:])
-    _.assertEqual("    foo", out[1][-7:])
+    out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
+    _.assertInAny('TRK file1 by "./file*"', out)
+    _.assertNotInAny('    file1 by "./file*"', out)
+    _.assertInAny("    foo", out)
+
+  def testLsSimple(_):
+    _.createFile(1)
+    _.createFile("foo")
+    _.createFile("ign")
+    sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)
+    sos.config("set", ["ignores", "ign"])  # define an ignore pattern
+    sos.config("set", ["ignoresWhitelist", "ign"])  # define an ignore pattern
+    out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
+    sos.config("unset", ["ignores"])  # remove ignore pattern
+    _.assertInAny('    file1', out)
+    _.assertInAny('    ign', out)
 
   def testWhitelist(_):
-    # TODO do same for simple mode, easy
+    # TODO same for simple mode, easy
     _.createFile(1)
     sos.defaults.ignores[:] = ["file*"]  # replace in-place
     sos.offline("xx", ["--track"])  # because nothing to commit due to ignore pattern
-    sos.add("file*")
+    sos.add("file*")  # add tracking pattern for "file1"
     sos.commit(options = ["--force"])  # attempt to commit the file
     _.assertEqual(1, len(os.listdir(branchFolder(0, 1))))  # only meta data, file1 was ignored
-    sos.online(["--force"])
+    sos.online(["--force"])  # remove offline repor
     _.assertFalse(os.path.exists(sos.metaFolder))
+
     _.createFile(1)
     sos.defaults.ignoresWhitelist[:] = ["file*"]
     sos.offline("xx", ["--track"])
     sos.add("file*")
-    sos.commit()
+    sos.commit()  # should NOT ask for force here
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # meta data and "file1", file1 was whitelisted
 
   def testRemove(_):

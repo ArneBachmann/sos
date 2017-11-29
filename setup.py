@@ -65,7 +65,7 @@ print("Running setup.py for SOS version " + sos.version.__version__)
 setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2117.2635"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8
+  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8
   test_suite = "tests",  # is this executed automatically? Is also called above
   description = "Subversion Offline Solution (SOS)",
   long_description = README,

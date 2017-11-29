@@ -3,6 +3,16 @@ matrix:
   include:
     - os: linux
       dist: trusty
+      python: pypy3
+      env:
+        - UBUNTU=trusty
+    - os: linux
+      dist: precise
+      python: pypy3
+      env:
+        - UBUNTU=precise
+    - os: linux
+      dist: trusty
       python: 3.3
       env:
         - UBUNTU=trusty
@@ -41,17 +51,17 @@ matrix:
       python: 3.6
       env:
         - UBUNTU=precise
-    - os: linux
-      dist: trusty
-      python: "3.7-dev"
-      env:
-        - UBUNTU=trusty
-    - os: linux
-      dist: precise
-      python: "3.7-dev"
-      env:
-        - BUILD=true
-        - UBUNTU=precise
+#    - os: linux
+#      dist: trusty
+#      python: "3.7-dev"
+#      env:
+#        - UBUNTU=trusty
+#    - os: linux
+#      dist: precise
+#      python: "3.7-dev"
+#      env:
+#        - BUILD=true
+#        - UBUNTU=precise
 #    - os: linux
 #      dist: precise
 #      python: pypy3  (only P3.3 available)
@@ -60,4 +70,4 @@ install: "pip install coconut-develop[mypy,cPyparsing] coverage python-coveralls
 script: python setup.py build && coverage run --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py
 after_success:
   - coveralls
-# TODO add mypy step?
+# TODO add mypy step for better checks?

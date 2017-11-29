@@ -1,5 +1,5 @@
 # Standard modules
-import bz2, codecs, collections, difflib, fnmatch, hashlib, io, json, logging, mimetypes, os, shutil, sys, time
+import bz2, codecs, difflib, fnmatch, hashlib, json, logging, mimetypes, os, shutil, sys, time
 try:
   from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = Union[int,float]
@@ -93,9 +93,12 @@ def loadConfig() -> Union[configr.Configr,Accessor] =  # Simplifies loading conf
   config:Union[configr.Configr,Accessor]
   if not configr: return defaults  # this only applies for the case that configr is not available, thus no settings will be persisted anyway
   config = configr.Configr("sos", defaults = defaults)  # defaults are used if key is not configured, but won't be saved
-  f, g = config.loadSettings()
+  f, g = config.loadSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))
   if f is None: debug("Encountered a problem while loading the user configuration: %r" % g)
   config
+
+def saveConfig(c:configr.Configr) -> Tuple[str?, Exception?] =
+  c.saveSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))
 
 def strftime(timestamp:int? = None) -> str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp / 1000. if timestamp is not None else None))
 
@@ -300,7 +303,7 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
 class Counter:
   def __init__(_, initial:Number = 0) -> None: _.value:Number = initial
   def inc(_, by = 1) -> Number: _.value += by; return _.value
-  def inc_old(_, by = 1) -> Number: old = _.value; _.value += by; return old
+  def inc_old(_, by = 1) -> Number: old:Number = _.value; _.value += by; return old
 
 class Logger:
   ''' Logger that supports many items. '''
@@ -465,20 +468,20 @@ class Metadata:
     write = branch is not None and revision is not None
     if write: os.makedirs(os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision))
     changes:ChangeSet = ChangeSet({}, {}, {})
-    counter = 0; timer = time.time()
+    counter:Counter = Counter(); timer = time.time()
     for path, dirnames, filenames in os.walk(_.root):
       dirnames[:]  = [f for f in dirnames  if len([n for n in _.c.ignoreDirs if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoreDirsWhitelist if fnmatch.fnmatch(f, p)]) > 0]
       filenames[:] = [f for f in filenames if len([n for n in _.c.ignores    if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoresWhitelist    if fnmatch.fnmatch(f, p)]) > 0]
       dirnames.sort(); filenames.sort()
       relpath = os.path.relpath(path, _.root).replace(os.sep, "/")
-      for file in (filenames if considerOnly is None else list(reduce(lambda last, pattern: last | set(fnmatch.filter(filenames, os.path.basename(pattern))), (p for p in considerOnly if os.path.dirname(p) == relpath), s{}))):  # if m.track or m.picky: only files that match any path-relevant tracking patterns
+      for file in (filenames if considerOnly is None else list(reduce((last, pattern) -> last | set(fnmatch.filter(filenames, os.path.basename(pattern))), (p for p in considerOnly if os.path.dirname(p) == relpath), s{}))):  # if m.track or m.picky: only files that match any path-relevant tracking patterns
         filename = relpath + "/" + file
         filepath = os.path.join(path, file)
         stat = os.stat(filepath)
         size, mtime, newtime = stat.st_size, int(stat.st_mtime * 1000), time.time()
         if progress and newtime - timer > .1:
-          outstring = "\r%s  %s" % (PROGRESS_MARKER[counter % 4], filename)
-          sys.stdout.write(outstring + " " * max(0, 80 - len(outstring))); counter += 1; timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
+          outstring = "\r%s  %s" % (PROGRESS_MARKER[counter.inc_old() % 4], filename)
+          sys.stdout.write(outstring + " " * max(0, 80 - len(outstring))); timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
         if filename not in _.paths:  # detected file not present (or untracked) in other branch
           namehash = hashStr(filename)
           changes.additions[filename] = PathInfo(namehash, size, mtime, hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, namehash) if write else None) if size > 0 else None)
@@ -902,15 +905,15 @@ def config(argument, options) -> None:
   if argument == "set":
     if len(options) < 2: Exit("No key nor value specified")
     if options[0] not in (["defaultbranch"] + CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS): Exit("Unsupported key %r" % options[0])
-    c[options[0]] = options[1].lower() in TRUTH_VALUES if options[0] in CONFIGURABLE_FLAGS else (options[1].strip() if options[0] not in CONFIGURABLE_LISTS else [options[0]])  # TODO sanitize texts?
-    f, g = c.saveSettings()
+    c[options[0]] = options[1].lower() in TRUTH_VALUES if options[0] in CONFIGURABLE_FLAGS else (options[1].strip() if options[0] not in CONFIGURABLE_LISTS else [options[1]])  # TODO sanitize texts?
+    f, g = saveConfig(c)
     if f is None: error("Error saving user configuration: %r" % g)
   elif argument == "unset":
     if len(options) < 1: Exit("No key specified")
-    if options[0] not in c.keys(): Exit("Unsupported key")
+    if options[0] not in c.keys(): Exit("Unknown key")
     try:
       del c[options[0]]
-      f, g = c.saveSettings()
+      f, g = saveConfig(c)
       if f is None: error("Error saving user configuration: %r" % g)
     except Exception as E: Exit("Unknown key specified: %r (%r)" % (options[0], E))
   elif argument == "add":
@@ -919,13 +922,13 @@ def config(argument, options) -> None:
     if options[0] not in c.keys(): c[options[0]] = [options[1]]  # add list
     elif options[1] in c[options[0]]: Exit("Value already contained")
     c[options[0]].append(options[1])
-    f, g = c.saveSettings()
+    f, g = saveConfig(c)
     if f is None: error("Error saving user configuration: %r" % g)
   elif argument == "rm":
     if len(options) < 2: Exit("No key nor value specified")
     if options[0] not in c.keys(): Exit("Unknown key specified: %r" % options[0])
     del c[options[0]][options[0]]
-    f, g = c.saveSettings()
+    f, g = saveConfig(c)
     if f is None: error("Error saving user configuration: %r" % g)
   else:  # Show
     for k, v in sorted(c.items()): print("%s => %s" % (k, v))
