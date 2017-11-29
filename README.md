@@ -95,7 +95,7 @@ It's also possible to define a per-user global defaults for file and folder excl
 
 
 ## Release management ##
-- Run `export BUILD=true && python3 setup.py clean build sdist` to compile and test the code, increment the version number, and package into an archive
+- Run `export BUILD=true && python3 setup.py clean build sdist` to compile and test the code, increment the version number, and package into an archive. If you need evelated rights, use `sudo -E python...`
 - Run `git add`, `git commit` and `git push` and let Travis CI run the tests for different target platforms. If there were no problems, continue:
 - Run `twine upload dist/*.tar.gz` to upload the module to PyPI (make sure only one file exists, otherwise a rights problem could be present)
 

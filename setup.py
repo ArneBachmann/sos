@@ -45,8 +45,8 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
   if os.getenv("NOTEST", "false").strip().lower() != "true":
     testrun = unittest.defaultTestLoader.loadTestsFromModule(tests).run(unittest.TestResult())
     print("Test results: %r" % testrun)
-    assert len(testrun.errors) == 0
-    assert len(testrun.failures) == 0
+    if len(testrun.errors) > 0: print("Test errors:\n%r" % testrun.errors)
+    if len(testrun.failures) > 0: print("Test failures:\n%r" % testrun.failures)
 
   # Clean up old binaries for twine upload
   if os.path.exists("dist"):
@@ -59,10 +59,14 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
     except: pass
   else: print("Warning: dist folder doesn't exist, probably need to run with elevated rights")
 else:  # during pip install only
-  import sos.version
+  import sos.version  # was already generated during build phase
   with open(readmeFile, "r") as fd: README = fd.read()
 
-print("Running setup.py for SOS version " + sos.version.__version__)
+print("\nRunning setup() for SOS version " + sos.version.__version__)
+try: os.mkdir("build")
+except: pass
+try: os.mkdir("dist")
+except: pass
 setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
@@ -96,7 +100,8 @@ setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   maintainer_email = 'ArneBachmann@users.noreply.github.com',
   url = 'http://github.com/ArneBachmann/sos',
   license = 'CC-BY-SA 4.0',
-  packages = find_packages(),  # should return ["sos"]
+  packages = find_packages(),  # should return ["sos"], but returns []
+  package_dir = {"sos": "sos"},
   package_data = {"": ["../LICENSE", "../README.md", "../README.rst", "*.coco"]},
   include_package_data = False,  # if True, will *NOT* package the data!
   zip_safe = False,
