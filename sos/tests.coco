@@ -442,14 +442,17 @@ class Tests(unittest.TestCase):
   def testLsSimple(_):
     _.createFile(1)
     _.createFile("foo")
-    _.createFile("ign")
+    _.createFile("ign1")
+    _.createFile("ign2")
     sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)
-    sos.config("set", ["ignores", "ign"])  # define an ignore pattern
-    sos.config("set", ["ignoresWhitelist", "ign"])  # define an ignore pattern
+    sos.config("set", ["ignores", "ign1"])  # define an ignore pattern
+    sos.config("add", ["ignores", "ign2"])  # define an ignore pattern
+    sos.config("set", ["ignoresWhitelist", "ign1"])  # define an ignore pattern
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     sos.config("unset", ["ignores"])  # remove ignore pattern
     _.assertInAny('    file1', out)
-    _.assertInAny('    ign', out)
+    _.assertInAny('    ign1', out)
+    _.assertNotInAny('    ign2', out)
 
   def testWhitelist(_):
     # TODO same for simple mode, easy
@@ -502,7 +505,7 @@ class Tests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else logging.INFO , stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else "%(message)s")
+  logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" or os.getenv("CI", "false") == "true" else logging.INFO , stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else "%(message)s")
   if configr:
     c = configr.Configr("sos"); c.loadSettings()
     if len(c.keys()) > 0: sos.Exit("Cannot run test suite with local SOS user configuration")

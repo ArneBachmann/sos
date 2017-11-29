@@ -6,14 +6,15 @@ import time
 import unittest
 from setuptools import setup, find_packages
 
-RELEASE = "0.9.2"
+RELEASE = "0.9.3"
 
+print("Running in %s mode." % ("build" if os.getenv("BUILD", "false").strip().lower() == "true" else "install"))
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.rst')
 if os.getenv("BUILD", "false").strip().lower() == "true":
   # First compile Coconut down to Python 3 source
   print("Transpiling Coconut for packaging...")
-  assert 0 == os.system("coconut --target 3.2 --line-numbers sos%ssos.coco" % os.sep)
-  assert 0 == os.system("coconut --target 3.2 --line-numbers sos%stests.coco" % os.sep)
+  assert 0 == os.system("coconut --target 3.3 --line-numbers sos%ssos.coco" % os.sep)
+  assert 0 == os.system("coconut --target 3.3 --line-numbers sos%stests.coco" % os.sep)
 
   # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
   assert os.getenv("BUILD", "false").strip().lower() == "true" or 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
@@ -66,7 +67,7 @@ setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
   install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8
-  test_suite = "tests",  # is this executed automatically? Is also called above
+#  test_suite = "tests",  # is this executed automatically? Is also called above
   description = "Subversion Offline Solution (SOS)",
   long_description = README,
   classifiers = [c.strip() for c in """
@@ -80,6 +81,9 @@ setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
         Programming Language :: Other
         Programming Language :: Python
         Programming Language :: Python :: 3
+        Programming Language :: Python :: 3.3
+        Programming Language :: Python :: 3.4
+        Programming Language :: Python :: 3.5
         Programming Language :: Python :: 3.6
         Programming Language :: Python :: 3 :: Only
         """.split('\n') if c.strip()],  # https://pypi.python.org/pypi?:action=list_classifiers
