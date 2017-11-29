@@ -67,7 +67,7 @@ matrix:
 #      python: pypy3  (only P3.3 available)
 
 # We don't use mypy here, and cPyparsing fails e.g. in pypy
-install: "pip install coconut-develop coverage python-coveralls"
+install: "pip install appdirs chardet configr coconut-develop coverage python-coveralls"
 # we could test using coconut-run instead, but this approach seems cleaner
 script: python setup.py clean build && coverage run --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py
 after_success:
