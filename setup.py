@@ -51,22 +51,22 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
   # Clean up old binaries for twine upload
   if os.path.exists("dist"):
     rmFiles = list(sorted(os.listdir("dist")))
-    debug(rmFiles)
+    print(repr(rmFiles))
     try:
       for file in (f for f in rmFiles[:-1] if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
+        print("Removing old sdist archive %s" % file)
         try: os.unlink(os.path.join("dist", file))
         except: print("Cannot remove old distribution file " + file)
     except: pass
-  else: print("Warning: dist folder doesn't exist, probably need to run with elevated rights")
 else:  # during pip install only
   import sos.version  # was already generated during build phase
   with open(readmeFile, "r") as fd: README = fd.read()
 
 print("\nRunning setup() for SOS version " + sos.version.__version__)
 try: os.mkdir("build")
-except: pass
+except: print("Cannot create build folder")
 try: os.mkdir("dist")
-except: pass
+except: print("Cannot create dist folder")
 setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra

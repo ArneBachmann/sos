@@ -6,11 +6,11 @@ matrix:
       python: pypy3
       env:
         - UBUNTU=trusty
-    - os: linux
-      dist: precise
-      python: pypy3
-      env:
-        - UBUNTU=precise
+#    - os: linux
+#      dist: precise
+#      python: pypy3
+#      env:
+#        - UBUNTU=precise
     - os: linux
       dist: trusty
       python: 3.3
