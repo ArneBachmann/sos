@@ -267,6 +267,9 @@ class Tests(unittest.TestCase):
     sos.changes()
     sos.switch("test")  # file1-2, remove file3 from file tree
     _.assertFalse(_.existsFile(3))  # removed when switching back to test
+    out = wrapChannels(() -> sos.status()).replace("\r", "")
+    _.assertIn("  * b0   'test'", out)  # TODO dirty/insync
+    _.assertIn("    b1 'second'", out)  # TODO dirty/insync
     _.createFile(4, "xy")  # generate a file
     sos.switch("second", "--force")  # avoids warning on uncommited changes, but keeps file4
     _.assertFalse(_.existsFile(4))  # removed when forcedly switching back to test
@@ -319,6 +322,17 @@ class Tests(unittest.TestCase):
     _.assertEqual(b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk",    sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))  # completely recreated other file
     _.assertEqual(b"a\nb\nc\nd\ne\ng\nf\ng\nx\nh\nx\nx\ny\ny\nj\nk", sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.INSERT, conflictResolution = sos.ConflictResolution.MINE))
 
+  def testUpdate2(_):
+    _.createFile("test.txt", "x" * 10)
+    sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
+    sos.branch("mod")
+    _.createFile("test.txt", "x" * 5 + "y" * 5)
+    sos.commit("mod")  # create b0/r1
+    sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
+    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
+    sos.update("mod", ["--theirs"])  # integrate changes
+    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
+
   def testEolDet(_):
     _.assertEqual(b"\n", sos.eoldet(b"a\nb"))
     _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))
@@ -358,6 +372,10 @@ class Tests(unittest.TestCase):
     sos.add("file?")
     sos.commit("Third")  # add nothing, because picky
     _.assertEqual(2, len(os.listdir(branchFolder(0, 3))))
+    out = wrapChannels(() -> sos.log()).replace("\r", "")
+    _.assertIn("    r2", out)
+    _.assertIn("  * r3", out)
+    _.assertNotIn("  * r4", out)
 
   def testTrackedSubfolder(_):
     os.mkdir("." + os.sep + "sub")
@@ -373,6 +391,8 @@ class Tests(unittest.TestCase):
     os.unlink("file1")  # remove from basefolder
     _.createFile(2, "y")
     sos.rm("sub/file?")
+    try: sos.rm("sub/bla"); _.fail()  # raises Exit. TODO test the "suggest a pattern" case
+    except: pass
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(branchFolder(0, 2))))  # one new file + meta
     # TODO check if /file1 and sub/file1 were removed from index
@@ -389,6 +409,8 @@ class Tests(unittest.TestCase):
     sos.add("file?")  # add glob tracking pattern
     sos.commit("second")  # versions "file1"
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # one new file + meta file
+    out = wrapChannels(() -> sos.status()).replace("\r", "")
+    _.assertIn("  | ./file?", out)
 
     _.createFile(2)  # untracked file "file2"
     sos.commit("third")  # versions "file2"
@@ -447,11 +469,22 @@ class Tests(unittest.TestCase):
     sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)
     sos.config("set", ["ignores", "ign1"])  # define an ignore pattern
     sos.config("add", ["ignores", "ign2"])  # define an ignore pattern
-    sos.config("set", ["ignoresWhitelist", "ign1"])  # define an ignore pattern
+    sos.config("set", ["ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
+    out = wrapChannels(() -> sos.config("show")).replace("\r", "")
+    _.assertIn("ignores => ['ign1', 'ign2']", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
-    sos.config("unset", ["ignores"])  # remove ignore pattern
     _.assertInAny('    file1', out)
     _.assertInAny('    ign1', out)
+    _.assertInAny('    ign2', out)
+    try: sos.config("rm", ["foo", "bar"]); _.fail()
+    except: pass
+    try: sos.config("rm", ["ignores", "foo"]); _.fail()
+    except: pass
+    sos.config("rm", ["ignores", "ign1"])
+    sos.config("unset", ["ignoresWhitelist"])  # remove ignore pattern
+    out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
+    _.assertInAny('    ign1', out)
+    _.assertInAny('IGN ign2', out)
     _.assertNotInAny('    ign2', out)
 
   def testWhitelist(_):
@@ -462,7 +495,9 @@ class Tests(unittest.TestCase):
     sos.add("file*")  # add tracking pattern for "file1"
     sos.commit(options = ["--force"])  # attempt to commit the file
     _.assertEqual(1, len(os.listdir(branchFolder(0, 1))))  # only meta data, file1 was ignored
-    sos.online(["--force"])  # remove offline repor
+    try: sos.online(); _.fail()  # Exit because dirty
+    except: pass  # exception expected
+    sos.online(["--force"])  # remove offline repo
     _.assertFalse(os.path.exists(sos.metaFolder))
 
     _.createFile(1)
@@ -485,6 +520,9 @@ class Tests(unittest.TestCase):
     sos.branch("next")
     _.createFile(3, "y" * 10)  # make a change
     sos.delete("added", "--force")  # should succeed
+
+  def testUsage(_):
+    sos.usage()
 
   def testDiff(_):
     # Need to test stdout diffs

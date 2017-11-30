@@ -92,6 +92,7 @@ It's also possible to define a per-user global defaults for file and folder excl
 ## Tipps ##
 - It may be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
 - Switching inside a branch never modifies the tracking patterns, as they are not linked to any specific revision
+- dirty flag only relevant in track and picky mode (?)
 
 
 ## Release management ##

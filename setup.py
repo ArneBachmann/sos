@@ -17,8 +17,6 @@ if os.getenv("BUILD", "false").strip().lower() == "true":
   assert 0 == os.system("coconut --target 3.3 --line-numbers sos%stests.coco" % os.sep)
 
   # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
-  assert os.getenv("BUILD", "false").strip().lower() == "true" or 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
-  if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
   if os.path.exists(".git"):
     try:
       so, se = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE).communicate()  # use tag or hash
@@ -38,6 +36,8 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
 
   README = "\n".join(["# Subversion Offline Solution (SOS %s) #" % RELEASE] + open(readmeFile).read().split("\n")[1:])  # replace title in README.md
   with open(readmeFile, "w") as fd: fd.write(README)
+  assert os.getenv("BUILD", "false").strip().lower() == "true" or 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
+  if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
 
   # Ensure unit tests are fine
   import sos.sos as sos
