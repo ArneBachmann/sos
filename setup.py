@@ -8,9 +8,10 @@ from setuptools import setup, find_packages
 
 RELEASE = "0.9.3"
 
-print("Running in %s mode." % ("build" if os.getenv("BUILD", "false").strip().lower() == "true" else "install"))
-readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.rst')
-if os.getenv("BUILD", "false").strip().lower() == "true":
+BUILD = os.getenv("BUILD", "false").strip().lower() == "true"
+print("Running in %s mode." % ("build" if BUILD else "install"))
+readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
+if BUILD:
   # First compile Coconut down to Python 3 source
   print("Transpiling Coconut for packaging...")
   assert 0 == os.system("coconut --target 3.3 --line-numbers sos%ssos.coco" % os.sep)
@@ -34,15 +35,15 @@ __version_info__ = ({version[0]}, {version[1]}, {version[2]})
 __version__ = r'{fullName}'
 __release_version__ = '{release}'""".format(version = version, fullName = versionString + "-" + extra, release = RELEASE))
 
-  README = "\n".join(["# Subversion Offline Solution (SOS %s) #" % RELEASE] + open(readmeFile).read().split("\n")[1:])  # replace title in README.md
+  README = "\n".join(["# Subversion Offline Solution (SOS %s) #" % RELEASE] + open(readmeFile).read().split("\n")[1:])  # replace title in original README file
   with open(readmeFile, "w") as fd: fd.write(README)
-  assert os.getenv("BUILD", "false").strip().lower() == "true" or 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
+  assert BUILD or 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
 
   # Ensure unit tests are fine
   import sos.sos as sos
   import sos.tests as tests  # needed for version strings
-  if os.getenv("NOTEST", "false").strip().lower() != "true":
+  if not BUILD:
     testrun = unittest.defaultTestLoader.loadTestsFromModule(tests).run(unittest.TestResult())
     print("Test results: %r" % testrun)
     if len(testrun.errors) > 0: print("Test errors:\n%r" % testrun.errors)

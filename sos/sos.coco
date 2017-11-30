@@ -806,7 +806,7 @@ def update(argument:str, options:str[] = []) -> None:
     for path, pinfo in changes.modifications.items():
       into:str = os.path.join(m.root, path.replace(SLASH, os.sep))
       binary = not m.isTextType(path)
-      if res & ConflictResolution.ASK or (binary and reso == ConflictResolution.NEXT):  # TODO this may ask user even if no interaction was asked for (check line level for interactivity fist)
+      if res & ConflictResolution.ASK or (binary and res == ConflictResolution.NEXT):  # TODO this may ask user even if no interaction was asked for (check line level for interactivity fist)
         print(("MOD " if not binary else "BIN ") + path)
         reso = {"i": ConflictResolution.MINE, "t": ConflictResolution.THEIRS, "m": ConflictResolution.NEXT}.get(user_input(" Resolve: *M[I]ne, [T]heirs, [M]erge: (I)").strip().lower(), ConflictResolution.MINE)
         debug("User selected %d" % reso)

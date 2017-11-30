@@ -327,7 +327,7 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
     sos.branch("mod")
     _.createFile("test.txt", "x" * 5 + "y" * 5)
-    sos.commit("mod")  # create b0/r1
+    sos.commit("mod")  # create b0/r1  TODO test fails sometimes - add a force or sleep here?
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
     sos.update("mod", ["--theirs"])  # integrate changes
