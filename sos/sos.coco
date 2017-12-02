@@ -148,7 +148,7 @@ def detectAndLoad(filename:str? = None, content:bytes? = None) -> Tuple[str,byte
   else: return (sys.getdefaultencoding(), b"\n", [])
   (encoding, eol, lines)
 
-def openIt(file:str, mode:str, compress:bool) -> IO = bz2.BZ2File(file, mode) if compress else open(file, mode + "b")  # Abstraction for opening both compressed and plain files
+def openIt(file:str, mode:str, compress:bool = False) -> IO = bz2.BZ2File(file, mode) if compress else open(file, mode + "b")  # Abstraction for opening both compressed and plain files
 
 def eoldet(file:bytes) -> bytes? =
   ''' Determine EOL style from a binary string. '''
@@ -156,9 +156,9 @@ def eoldet(file:bytes) -> bytes? =
   cr:int = file.count(b"\r")
   crlf:int = file.count(b"\r\n")
   if crlf > 0:  # DOS/Windows/Symbian etc.
-    if lf != crlf or cr != crlf: warn("Inconsistent CR/NL count. Mixed EOL style detected, may cause problems during merge")
+    if lf != crlf or cr != crlf: warn("Inconsistent CR/NL count with CR+NL. Mixed EOL style detected, may cause problems during merge")
     return b"\r\n"
-  if lf != 0 and cr != 0: warn("Inconsistent CR/NL count. Mixed EOL style detected, may cause problems during merge")
+  if lf != 0 and cr != 0: warn("Inconsistent CR/NL count without CR+NL. Mixed EOL style detected, may cause problems during merge")
   if lf > cr: return b"\n"  # Linux/Unix
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
@@ -192,7 +192,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        For command "offline
     ls                                                    List file tree and mark changes and tracking status
     status                                                List branches and display repository status
     log                                                   List commits of current branch
-    config  [set/unset/show/add/rm] [<param>] [<value>]   Configure user-global defaults.
+    config  [set/unset/show/add/rm] [<param> [<value>]]   Configure user-global defaults.
                                                           Flags (1/0, on/off, true/false, yes/no):
                                                             strict, track, picky, compress
                                                           Lists (semicolon-separated when set; single values for add/rm):
@@ -207,7 +207,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        For command "offline
 
   Common options:
     --force                     Executes potentially harmful operations
-                                  for offline: ignore being already offline, start from scratch (same as online --force; offline)
+                                  for offline: ignore being already offline, start from scratch (same as "sos online --force && sos offline")
                                   for online: ignore uncommitted branches
                                   for commit, switch, update, add: ignore uncommitted changes before executing command
     --strict                    Perform full content comparison, don't rely only on file size and timestamp
@@ -812,7 +812,7 @@ def update(argument:str, options:str[] = []) -> None:
         debug("User selected %d" % reso)
       else: reso = res
       if reso & ConflictResolution.THEIRS:
-        m.readOrCopyVersionedFile(branch, revision, pinfo.namehash, into)  # blockwise copy of contents
+        m.readOrCopyVersionedFile(branch, revision, pinfo.namehash, toFile = into)  # blockwise copy of contents
         print("THR " + path)
       elif reso & ConflictResolution.MINE:
         print("MNE " + path)  # nothing to do! same as skip

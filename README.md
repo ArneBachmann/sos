@@ -25,9 +25,9 @@ As an additional practical benefit, the `sos` command will double as the command
 Once you executed `sos offline`, however, all commands are interpreted by the SOS tool instead, until leaving the offline mode via `sos online` (with the exception of `sos config`, cf. details below).
 
 SOS supports three different file handling approaches that you may use to your liking, thus being able to mirror the file handling philosophies of different traditional VCSs, plus a new default mode for super quick and easy version management.
-- **Simple mode**: All files are automatically versioned and tracked
-- **Tracking mode**: Only files that match certain file name tracking patterns are respected during `commit`, `update` and `branch` (just like in SVN, gitless, and Fossil), requiring users to specifically add or remove files per branch
-- **Picky mode**: Each operation needs the explicit declaration of file name patterns to stage for versioning (like Git does).
+- **Simple mode**: All files are automatically versioned and tracked. Drawback: Will pickup any little modification for any file
+- **Tracking mode**: Only files that match certain file name tracking patterns are respected during `commit`, `update` and `branch` (just like in SVN, gitless, and Fossil), requiring users to specifically add or remove files per branch. Drawback: Need to declare files to track for every offline repository
+- **Picky mode**: Each operation needs the explicit declaration of file name patterns to stage for versioning (like Git does). Drawback: Need to stage files for every single commit
 
 
 ## Comparison with traditional VCS ##

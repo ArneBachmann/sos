@@ -2,7 +2,7 @@ import builtins, logging, os, shutil, sys, time, traceback, unittest
 StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
 try: from unittest import mock  # Py3
 except: import mock  # installed via pip
-try: from typing import Any, Union  # only required for mypy
+try: from typing import Any, List, Union  # only required for mypy
 except: pass
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
@@ -60,7 +60,7 @@ class Tests(unittest.TestCase):
   def tearDown(_):
     pass
 
-  def assertAllIn(_, what:str, where:str[]) -> None: [_.assertIn(w, where) for w in what]
+  def assertAllIn(_, what:str[], where:Union[str,List[str]]) -> None: [_.assertIn(w, where) for w in what]
 
   def assertInAll(_, what:str, where:str[]) -> None: [_.assertIn(what, w) for w in where]
 
@@ -258,7 +258,7 @@ class Tests(unittest.TestCase):
     _.createFile(2, "y")
     sos.offline("test")  # file1-2  in initial branch commit
     sos.branch("second")  # file1-2  switch, having same files
-    sos.switch("test")  # no change  switch back, no problem
+    sos.switch("0")  # no change  switch back, no problem
     sos.switch("second")  # no change  # switch back, no problem
     _.createFile(3, "y")  # generate a file
     try: sos.switch("test"); _.fail()  # uncommited changes detected
@@ -327,7 +327,7 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
     sos.branch("mod")
     _.createFile("test.txt", "x" * 5 + "y" * 5)
-    sos.commit("mod")  # create b0/r1  TODO test fails sometimes - add a force or sleep here?
+    sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
     sos.update("mod", ["--theirs"])  # integrate changes
@@ -336,6 +336,9 @@ class Tests(unittest.TestCase):
   def testEolDet(_):
     _.assertEqual(b"\n", sos.eoldet(b"a\nb"))
     _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))
+    _.assertEqual(b"\r", sos.eoldet(b"\ra\rb"))
+    _.assertAllIn(["Inconsistent", "with "], wrapChannels(() -> _.assertEqual(b"\n", sos.eoldet(b"\r\na\r\nb\n"))))
+    _.assertAllIn(["Inconsistent", "without"], wrapChannels(() -> _.assertEqual(b"\n", sos.eoldet(b"\ra\nnb\n"))))
     _.assertIsNone(sos.eoldet(b""))
     _.assertIsNone(sos.eoldet(b"sdf"))
 

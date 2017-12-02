@@ -23,7 +23,7 @@ if BUILD:
       so, se = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE).communicate()  # use tag or hash
       extra = (so.strip() if sys.version_info.major < 3 else so.strip().decode(sys.stdout.encoding)).replace("\n", "-")
       if "\x0d" in extra: extra = extra.split("\x0d")[1]
-      print("Found Git hash %s" % extra)  # TODO use logging module instead
+      print("Found Git hash %s" % extra)
     except: extra = "svn"
   else: extra = "svn"
   lt = time.localtime()
