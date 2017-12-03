@@ -89,10 +89,11 @@ It's also possible to define a per-user global defaults for file and folder excl
 > A: Configure SOS to store all versioned files as plain file copies instead of compressed files: `sos config set compress off` should do the trick. All offline repositories created after that will simply copy files when branching and/or versioning: note, however, that the filenames will be hashed and stored in the metadata file.
 
 
-## Tipps ##
+## Hints and tipps ##
 - It may be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
 - Switching inside a branch never modifies the tracking patterns, as they are not linked to any specific revision
 - dirty flag only relevant in track and picky mode (?)
+- Branching larger amounts of binary files may be expensive as all files are copied and/or compressed during `sos offline`
 
 
 ## Release management ##
@@ -102,11 +103,6 @@ It's also possible to define a per-user global defaults for file and folder excl
 
 
 ## Todos ##
-- diff and merge ignore EOL style during combination
-- all doctests have been moved to `tests.py`
-- `sos.coco` should be <= 1000 LOC, but is currently larger
-- create better looking landing page to build community support
-- branching may be expensive as all files are copied
 - diffCommand = "diff -d {old!s} {new!s}"  # requires diffutils on OpenSUSE
 - mergeCommand = "merge -A -L z -L a -L b c a b"  # requires rce on OpenSUSE
 - [Answer](https://stackoverflow.com/questions/4934208/working-offline-with-svn-on-local-machine-temporary) when published

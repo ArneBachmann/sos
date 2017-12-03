@@ -375,9 +375,9 @@ def offline(argument:str? = None, options:str[] = []) -> None:
   if '--force' not in options and os.path.exists(metaFolder):
     Exit("Repository folder is either already offline or older branches and commits were left over. Use 'sos online' or continue working offline")
   m:Metadata = Metadata(os.getcwd())
-  if '--picky'   in options or m.c["picky"]:  m.picky =  True  # Git-like
-  elif '--track' in options or m.c["track"]:  m.track =  True  # Svn-like
-  if '--strict'  in options or m.c["strict"]: m.strict = True  # always hash contents
+  if '--picky'   in options or m.c.picky:  m.picky =  True  # Git-like
+  elif '--track' in options or m.c.track:  m.track =  True  # Svn-like
+  if '--strict'  in options or m.c.strict: m.strict = True  # always hash contents
   debug("Preparing offline repository...")
   m.createBranch(0, argument ?? str(defaults["defaultbranch"]), initialMessage = "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
@@ -387,10 +387,13 @@ def offline(argument:str? = None, options:str[] = []) -> None:
 def online(options:str[] = []) -> None:
   ''' Finish working offline. '''
   force:bool = '--force' in options
-  if not force:
-    m = Metadata(os.getcwd())
-    m.loadBranches()
-    if any([not b.insync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (dirty) branches.\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit relevant ones to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions.")
+  m = Metadata(os.getcwd())
+  m.loadBranches()
+  if any([not b.insync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (dirty) branches.\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit relevant ones to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions.")
+  strict:bool = '--strict' in options or m.strict
+  if options.count("--force") < 2:
+    changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = None if not m.track else m.getTrackingPatterns())
+    if len(changes.additions) > 0 or len(changes.deletions) > 0 or len(changes.modifications) > 0: Exit("File tree is modified vs. current branch.\nUse 'sos online --force --force' to continue with removing the offline repository.")
   try: shutil.rmtree(metaFolder); info("Exited offline mode. Continue working with your traditional VCS.")
   except Exception as E: Exit("Error removing offline repository: %r" % E)
 
@@ -423,7 +426,7 @@ def changes(argument:str = None, options:str[] = []) -> ChangeSet =
   m.loadBranch(branch)  # knows commits
   revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
   if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%d" % revision)
-  info("/// Changes of file tree vs. revision '%s/r%d' ///" % (m.branches[branch].name ?? "b%d" % branch, revision))
+  info("/// Changes of file tree vs. revision '%s/r%d'" % (m.branches[branch].name ?? "b%d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = None if not m.track else m.getTrackingPatterns() | m.getTrackingPatterns(branch))
   m.listChanges(changes)
@@ -439,13 +442,13 @@ def diff(argument:str, options:str[] = []) -> None:
   m.loadBranch(branch)  # knows commits
   revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
   if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%d" % revision)
-  info("/// Differences of file tree vs. revision '%s/r%d' ///" % (m.branches[branch].name ?? "b%d" % branch, revision))
+  info("/// Differences of file tree vs. revision '%s/r%d'" % (m.branches[branch].name ?? "b%d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, inverse = True, considerOnly = None if not m.track else m.getTrackingPatterns() | m.getTrackingPatterns(branch))
-  info("/// File changes ///")
+  info("/// File changes")
   m.listChanges(changes, diffmode = True)  # only list modified binary files
 
-  info("\n/// Textual modifications ///")  # TODO only text files, not binary
+  info("\n/// Textual modifications")  # TODO only text files, not binary
   differ = difflib.Differ()  # TODO move to utility and remove difflib import
   for path, pinfo in changes.modifications.items():  # only consider modified files TODO also show A/D here? or replace listing above?
     print("\nDIF " + path)
@@ -484,7 +487,7 @@ def status() -> None:
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()  # knows current branch
   current:int = m.branch
-  info("/// Offline repository status ///")
+  info("/// Offline repository status")
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
     m.loadBranch(branch.number)  # knows commit history
@@ -527,7 +530,7 @@ def switch(argument:str, options:str[] = []) -> None:
   ''' Continue work on another branch, replacing file tree changes. '''
   changes:ChangeSet
   m, branch, revision, changes, strict, force, trackingPatterns = exitOnChanges(argument, options)
-  info("/// Switching to branch %sb%d/r%d ///" % ("'%s' " % m.branches[branch].name if m.branches[branch].name else "", branch, revision))
+  info("/// Switching to branch %sb%d/r%d" % ("'%s' " % m.branches[branch].name if m.branches[branch].name else "", branch, revision))
 
   # Determine file changes from other branch to current file tree
   if '--meta' in options:  # only switch meta data
@@ -674,7 +677,7 @@ def log() -> None:
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()  # knows current branch
   m.loadBranch(m.branch)  # knows commit history
-  info("/// Offline commit history of branch '%s' ///" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
+  info("/// Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
   for commit in sorted(m.commits.values(), key = (co) -> co.number):
     print("  %s r%s @%s: %s" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), commit.message ?? ""))

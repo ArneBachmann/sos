@@ -332,6 +332,7 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
     sos.branch("mod")
     _.createFile("test.txt", "x" * 5 + "y" * 5)
+    time.sleep(.5)
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
@@ -502,13 +503,17 @@ class Tests(unittest.TestCase):
     # TODO test same for simple mode
     _.createFile(1)
     sos.defaults.ignores[:] = ["file*"]  # replace in-place
-    sos.offline("xx", ["--track"])  # because nothing to commit due to ignore pattern
+    sos.offline("xx", ["--track", "--strict"])  # because nothing to commit due to ignore pattern
     sos.add("file*")  # add tracking pattern for "file1"
     sos.commit(options = ["--force"])  # attempt to commit the file
     _.assertEqual(1, len(os.listdir(branchFolder(0, 1))))  # only meta data, file1 was ignored
     try: sos.online(); _.fail()  # Exit because dirty
     except: pass  # exception expected
-    sos.online(["--force"])  # remove offline repo
+    _.createFile("x2")  # add another change
+    sos.add("x?")  # add tracking pattern for "file1"
+    try: sos.online(["--force"]); _.fail()  # force beyond dirty flag check
+    except: pass
+    sos.online(["--force", "--force"])  # force beyond file tree modifications check
     _.assertFalse(os.path.exists(sos.metaFolder))
 
     _.createFile(1)
@@ -540,6 +545,7 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     sos.commit()
     _.createFile(1, "sdfsdgfsdf")
+    time.sleep(.5)
     sos.commit()
     _.createFile(1, "foobar")
     _.assertAllIn(["MOD ./file1", "DIF ./file1", " + foobar"], wrapChannels(() -> sos.diff("/-2")))  # second last
