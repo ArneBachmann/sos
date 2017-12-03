@@ -1,5 +1,9 @@
 # Utiliy functions
-import bz2, codecs, difflib, hashlib, logging, sys, time
+import bz2, codecs, difflib, hashlib, logging, os, sys, time
+try:
+  from typing import Any, Dict, IO, List, Tuple, Type, TypeVar, Union  # only required for mypy
+  Number = Union[int,float]
+except: pass  # typing not available (e.g. Python 2)
 
 
 # Classes
@@ -240,3 +244,37 @@ def getIntraLineMarkers(line:str) -> Range =
   if "+" in line: return Range(MergeBlockType.INSERT, [i for i, c in enumerate(line) if c == "+"])
   if "-" in line: return Range(MergeBlockType.REMOVE, [i for i, c in enumerate(line) if c == "-"])
   Range(MergeBlockType.KEEP, [])
+
+def findSosVcsBase() -> Tuple[str?,str?,str?] =
+  ''' Attempts to find sos and legacy VCS base folders. '''
+  debug("Detecting root folders...")
+  path:str = os.getcwd()  # start in current folder, check parent until found or stopped
+  vcs:Tuple[str?,str?] = (None, None)
+  while not os.path.exists(os.path.join(path, metaFolder)):
+    contents = set(os.listdir(path))
+    vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type from dot folder
+    choice:str? = None
+    if len(vcss) > 1:
+      choice = SVN if SVN in vcss else vcss[0]
+      warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))
+    elif len(vcss) > 0: choice = vcss[0]
+    if not vcs[0] and choice: vcs = (path, choice)  # memorize current repo root
+    new = os.path.dirname(path)  # get parent path
+    if new == path: break  # avoid infinite loop
+    path = new
+  if os.path.exists(os.path.join(path, metaFolder)):  # found something
+    if vcs[0]: return (path, vcs[0], vcs[1])  # already detected vcs base and command
+    sos = path
+    while True:  # continue search for VCS base
+      new = os.path.dirname(path)  # get parent path
+      if new == path: return (sos, None, None)  # no VCS folder found
+      path = new
+      contents = set(os.listdir(path))
+      vcss = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type
+      choice = None
+      if len(vcss) > 1:
+        choice = SVN if SVN in vcss else vcss[0]
+        warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))
+      elif len(vcss) > 0: choice = vcss[0]
+      if choice: return (sos, path, choice)
+  (None, vcs[0], vcs[1])

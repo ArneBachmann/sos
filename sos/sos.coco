@@ -2,7 +2,6 @@
 import codecs, difflib, fnmatch, json, logging, mimetypes, os, shutil, sys, time
 try:
   from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
-  Number = Union[int,float]
 except: pass  # typing not available (e.g. Python 2)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
@@ -15,16 +14,16 @@ except:
 # External dependencies
 try: import configr  # optional dependency
 except: configr = None  # declare as undefined
-#from enforce import runtime_validation  # https://github.com/RussBaz/enforce  TODO doesn't work for "data" types
 try:
   import chardet  # https://github.com/chardet/chardet
   def detect(binary:bytes) -> str = chardet.detect(binary)["encoding"]
 except: pass  # uses version from utility.coco
+#from enforce import runtime_validation  # https://github.com/RussBaz/enforce  TODO doesn't work for "data" types
 
 
 # Constants
 APPNAME:str = "Subversion Offline Solution  V%s  (C) Arne Bachmann" % version.__release_version__
-defaults:Accessor = Accessor({"strict": False, "track": False, "picky": False, "compress": True, "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
+defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": True, "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
 
 
 # Functions
@@ -735,40 +734,6 @@ def parse(root:str):
   elif command[:2] == "up":  update(argument, options)   # up
   else: Exit("Unknown command '%s'" % command)
   sys.exit(0)
-
-def findSosVcsBase() -> Tuple[str?,str?,str?] =
-  ''' Attempts to find sos and legacy VCS base folders. '''
-  debug("Detecting root folders...")
-  path:str = os.getcwd()  # start in current folder, check parent until found or stopped
-  vcs:Tuple[str?,str?] = (None, None)
-  while not os.path.exists(os.path.join(path, metaFolder)):
-    contents = set(os.listdir(path))
-    vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type from dot folder
-    choice:str? = None
-    if len(vcss) > 1:
-      choice = SVN if SVN in vcss else vcss[0]
-      warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))
-    elif len(vcss) > 0: choice = vcss[0]
-    if not vcs[0] and choice: vcs = (path, choice)  # memorize current repo root
-    new = os.path.dirname(path)  # get parent path
-    if new == path: break  # avoid infinite loop
-    path = new
-  if os.path.exists(os.path.join(path, metaFolder)):  # found something
-    if vcs[0]: return (path, vcs[0], vcs[1])  # already detected vcs base and command
-    sos = path
-    while True:  # continue search for VCS base
-      new = os.path.dirname(path)  # get parent path
-      if new == path: return (sos, None, None)  # no VCS folder found
-      path = new
-      contents = set(os.listdir(path))
-      vcss = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type
-      choice = None
-      if len(vcss) > 1:
-        choice = SVN if SVN in vcss else vcss[0]
-        warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))
-      elif len(vcss) > 0: choice = vcss[0]
-      if choice: return (sos, path, choice)
-  (None, vcs[0], vcs[1])
 
 def main() -> None:
   global debug, info, warn, error
