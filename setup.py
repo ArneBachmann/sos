@@ -1,12 +1,7 @@
-import os
-import shutil
-import subprocess
-import sys
-import time
-import unittest
+import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "0.9.3"
+RELEASE = "0.9.4"
 
 BUILD = os.getenv("BUILD", "false").strip().lower() == "true"
 print("Running in %s mode." % ("build" if BUILD else "install"))
@@ -15,6 +10,7 @@ if BUILD:
   # First compile Coconut down to Python 3 source
   print("Transpiling Coconut for packaging...")
   assert 0 == os.system("coconut --target 3.3 --line-numbers sos%ssos.coco" % os.sep)
+  assert 0 == os.system("coconut --target 3.3 --line-numbers sos%sutility.coco" % os.sep)
   assert 0 == os.system("coconut --target 3.3 --line-numbers sos%stests.coco" % os.sep)
 
   # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
@@ -68,7 +64,7 @@ try: os.mkdir("build")
 except: print("Cannot create build folder")
 try: os.mkdir("dist")
 except: print("Cannot create dist folder")
-setup(  # https://pypi.python.org/pypi?%3Aaction=list_classifiers
+setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
   install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8

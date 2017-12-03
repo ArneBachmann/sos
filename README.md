@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 0.9.3) #
+# Subversion Offline Solution (SOS 0.9.4) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)

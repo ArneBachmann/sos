@@ -11,6 +11,7 @@ try:
   os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
 except: configr = None  # declare as undefined
 import sos
+sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 
 
 def debugTestRunner(post_mortem = None) =
@@ -83,6 +84,10 @@ class Tests(unittest.TestCase):
   def testFirstofmap(_):
     _.assertEqual(2, sos.firstOfMap({"a": 1, "b": 2}, ["x", "b"]))
     _.assertIsNone(sos.firstOfMap({"a": 1, "b": 2}, []))
+
+  def testAjoin(_):
+    _.assertEqual("a1a2", sos.ajoin("a", ["1", "2"]))
+    _.assertEqual("* a\n* b", sos.ajoin("* ", ["a", "b"], "\n"))
 
   def testFindChanges(_):
     m = sos.Metadata(os.getcwd())
@@ -330,7 +335,10 @@ class Tests(unittest.TestCase):
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
-    sos.update("mod", ["--theirs"])  # integrate changes
+    sos.update("mod", ["--theirs"])  # integrate changes TODO same with ask -> theirs
+    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
+    _.createFile("test.txt", "x" * 10)
+    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> theirs
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
 
   def testEolDet(_):
@@ -491,7 +499,7 @@ class Tests(unittest.TestCase):
     _.assertNotInAny('    ign2', out)
 
   def testWhitelist(_):
-    # TODO same for simple mode, easy
+    # TODO test same for simple mode
     _.createFile(1)
     sos.defaults.ignores[:] = ["file*"]  # replace in-place
     sos.offline("xx", ["--track"])  # because nothing to commit due to ignore pattern
@@ -528,8 +536,13 @@ class Tests(unittest.TestCase):
     sos.usage()
 
   def testDiff(_):
-    # Need to test stdout diffs
-    pass
+    sos.offline(options = ["--strict"])
+    _.createFile(1)
+    sos.commit()
+    _.createFile(1, "sdfsdgfsdf")
+    sos.commit()
+    _.createFile(1, "foobar")
+    _.assertAllIn(["MOD ./file1", "DIF ./file1", " + foobar"], wrapChannels(() -> sos.diff("/-2")))  # second last
 
   def testFindBase(_):
     old = os.getcwd()
@@ -549,5 +562,5 @@ if __name__ == '__main__':
   logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or os.getenv("DEBUG", "false").strip().lower() == "true" or os.getenv("CI", "false").strip().lower() == "true" else logging.INFO , stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else "%(message)s")
   if configr:
     c = configr.Configr("sos"); c.loadSettings()
-    if len(c.keys()) > 0: sos.Exit("Cannot run test suite with local SOS user configuration")
+    if len(c.keys()) > 0: sos.Exit("Cannot run test suite with existing local SOS user configuration (would affect results)")
   unittest.main(testRunner = debugTestRunner() if '-v' in sys.argv and not os.getenv("BUILD", "false").lower() == "true" else None)  # warnings = "ignore")
