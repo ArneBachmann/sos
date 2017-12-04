@@ -99,14 +99,9 @@ def sjoin(*s:Tuple[Any]) -> str = " ".join([str(e) for e in s if e != ''])
 def hashStr(datas:str) -> str = hashlib.sha256(datas.encode(UTF8)).hexdigest()
 
 def getTermWidth() -> int =
-  try: import curses
+  try: import termwidth
   except: return 80
-  width:int = 0
-  def func(scr):
-    nonlocal width
-    _height, width = scr.getmaxyx()
-  curses.wrapper(func)
-  width
+  termwidth.getTermWidth()[0]  
 
 def hashFile(path:str, compress:bool, saveTo:str? = None) -> str =
   ''' Calculate hash of file contents. '''

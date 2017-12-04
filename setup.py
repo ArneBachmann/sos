@@ -67,7 +67,7 @@ except: print("Cannot create dist folder")
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8
+  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820", "termwidth >= 2017.2204.2811"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8
 #  test_suite = "tests",  # is this executed automatically? Is also called above
   description = "Subversion Offline Solution (SOS)",
   long_description = README,
