@@ -1,7 +1,7 @@
 # Standard modules
 import codecs, difflib, fnmatch, json, logging, mimetypes, os, shutil, sys, time
 try:
-  from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Type, TypeVar, Union  # only required for mypy
+  from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Union  # only required for mypy
 except: pass  # typing not available (e.g. Python 2)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
@@ -24,6 +24,7 @@ except: pass  # uses version from utility.coco
 # Constants
 APPNAME:str = "Subversion Offline Solution  V%s  (C) Arne Bachmann" % version.__release_version__
 defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": True, "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
+termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
 
 
 # Functions
@@ -192,11 +193,11 @@ class Metadata:
     tracked = [t for t in _.branches[_.branch].tracked] if _.track and len(_.branches) > 0 else []  # in case of initial branch creation
     debug("Creating branch '%s'..." % name ?? "b%d" % branch)
     _.paths:Dict[str, PathInfo] = {}
-    if simpleMode:
+    if simpleMode:  # branches from file system state
       changes:ChangeSet = _.findChanges(branch, 0, progress = simpleMode)  # creates revision folder and versioned files
       _.listChanges(changes)
       _.paths.update(changes.additions.items())
-    else:  # tracking or picky mode
+    else:  # tracking or picky mode: branch from lastest revision
       os.makedirs(os.path.join(_.root, metaFolder, "b%d" % branch, "r0"))
       if _.branch is not None:  # not immediately after "offline" - copy files from current branch
         _.loadBranch(_.branch)
@@ -260,7 +261,7 @@ class Metadata:
         size, mtime, newtime = stat.st_size, int(stat.st_mtime * 1000), time.time()
         if progress and newtime - timer > .1:
           outstring = "\rPreparing %s  %s" % (PROGRESS_MARKER[counter.inc() % 4], filename)
-          sys.stdout.write(outstring + " " * max(0, 80 - len(outstring))); sys.stdout.flush(); timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
+          sys.stdout.write(outstring + " " * max(0, termWidth - len(outstring))); sys.stdout.flush(); timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
         if filename not in _.paths:  # detected file not present (or untracked) in other branch
           namehash = hashStr(filename)
           changes.additions[filename] = PathInfo(namehash, size, mtime, hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, namehash) if write else None) if size > 0 else None)
@@ -273,7 +274,7 @@ class Metadata:
       # Detect deletions. Files no longer being tracked should not be found here
       for folderPath in (p for p, pinfo in _.paths.items() if p[:p.rindex(SLASH)] == relpath and pinfo.size is not None):  # only versioned (and tracked) files that match currently visited folder. TODO don't check for removal just added entries
         if folderPath[len(relpath) + 1:] not in filenames: changes.deletions[folderPath] = _.paths[folderPath]  # filename no longer in file tree TODO use basename and dirname instead of slicing?
-    if progress: print("Preparation finished." + " " * 59, file = sys.stdout)  # force new line
+    if progress: print("Preparation finished." + " " * (termWidth - 21), file = sys.stdout)  # force new line
     changes
 
   def integrateChangeset(_, changes:ChangeSet, clear = False) -> None:
@@ -405,7 +406,7 @@ def branch(argument:str? = None, options:str[] = []) -> None:
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()
   if argument and m.getBranchByName(argument) is not None: Exit("Branch '%s' already exists. Cannot proceed" % argument)  # create a named branch
-  branch = max(m.branches.keys()) + 1  # next branch's key
+  branch = max(m.branches.keys()) + 1  # next branch's key - this isn't atomic but we assume single-user non-concurrent use here
   debug("Branching to %sbranch b%d%s%s..." % ("unnamed " if argument is None else "", branch, " '%s'" % argument if argument else "", " from last revision" if last else ""))
   if last:
     m.duplicateBranch(branch, argument)  # branch from branch's last revision
@@ -618,13 +619,13 @@ def delete(argument:str, options:str[] = []) -> None:
   binfo = m.removeBranch(branch)  # need to keep a reference to removed entry for output below
   info("Branch b%d%s removed" % (branch, " '%s'" % binfo.name if binfo.name else ""))
 
-def add(argument:str, options:str[] = []) -> None:
+def add(folder:str, argument:str, options:str[] = []) -> None:
   ''' Add a tracked files pattern to current branch's tracked files. '''
   force:bool = '--force' in options
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()
   if not m.track and not m.picky: Exit("Repository is in simple mode. Needs 'offline --track' or 'offline --picky' instead")
-  relpath = os.path.relpath(os.path.dirname(os.path.abspath(argument)), m.root)  # for tracking list
+  relpath = os.path.relpath(os.path.dirname(os.path.abspath(os.path.join(folder, argument))), m.root)  # for tracking list
   pattern = os.path.join(relpath, os.path.basename(argument)).replace(os.sep, SLASH)
   if pattern in m.branches[m.branch].tracked:
     Exit("Pattern '%s' already tracked")
@@ -634,12 +635,12 @@ def add(argument:str, options:str[] = []) -> None:
   m.saveBranches()
   info("Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), os.path.abspath(relpath)))
 
-def rm(argument:str) -> None:
+def rm(folder:str, argument:str) -> None:
   ''' Remove a tracked files pattern from current branch's tracked files. '''
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()
   if not m.track and not m.picky: Exit("Repository is in simple mode. Needs 'offline --track' or 'offline --picky' instead")
-  relpath:str = os.path.relpath(os.path.dirname(os.path.abspath(argument)), m.root)
+  relpath:str = os.path.relpath(os.path.dirname(os.path.abspath(os.path.join(folder, argument))), m.root)
   pattern:str = os.path.join(relpath, os.path.basename(argument)).replace(os.sep, SLASH)
   if pattern not in m.branches[m.branch].tracked:
     suggestion:Set[str] = s{}
@@ -712,14 +713,14 @@ def config(argument:str, options:List[str] = []) -> None:
   f, g = saveConfig(c)
   if f is None: error("Error saving user configuration: %r" % g)
 
-def parse(root:str):
+def parse(root:str, inFolder:str):
   ''' Main operation. '''
   debug("Parsing command-line arguments...")
   command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
   argument = sys.argv[2].strip() if len(sys.argv) > 2 else None
   options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
   debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
-  if   command[:1] == "a":   add(argument, options)      # a
+  if   command[:1] == "a":   add(inFolder, argument, options)  # a
   elif command[:1] == "b":   branch(argument, options)   # b
   elif command[:2] == "ch":  changes(argument, options)  # ch
   elif command[:3] == "com" or command[:2] == "ci": commit(argument, options)   # com, ci
@@ -731,7 +732,7 @@ def parse(root:str):
   elif command[:2] in ["li", "ls"]:  ls(argument)        # li, ls
   elif command[:2] == "of":  offline(argument, options)  # of
   elif command[:2] == "on":  online(options)             # on
-  elif command[:1] == "r":   rm(argument)                # r
+  elif command[:1] == "r":   rm(inFolder, argument)      # r
   elif command[:2] == "st":  status()                    # st
   elif command[:2] == "sw":  switch(argument, options)   # sw
   elif command[:2] == "up":  update(argument, options)   # up
@@ -749,8 +750,9 @@ def main() -> None:
   debug("Found root folders for SOS|VCS: %s|%s" % (root ?? "", vcs ?? ""))
   defaults["defaultbranch"] = vcsBranches.get(cmd, "trunk")  # sets dynamic default with SVN fallback
   if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] == "h":  # in offline mode or just going offline TODO what about git config?
-    os.chdir(os.getcwd() if command[:2] == "of" else root ?? os.getcwd())  # since all operatiosn use os.getcwd() and we save one argument to each function
-    parse(root)
+    cwd = os.getcwd()
+    os.chdir(cwd if command[:2] == "of" else root ?? cwd)
+    parse(root, cwd)
   elif cmd is not None:  # online mode - delegate to VCS
     info("SOS: Running '%s %s'" % (cmd, " ".join(sys.argv[1:])))
     import subprocess  # only requuired in this section

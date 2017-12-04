@@ -149,6 +149,17 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(changes.deletions))
     _.assertEqual(0, len(changes.modifications))
 
+  def testPatternPaths(_):
+    sos.offline(options = ["--track"])
+    os.mkdir("sub")
+    _.createFile("sub" + os.sep + "file1", "sdfsdf")
+    sos.add("./sub", "file?")  # this doesn't work as direct call won't invoke getRoot and therefore won't chdir virtually into that folder
+    sos.commit("test")
+    _.assertEqual(2, len(os.listdir(os.path.join(sos.metaFolder, "b0", "r1"))))  # sub/file1 was added
+    _.createFile(1)
+    try: sos.commit("nothing"); _.fail()  # should not commit anything, as the file in base folder doesn't match the path pattern
+    except: pass
+
   def testComputeSequentialPathSet(_):
     os.makedirs(branchFolder(0, 0))
     os.makedirs(branchFolder(0, 1))
@@ -332,7 +343,7 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
     sos.branch("mod")
     _.createFile("test.txt", "x" * 5 + "y" * 5)
-    time.sleep(.5)
+    time.sleep(1.1)
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
@@ -374,14 +385,14 @@ class Tests(unittest.TestCase):
 
   def testPickyMode(_):
     sos.offline("trunk", ["--picky"])
-    sos.add("file?", ["--force"])
+    sos.add(".", "file?", ["--force"])
     _.createFile(1, "aa")
     sos.commit("First")  # add one file
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))
     _.createFile(2, "b")
     sos.commit("Second", ["--force"])  # add nothing, because picky
     _.assertEqual(1, len(os.listdir(branchFolder(0, 2))))
-    sos.add("file?")
+    sos.add(".", "file?")
     sos.commit("Third")  # add nothing, because picky
     _.assertEqual(2, len(os.listdir(branchFolder(0, 3))))
     out = wrapChannels(() -> sos.log()).replace("\r", "")
@@ -394,16 +405,16 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", ["--track"])
     _.createFile(1, "x")
     _.createFile(1, "x", prefix = "sub")
-    sos.add("file?")  # add glob pattern to track
+    sos.add(".", "file?")  # add glob pattern to track
     sos.commit("First")
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # one new file + meta file
-    sos.add("sub/file?")  # add glob pattern to track
+    sos.add(".", "sub/file?")  # add glob pattern to track
     sos.commit("Second")  # one new file + meta
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # one new file + meta file
     os.unlink("file1")  # remove from basefolder
     _.createFile(2, "y")
-    sos.rm("sub/file?")
-    try: sos.rm("sub/bla"); _.fail()  # raises Exit. TODO test the "suggest a pattern" case
+    sos.rm(".", "sub/file?")
+    try: sos.rm(".", "sub/bla"); _.fail()  # raises Exit. TODO test the "suggest a pattern" case
     except: pass
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(branchFolder(0, 2))))  # one new file + meta
@@ -418,7 +429,7 @@ class Tests(unittest.TestCase):
     sos.offline("test", options = ["--track"])  # set up repo in tracking mode (SVN- or gitless-style)
     _.createFile(1)
     _.createFile("a123a")  # untracked file "a123a"
-    sos.add("file?")  # add glob tracking pattern
+    sos.add(".", "file?")  # add glob tracking pattern
     sos.commit("second")  # versions "file1"
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # one new file + meta file
     out = wrapChannels(() -> sos.status()).replace("\r", "")
@@ -434,8 +445,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(os.listdir(branchFolder(0, 3))))  # meta file only, no other tracked path/file
 
     sos.branch("Other")  # second branch containing file1 and file2 tracked by "./file?"
-    sos.rm("file?")  # remove tracking pattern, but don't touch previously created and versioned files
-    sos.add("a*a")  # add tracking pattern
+    sos.rm(".", "file?")  # remove tracking pattern, but don't touch previously created and versioned files
+    sos.add(".", "a*a")  # add tracking pattern
     changes = sos.changes()  # should pick up addition
     _.assertEqual(0, len(changes.modifications))
     _.assertEqual(0, len(changes.deletions))  # not tracked anymore, but contained in version history and not removed
@@ -467,7 +478,7 @@ class Tests(unittest.TestCase):
     sos.offline("test", options = ["--track"])  # set up repo in tracking mode (SVN- or gitless-style)
     _.createFile(1)
     _.createFile("foo")
-    sos.add("file*")  # capture one file
+    sos.add(".", "file*")  # capture one file
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('TRK file1 by "./file*"', out)
     _.assertNotInAny('    file1 by "./file*"', out)
@@ -504,13 +515,13 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     sos.defaults.ignores[:] = ["file*"]  # replace in-place
     sos.offline("xx", ["--track", "--strict"])  # because nothing to commit due to ignore pattern
-    sos.add("file*")  # add tracking pattern for "file1"
+    sos.add(".", "file*")  # add tracking pattern for "file1"
     sos.commit(options = ["--force"])  # attempt to commit the file
     _.assertEqual(1, len(os.listdir(branchFolder(0, 1))))  # only meta data, file1 was ignored
     try: sos.online(); _.fail()  # Exit because dirty
     except: pass  # exception expected
     _.createFile("x2")  # add another change
-    sos.add("x?")  # add tracking pattern for "file1"
+    sos.add(".", "x?")  # add tracking pattern for "file1"
     try: sos.online(["--force"]); _.fail()  # force beyond dirty flag check
     except: pass
     sos.online(["--force", "--force"])  # force beyond file tree modifications check
@@ -519,7 +530,7 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     sos.defaults.ignoresWhitelist[:] = ["file*"]
     sos.offline("xx", ["--track"])
-    sos.add("file*")
+    sos.add(".", "file*")
     sos.commit()  # should NOT ask for force here
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # meta data and "file1", file1 was whitelisted
 
@@ -545,7 +556,7 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     sos.commit()
     _.createFile(1, "sdfsdgfsdf")
-    time.sleep(.5)
+    time.sleep(1.1)
     sos.commit()
     _.createFile(1, "foobar")
     _.assertAllIn(["MOD ./file1", "DIF ./file1", " + foobar"], wrapChannels(() -> sos.diff("/-2")))  # second last
