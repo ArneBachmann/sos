@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 0.9.4) #
+# Subversion Offline Solution (SOS 0.9.5) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
@@ -33,6 +33,12 @@ SOS supports three different file handling models that you may use to your likin
 ## Comparison with traditional VCS ##
 - `switch` works like `checkout` in Git or `update to revision` in SVN
 - `update` works a bit like `pull` in Git or `update` in SVN
+
+
+## Compatibility ##
+- SOS runs on any Python 3 distribution. Support for Python 2 is only partial, the test suite doesn't run through entirely yet
+- SOS is compatible with above mentioned traditional VCSs: Subversion, Git, gitless, Bazaar, Mercurial and Fossil
+- File name encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
 
 ## Commit semantics ##

@@ -19,6 +19,7 @@ try:
   def detect(binary:bytes) -> str = chardet.detect(binary)["encoding"]
 except: pass  # uses version from utility.coco
 #from enforce import runtime_validation  # https://github.com/RussBaz/enforce  TODO doesn't work for "data" types
+if sys.version_info.major < 3: int = long  # for Python 2 compatibility
 
 
 # Constants
@@ -720,22 +721,22 @@ def parse(root:str, inFolder:str):
   argument = sys.argv[2].strip() if len(sys.argv) > 2 else None
   options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
   debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
-  if   command[:1] == "a":   add(inFolder, argument, options)  # a
-  elif command[:1] == "b":   branch(argument, options)   # b
-  elif command[:2] == "ch":  changes(argument, options)  # ch
-  elif command[:3] == "com" or command[:2] == "ci": commit(argument, options)   # com, ci
-  elif command[:3] == 'con': config(argument, options)   # con
-  elif command[:2] == "de":  delete(argument, options)   # de
-  elif command[:2] == "di":  diff(argument, options)     # di
-  elif command[:1] == "h":   usage()                     # h
-  elif command[:2] == "lo":  log()                       # lo
-  elif command[:2] in ["li", "ls"]:  ls(argument)        # li, ls
-  elif command[:2] == "of":  offline(argument, options)  # of
-  elif command[:2] == "on":  online(options)             # on
-  elif command[:1] == "r":   rm(inFolder, argument)      # r
-  elif command[:2] == "st":  status()                    # st
-  elif command[:2] == "sw":  switch(argument, options)   # sw
-  elif command[:2] == "up":  update(argument, options)   # up
+  if   command[:1] == "a":   add(inFolder, argument, options)
+  elif command[:1] == "b":   branch(argument, options)
+  elif command[:2] == "ch":  changes(argument, options)
+  elif command[:3] == "com" or command[:2] == "ci": commit(argument, options)
+  elif command[:3] == 'con': config(argument, options)
+  elif command[:2] == "de":  delete(argument, options)
+  elif command[:2] == "di":  diff(argument, options)
+  elif command[:1] == "h":   usage()
+  elif command[:2] == "lo":  log()
+  elif command[:2] in ["li", "ls"]:  ls(argument)
+  elif command[:2] == "of":  offline(argument, options)
+  elif command[:2] == "on":  online(options)
+  elif command[:1] == "r":   rm(inFolder, argument)
+  elif command[:2] == "st":  status()
+  elif command[:2] == "sw":  switch(argument, options)
+  elif command[:2] == "u":  update(argument, options)
   else: Exit("Unknown command '%s'" % command)
   sys.exit(0)
 

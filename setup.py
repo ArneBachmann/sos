@@ -1,17 +1,19 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "0.9.4"
+RELEASE = "0.9.5"
 
 BUILD = os.getenv("BUILD", "false").strip().lower() == "true"
 print("Running in %s mode." % ("build" if BUILD else "install"))
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 if BUILD:
-  # First compile Coconut down to Python 3 source
+  # First compile Coconut down to universal Python source
   print("Transpiling Coconut for packaging...")
-  assert 0 == os.system("coconut --target 3.3 --line-numbers sos%ssos.coco" % os.sep)
-  assert 0 == os.system("coconut --target 3.3 --line-numbers sos%sutility.coco" % os.sep)
-  assert 0 == os.system("coconut --target 3.3 --line-numbers sos%stests.coco" % os.sep)
+  cmd = "-develop" if 0 == os.system("coconut-develop -l sos%ssos.coco" % os.sep) else ""  # TODO check for "exception"
+    
+  assert 0 == os.system("coconut%s -l sos%ssos.coco" % (cmd, os.sep))  # TODO check for "exception"
+  assert 0 == os.system("coconut%s -l sos%sutility.coco" % (cmd, os.sep))
+  assert 0 == os.system("coconut%s -l sos%stests.coco" % (cmd, os.sep))
 
   # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
   if os.path.exists(".git"):

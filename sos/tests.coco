@@ -45,7 +45,7 @@ def wrapChannels(func: -> Any) =
   buf.getvalue()
 
 def mockInput(datas:str[], func) -> Any:
-  with mock.patch('builtins.input' if sys.version_info.major >= 3 else '__builtin__.raw_input', side_effect = datas): return func()
+  with mock.patch("builtins.input" if sys.version_info.major >= 3 else "utility._coconut_raw_input", side_effect = datas): return func()
 
 
 class Tests(unittest.TestCase):
@@ -58,8 +58,7 @@ class Tests(unittest.TestCase):
       except: shutil.rmtree(resource)
     os.chdir(testFolder)
 
-  def tearDown(_):
-    pass
+  def tearDown(_): pass
 
   def assertAllIn(_, what:str[], where:Union[str,List[str]]) -> None: [_.assertIn(w, where) for w in what]
 
