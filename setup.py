@@ -1,7 +1,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "0.9.5"
+RELEASE = "0.9.6"
 
 BUILD = os.getenv("BUILD", "false").strip().lower() == "true"
 print("Running in %s mode." % ("build" if BUILD else "install"))
@@ -9,11 +9,11 @@ readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md
 if BUILD:
   # First compile Coconut down to universal Python source
   print("Transpiling Coconut for packaging...")
-  cmd = "-develop" if 0 == os.system("coconut-develop -l sos%ssos.coco" % os.sep) else ""  # TODO check for "exception"
+  cmd = "-develop" if os.getenv("NODEV", "false").strip().lower() != "true" or 0 == os.system("coconut-develop -l -t 3 sos%ssos.coco" % os.sep) else ""
     
-  assert 0 == os.system("coconut%s -l sos%ssos.coco" % (cmd, os.sep))  # TODO check for "exception"
-  assert 0 == os.system("coconut%s -l sos%sutility.coco" % (cmd, os.sep))
-  assert 0 == os.system("coconut%s -l sos%stests.coco" % (cmd, os.sep))
+  assert 0 == os.system("coconut%s -l -t 3 sos%ssos.coco" % (cmd, os.sep))  # TODO remove target once Python 2 problems have been fixed
+  assert 0 == os.system("coconut%s -l -t 3 sos%sutility.coco" % (cmd, os.sep))
+  assert 0 == os.system("coconut%s -l -t 3 sos%stests.coco" % (cmd, os.sep))
 
   # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
   if os.path.exists(".git"):
@@ -62,10 +62,12 @@ else:  # during pip install only
   with open(readmeFile, "r") as fd: README = fd.read()
 
 print("\nRunning setup() for SOS version " + sos.version.__version__)
-try: os.mkdir("build")
-except: print("Cannot create build folder")
-try: os.mkdir("dist")
-except: print("Cannot create dist folder")
+if not os.path.exists("build"):
+  try: os.mkdir("build")
+  except: print("Cannot create build folder")
+if not os.path.exists("dist"):
+  try: os.mkdir("dist")
+  except: print("Cannot create dist folder")
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra

@@ -7,6 +7,10 @@ except: pass  # typing not available (e.g. Python 2)
 
 
 # Classes
+class JustOnce:
+  def __init__(_, value:str, depleted:str = ""): _.value:str = value; _.depleted = depleted
+  def __call__(_) -> str: value = _.value; _.value = None; return value ?? _.depleted
+
 class Accessor(dict):
   ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
   def __init__(_, mapping) -> None: dict.__init__(_, mapping)
@@ -59,15 +63,19 @@ class MergeBlockType: KEEP, INSERT, REMOVE, REPLACE, MODIFY, MOVE = range(6)  # 
 
 
 # Functions
-def detect(binary:bytes) -> str =  # Guess the encoding
-  ''' Fallback if chardet library missing. '''
-  try: binary.decode(UTF8); return UTF8
-  except UnicodeError: pass
-  try: binary.decode("utf_16"); return "utf_16"
-  except UnicodeError: pass
-  try: binary.decode("cp1252"); return "cp1252"
-  except UnicodeError: pass
-  "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
+try:
+  import chardet  # https://github.com/chardet/chardet
+  def detectEncoding(binary:bytes) -> str = chardet.detect(binary)["encoding"]
+except:
+  def detectEncoding(binary:bytes) -> str =  # Guess the encoding
+    ''' Fallback if chardet library missing. '''
+    try: binary.decode(UTF8); return UTF8
+    except UnicodeError: pass
+    try: binary.decode("utf_16"); return "utf_16"
+    except UnicodeError: pass
+    try: binary.decode("cp1252"); return "cp1252"
+    except UnicodeError: pass
+    "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
 
 def openIt(file:str, mode:str, compress:bool = False) -> IO = bz2.BZ2File(file, mode) if compress else open(file, mode + "b")  # Abstraction for opening both compressed and plain files
 
@@ -92,7 +100,7 @@ try: Splittable = TypeVar("Splittable", str, bytes)
 except: pass  # Python 2
 def safeSplit(s:Splittable, d:Splittable? = None) -> Splittable[]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 
-def ajoin(sep:str, seq:str[], nl = "") -> str = sep + (nl + sep).join(seq)
+def ajoin(sep:str, seq:str[], nl = "") -> str = sep + (nl + sep).join(seq) if seq else ""
 
 def sjoin(*s:Tuple[Any]) -> str = " ".join([str(e) for e in s if e != ''])
 
@@ -162,7 +170,7 @@ except: pass  # Python 2
 def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, **_kwargs) -> DataType: r = _old._asdict(); r.update(**_kwargs); return makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))
 # TODO test namedtuple instead of instantiated tuple types in "datatype"?
 
-def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname:str? = None, mergeOperation = MergeOperation.BOTH, conflictResolution = ConflictResolution.ASK) -> bytes =
+def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname:str? = None, mergeOperation = MergeOperation.BOTH, conflictResolution = ConflictResolution.ASK, diffOnly:bool = False) -> Union[bytes,List[MergeBlock]] =
   ''' Merges binary text contents 'file' into file 'into', returning merged result. '''
   encoding:str; othr:str[]; othreol:bytes?; curr:str[]; curreol:bytes?
   differ = difflib.Differ()
@@ -176,8 +184,8 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
   blocks:List[MergeBlock] = []  # merged result in blocks
   tmp:List[str] = []  # block lines
   last = " "
-  for no, line in enumerate(output + ["X"]):  # EOF marker
-    if line[0] == last: tmp.append(line[2:]); continue  # continue filling consecutive block
+  for no, line in enumerate(output + ["X"]):  # EOF marker (difflib's output will never be "X" alone)
+    if line[0] == last: tmp.append(line[2:]); continue  # continue filling consecutive block, no matter what type of block
     if line == "X":  # EOF marker - perform action for remaining block
       if len(tmp) == 0: break  # nothing left to do
     if last == " ":  # block is same in both files
@@ -188,7 +196,7 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
       blocks.append(MergeBlock(MergeBlockType.INSERT, [line for line in tmp], line = no - len(tmp)))
       if len(blocks) >= 2 and len(blocks[-1].lines) == len(blocks[-2].lines):  # replaces previously removed section entirely if any
         if len(blocks[-1].lines) >= 2 or (blocks[-1].changes is None and blocks[-2].changes is None):  # full block or no intra-line comment
-          blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-1].lines, line = no - len(tmp), replaces = blocks[-2])  # remember replaced stuff
+          blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-1].lines, line = no - len(tmp) - 1, replaces = blocks[-2])  # remember replaced stuff TODO why -1 necessary?
         else:  # may have intra-line modifications
           blocks[-2] = MergeBlock(MergeBlockType.MODIFY, blocks[-1].lines, line = no - len(tmp), replaces = blocks[-2], changes = blocks[-1].changes)
         blocks.pop()  # remove TOS
@@ -198,6 +206,7 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
     last = line[0]
     tmp[:] = [line[2:]]
   debug("Diff blocks: " + repr(blocks))
+  if diffOnly: return blocks
   output = []
   for block in blocks:
     if block.tipe == MergeBlockType.KEEP:

@@ -558,7 +558,7 @@ class Tests(unittest.TestCase):
     time.sleep(1.1)
     sos.commit()
     _.createFile(1, "foobar")
-    _.assertAllIn(["MOD ./file1", "DIF ./file1", " + foobar"], wrapChannels(() -> sos.diff("/-2")))  # second last
+    _.assertAllIn(["MOD ./file1", "DIF ./file1", "- | 0000 |xxxxxxxxxx|", "+ | 0000 |foobar|"], wrapChannels(() -> sos.diff("/-2")))  # second last
 
   def testFindBase(_):
     old = os.getcwd()

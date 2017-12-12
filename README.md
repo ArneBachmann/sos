@@ -111,6 +111,10 @@ By means of the `sos config set <key> <value>` command, you can set the `strict`
 - Branching larger amounts of binary files may be expensive as all files are copied and/or compressed during `sos offline`. A workaround is to `sos offline` only in the folders that are relevant for a specific task
 
 
+## Development ##
+Pull requests against `master`.
+
+
 ## Release management ##
 - Run `export BUILD=true && python3 setup.py clean build sdist` to compile and test the code, increment the version number, and package into an archive. If you need evelated rights, use `sudo -E python...`
 - Run `git add`, `git commit` and `git push` and let Travis CI run the tests for different target platforms. If there were no problems, continue:

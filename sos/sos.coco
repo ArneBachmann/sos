@@ -1,7 +1,7 @@
 # Standard modules
-import codecs, difflib, fnmatch, json, logging, mimetypes, os, shutil, sys, time
+import codecs, fnmatch, json, logging, mimetypes, os, shutil, sys, time
 try:
-  from typing import Any, Dict, FrozenSet, IO, List, Set, Tuple, Union  # only required for mypy
+  from typing import Any, Dict, FrozenSet, IO, Iterator, List, Set, Tuple, Union  # only required for mypy
 except: pass  # typing not available (e.g. Python 2)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
@@ -14,10 +14,6 @@ except:
 # External dependencies
 try: import configr  # optional dependency
 except: configr = None  # declare as undefined
-try:
-  import chardet  # https://github.com/chardet/chardet
-  def detect(binary:bytes) -> str = chardet.detect(binary)["encoding"]
-except: pass  # uses version from utility.coco
 #from enforce import runtime_validation  # https://github.com/RussBaz/enforce  TODO doesn't work for "data" types
 if sys.version_info.major < 3: int = long  # for Python 2 compatibility
 
@@ -118,11 +114,13 @@ class Metadata:
 
   def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
 
-  def listChanges(_, changes:ChangeSet, diffmode:bool = False, textglobs:str[] = []) -> None:
+  def listChanges(_, changes:ChangeSet, diffmode:bool = False, textglobs:str[] = []) -> bool =
     ''' In diffmode, don't list modified files, because the diff is displayed elsewhere. '''
-    if len(changes.additions) > 0:     print(ajoin("ADD ", sorted(changes.additions.keys()), "\n"))
-    if len(changes.deletions) > 0:     print(ajoin("DEL ", sorted(changes.deletions.keys()), "\n"))
-    if len(changes.modifications) > 0: print(ajoin("MOD ", sorted(k for k in changes.modifications.keys() if not _.isTextType(k) or not diffmode), "\n"))  # only list binary files
+    mods:List[str] = sorted(k for k in changes.modifications.keys() if not _.isTextType(k) or not diffmode)  # only list binary files, the rest is diffed below
+    if changes.additions: print(ajoin("ADD ", sorted(changes.additions.keys()), "\n"))
+    if changes.deletions: print(ajoin("DEL ", sorted(changes.deletions.keys()), "\n"))
+    if mods:              print(ajoin("MOD ", mods, "\n"))
+    changes.additions or changes.deletions or mods
 
   def loadBranches(_) -> None:
     ''' Load list of branches and current branch info from metadata file. '''
@@ -288,14 +286,16 @@ class Metadata:
     _.paths.update(changes.additions)
     _.paths.update(changes.modifications)
 
-  def computeSequentialPathSet(_, branch:int, revision:int) -> None:
+  def computeSequentialPathSet(_, branch:int, revision:int, incrementally:bool = False) -> Optional[Iterator[ChangeSet]]:
     ''' In-memory computation of current list of valid PathInfo entries for specified branch and until specified revision (inclusively) by traversing revision on the file system. '''
     _.loadCommit(branch, 0)  # load initial paths
+    if incrementally: yield diffPathSets({}, _.paths)
     n:Metadata = Metadata(_.root)  # next changes
     for revision in range(1, revision + 1):
       n.loadCommit(branch, revision)
       changes:ChangeSet = diffPathSets(_.paths, n.paths)
       _.integrateChangeset(changes)
+      if incrementally: yield changes
 
   def parseRevisionString(_, argument:str) -> Tuple[int?,int?]:
     ''' Commit identifiers can be str or int for branch, and int for revision.
@@ -391,11 +391,11 @@ def online(options:str[] = []) -> None:
   force:bool = '--force' in options
   m = Metadata(os.getcwd())
   m.loadBranches()
-  if any([not b.insync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (dirty) branches.\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit relevant ones to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions.")
+  if any([not b.insync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (dirty) branches.\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit dirty branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions.")
   strict:bool = '--strict' in options or m.strict
   if options.count("--force") < 2:
     changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = None if not m.track else m.getTrackingPatterns())
-    if len(changes.additions) > 0 or len(changes.deletions) > 0 or len(changes.modifications) > 0: Exit("File tree is modified vs. current branch.\nUse 'sos online --force --force' to continue with removing the offline repository.")
+    if (changes.additions or changes.deletions or changes.modifications): Exit("File tree is modified vs. current branch.\nUse 'sos online --force --force' to continue with removing the offline repository.")
   try: shutil.rmtree(metaFolder); info("Exited offline mode. Continue working with your traditional VCS.")
   except Exception as E: Exit("Error removing offline repository: %r" % E)
 
@@ -447,25 +447,32 @@ def diff(argument:str, options:str[] = []) -> None:
   info("/// Differences of file tree vs. revision '%s/r%d'" % (m.branches[branch].name ?? "b%d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, inverse = True, considerOnly = None if not m.track else m.getTrackingPatterns() | m.getTrackingPatterns(branch))
-  info("/// File changes")
-  m.listChanges(changes, diffmode = True)  # only list modified binary files
+  if changes.additions or changes.deletions or changes.modifications: debug("/// File changes")
+  anything:bool = m.listChanges(changes, diffmode = True)  # only list modified binary files
 
-  info("\n/// Textual modifications")  # TODO only text files, not binary
-  differ = difflib.Differ()  # TODO move to utility and remove difflib import
+  if changes.modifications: debug("\n/// Textual modifications")  # TODO only text files, not binary
   for path, pinfo in changes.modifications.items():  # only consider modified files TODO also show A/D here? or replace listing above?
-    print("\nDIF " + path)
-    content:bytes?; othr:str[]; curr:str[]
+    content:bytes?  # ; othr:str[]; curr:str[]
     if pinfo.size == 0: content = b""  # empty file contents
     else: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
     abspath = os.path.join(m.root, path.replace(SLASH, os.sep))  # current file
-    encoding, othreol, othr = detectAndLoad(content = content)
-    encoding, curreol, curr = detectAndLoad(filename = abspath)
-    currcount, othrcount = Counter(), Counter()  # TODO shows empty new line although none in file. also counting is messed up
-    last = ""
-    for no, line in enumerate(differ.compare(othr, curr)):
-      if line[0] == " ": continue  # no change in line
-      print("%04d/%04d %s" % (no + othrcount.inc(-1 if line[0] == "+" or (line[0] == "?" and last == "+") else 0), no + currcount.inc(-1 if line[0] == "-" or (line[0] == "?" and last == "-") else 0), line))  # TODO counting this is definitely wrong and also lists \n as new diff lines. Could reuse block detection from merge instead
-      last = line[0]
+    blocks:List[MergeBlock] = merge(file = content, intoname = abspath, diffOnly = True)  # only determine change blocks
+    print("%sDIF %s%s" % ("\n" if anything else "", path, " <timestamp only>" if len(blocks) == 1 and blocks[0].tipe == MergeBlockType.KEEP else ""))
+    for block in blocks:
+      if block.tipe == MergeBlockType.INSERT:  # TODO show color via curses?
+        for no, line in enumerate(block.lines):
+          print("+++ %04d |%s|" % (no + block.line, line))
+      elif block.tipe == MergeBlockType.REMOVE:
+        for no, line in enumerate(block.lines):
+          print("--- %04d |%s|" % (no + block.line, line))
+      elif block.tipe in [MergeBlockType.REPLACE, MergeBlockType.MODIFY]:  # TODO for MODIFY also show intra-line change ranges
+        for no, line in enumerate(block.replaces.lines):
+          print("- | %04d |%s|" % (no + block.replaces.line, line))
+        for no, line in enumerate(block.lines):
+          print("+ | %04d |%s|" % (no + block.line, line))
+#      elif block.tipe == MergeBlockType.KEEP: pass
+#      elif block.tipe == MergeBlockType.MODIFY:  # intra-line modifications
+#      elif block.tipe == MergeBlockType.MOVE:  # intra-line modifications
 
 def commit(argument:str? = None, options:str[] = []) -> None:
   ''' Create new revision from file tree changes vs. last commit. '''
@@ -482,7 +489,7 @@ def commit(argument:str? = None, options:str[] = []) -> None:
   elif m.track:
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], insync = False)  # set branch dirty
   if m.picky or m.track: m.saveBranches()
-  info("Created new revision r%02d%s (+%d/-%d/*%d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications)))
+  info("Created new revision r%02d%s (+%02d/-%02d/*%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications)))
 
 def status() -> None:
   ''' Show branches and current repository state. '''
@@ -681,12 +688,15 @@ def log() -> None:
   m.loadBranch(m.branch)  # knows commit history
   info("/// Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
-  for commit in sorted(m.commits.values(), key = (co) -> co.number):
-    print("  %s r%s @%s: %s" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), commit.message ?? ""))
-    # TODO list number of files and binary/text
+  changeset = m.computeSequentialPathSet(m.branch, max(m.commits), incrementally = True)
+  for no in range(max(m.commits) + 1):
+    commit:CommitInfo = m.commits[no]
+    changes:ChangeSet = next(changeset)  # side-effect: updates m.paths
+    print("  %s r%s @%s (+%02d/-%02d/*%02d): %s" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(changes.additions), len(changes.deletions), len(changes.modifications), commit.message ?? ""))
+    # TODO list number of files and if binary/text
 
 def config(argument:str, options:List[str] = []) -> None:
-  if argument not in ["set", "unset", "show", "add", "rm"]: Exit("Unknown config command")
+  if argument not in ["set", "unset", "show", "list", "add", "rm"]: Exit("Unknown config command")
   if not configr: Exit("Cannot execute config command. 'configr' module not installed")
   c:Union[configr.Configr,Accessor] = loadConfig()
   if argument == "set":
