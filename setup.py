@@ -11,9 +11,9 @@ if BUILD:
   print("Transpiling Coconut for packaging...")
   cmd = "-develop" if os.getenv("NODEV", "false").strip().lower() != "true" or 0 == os.system("coconut-develop -l -t 3 sos%ssos.coco" % os.sep) else ""
     
-  assert 0 == os.system("coconut%s -l -t 3 sos%ssos.coco" % (cmd, os.sep))  # TODO remove target once Python 2 problems have been fixed
-  assert 0 == os.system("coconut%s -l -t 3 sos%sutility.coco" % (cmd, os.sep))
-  assert 0 == os.system("coconut%s -l -t 3 sos%stests.coco" % (cmd, os.sep))
+  assert 0 == os.system("coconut%s -p -l -t 3 sos%ssos.coco" % (cmd, os.sep))  # TODO remove target once Python 2 problems have been fixed
+  assert 0 == os.system("coconut%s -p -l -t 3 sos%sutility.coco" % (cmd, os.sep))
+  assert 0 == os.system("coconut%s -p -l -t 3 sos%stests.coco" % (cmd, os.sep))
 
   # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
   if os.path.exists(".git"):

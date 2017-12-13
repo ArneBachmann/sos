@@ -114,13 +114,11 @@ class Metadata:
 
   def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
 
-  def listChanges(_, changes:ChangeSet, diffmode:bool = False, textglobs:str[] = []) -> bool =
+  def listChanges(_, changes:ChangeSet) -> None:
     ''' In diffmode, don't list modified files, because the diff is displayed elsewhere. '''
-    mods:List[str] = sorted(k for k in changes.modifications.keys() if not _.isTextType(k) or not diffmode)  # only list binary files, the rest is diffed below
-    if changes.additions: print(ajoin("ADD ", sorted(changes.additions.keys()), "\n"))
-    if changes.deletions: print(ajoin("DEL ", sorted(changes.deletions.keys()), "\n"))
-    if mods:              print(ajoin("MOD ", mods, "\n"))
-    changes.additions or changes.deletions or mods
+    if len(changes.additions) > 0:     print(ajoin("ADD ", sorted(changes.additions.keys()), "\n"))
+    if len(changes.deletions) > 0:     print(ajoin("DEL ", sorted(changes.deletions.keys()), "\n"))
+    if len(changes.modifications) > 0: print(ajoin("MOD ", sorted(changes.modifications.keys()), "\n"))
 
   def loadBranches(_) -> None:
     ''' Load list of branches and current branch info from metadata file. '''
@@ -286,7 +284,10 @@ class Metadata:
     _.paths.update(changes.additions)
     _.paths.update(changes.modifications)
 
-  def computeSequentialPathSet(_, branch:int, revision:int, incrementally:bool = False) -> Optional[Iterator[ChangeSet]]:
+  def computeSequentialPathSet(_, branch:int, revision:int) -> None:
+    next(_.computeSequentialPathSetIterator(branch, revision, incrementally = False))  # simply invoke the generator once
+
+  def computeSequentialPathSetIterator(_, branch:int, revision:int, incrementally:bool = True) -> Optional[Iterator[ChangeSet]]:
     ''' In-memory computation of current list of valid PathInfo entries for specified branch and until specified revision (inclusively) by traversing revision on the file system. '''
     _.loadCommit(branch, 0)  # load initial paths
     if incrementally: yield diffPathSets({}, _.paths)
@@ -296,6 +297,7 @@ class Metadata:
       changes:ChangeSet = diffPathSets(_.paths, n.paths)
       _.integrateChangeset(changes)
       if incrementally: yield changes
+    yield None  # for the default case - not incrementally
 
   def parseRevisionString(_, argument:str) -> Tuple[int?,int?]:
     ''' Commit identifiers can be str or int for branch, and int for revision.
@@ -395,7 +397,7 @@ def online(options:str[] = []) -> None:
   strict:bool = '--strict' in options or m.strict
   if options.count("--force") < 2:
     changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = None if not m.track else m.getTrackingPatterns())
-    if (changes.additions or changes.deletions or changes.modifications): Exit("File tree is modified vs. current branch.\nUse 'sos online --force --force' to continue with removing the offline repository.")
+    if modified(changes): Exit("File tree is modified vs. current branch.\nUse 'sos online --force --force' to continue with removing the offline repository.")
   try: shutil.rmtree(metaFolder); info("Exited offline mode. Continue working with your traditional VCS.")
   except Exception as E: Exit("Error removing offline repository: %r" % E)
 
@@ -447,18 +449,21 @@ def diff(argument:str, options:str[] = []) -> None:
   info("/// Differences of file tree vs. revision '%s/r%d'" % (m.branches[branch].name ?? "b%d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, inverse = True, considerOnly = None if not m.track else m.getTrackingPatterns() | m.getTrackingPatterns(branch))
-  if changes.additions or changes.deletions or changes.modifications: debug("/// File changes")
-  anything:bool = m.listChanges(changes, diffmode = True)  # only list modified binary files
+  onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changes, modifications = {k: v for k, v in changes.modifications.items() if not m.isTextType(k)})
+  if modified(onlyBinaryModifications): debug("/// File changes")
+  m.listChanges(onlyBinaryModifications)  # only list modified binary files
 
-  if changes.modifications: debug("\n/// Textual modifications")  # TODO only text files, not binary
+  if changes.modifications: debug("%s/// Textual modifications" % ("\n" if modified(onlyBinaryModifications) else ""))  # TODO only text files, not binary
   for path, pinfo in changes.modifications.items():  # only consider modified files TODO also show A/D here? or replace listing above?
     content:bytes?  # ; othr:str[]; curr:str[]
     if pinfo.size == 0: content = b""  # empty file contents
     else: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
     abspath = os.path.join(m.root, path.replace(SLASH, os.sep))  # current file
     blocks:List[MergeBlock] = merge(file = content, intoname = abspath, diffOnly = True)  # only determine change blocks
-    print("%sDIF %s%s" % ("\n" if anything else "", path, " <timestamp only>" if len(blocks) == 1 and blocks[0].tipe == MergeBlockType.KEEP else ""))
+    print("DIF %s%s" % (path, " <timestamp only>" if len(blocks) == 1 and blocks[0].tipe == MergeBlockType.KEEP else ""))
     for block in blocks:
+      if block.tipe in [MergeBlockType.INSERT, MergeBlockType.REMOVE]:
+        pass  # TODO print some previous and following lines - which aren't accessible here anymore
       if block.tipe == MergeBlockType.INSERT:  # TODO show color via curses?
         for no, line in enumerate(block.lines):
           print("+++ %04d |%s|" % (no + block.line, line))
@@ -522,8 +527,8 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
 
   # Determine current changes
   m.computeSequentialPathSet(m.branch, max(m.commits))  # load all commits up to specified revision
-  changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = None if not m.track and not m.picky else trackingPatterns) if not commit else m.findChanges(m.branch, max(m.commits) + 1, checkContent = strict, considerOnly = None if not m.track and not m.picky else trackingPatterns)
-  if (changes.additions or changes.deletions or changes.modifications) and not force:  # and check?
+  changes:ChangeSet = m.findChanges(m.branch if commit else None, max(m.commits) + 1 if commit else None, checkContent = strict, considerOnly = None if not m.track and not m.picky else trackingPatterns)
+  if modified(changes) and not force:  # and check?
     m.listChanges(changes)
     if check and not commit: Exit("File tree contains changes. Use --force to proceed")
   elif commit and not force: Exit("Nothing to commit. Aborting")  #  and not check
@@ -547,7 +552,7 @@ def switch(argument:str, options:str[] = []) -> None:
   else:  # full file switch
     m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for target branch into memory
     changes = m.findChanges(checkContent = strict, inverse = True, considerOnly = None if not m.track else trackingPatterns | m.getTrackingPatterns(branch))  # determine difference of other branch vs. file tree (forced or in sync with current branch; "addition" means exists now and should be removed)
-    if not (changes.additions or changes.deletions or changes.modifications):
+    if not modified(changes):
       info("No changes to current file tree")
     else:  # integration required
       for path, pinfo in changes.deletions.items():
@@ -621,8 +626,10 @@ def update(argument:str, options:str[] = []) -> None:
 
 def delete(argument:str, options:str[] = []) -> None:
   ''' Remove a branch entirely. '''
-  m, branch, revision, changes, strict, force, trackingPatterns = exitOnChanges(argument, options)
+  m, branch, revision, changes, strict, force, trackingPatterns = exitOnChanges(None, options)
   if len(m.branches) == 1: Exit("Cannot remove the only remaining branch. Use 'sos online' to leave offline mode")
+  branch, revision = m.parseRevisionString(argument)  # not from exitOnChanges, because we have to set argument to None there
+  if branch is None or branch not in m.branches: Exit("Unknown branch")
   debug("Removing branch %d%s..." % (branch, " '%s'" % m.branches[branch].name if m.branches[branch].name else ""))
   binfo = m.removeBranch(branch)  # need to keep a reference to removed entry for output below
   info("Branch b%d%s removed" % (branch, " '%s'" % binfo.name if binfo.name else ""))
@@ -688,7 +695,7 @@ def log() -> None:
   m.loadBranch(m.branch)  # knows commit history
   info("/// Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
-  changeset = m.computeSequentialPathSet(m.branch, max(m.commits), incrementally = True)
+  changeset = m.computeSequentialPathSetIterator(m.branch, max(m.commits))
   for no in range(max(m.commits) + 1):
     commit:CommitInfo = m.commits[no]
     changes:ChangeSet = next(changeset)  # side-effect: updates m.paths
