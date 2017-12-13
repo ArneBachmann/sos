@@ -557,7 +557,7 @@ class Tests(unittest.TestCase):
     sos.commit()
     _.createFile(1, "sdfsdgfsdf")
     time.sleep(1.1)
-    sos.commit()
+    sos.commit()  # TODO this sometimes fails "nothing to commit"
     _.createFile(1, "foobar")
     _.assertAllIn(["MOD ./file1", "DIF ./file1", "- | 0000 |xxxxxxxxxx|", "+ | 0000 |foobar|"], wrapChannels(() -> sos.diff("/-2")))  # second last
 

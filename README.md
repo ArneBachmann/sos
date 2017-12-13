@@ -14,7 +14,7 @@ License: [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 
 
 ## Introduction ##
-If you (love, or simply have to) work with the *Subversion* VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
+If you (**love**, or simply **have to**) work with the *Subversion* VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
 
 SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline extension of those VCSs that either don't support offline branching and committing or are too complex, and *c)* as a standalone VCS.
 You may run `sos offline` not only inside a Subversion checkout, but in any (and also multiple, even nested) folders of your file system, even outside of VCS repository checkouts/clones.
