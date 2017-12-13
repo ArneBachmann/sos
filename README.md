@@ -61,17 +61,26 @@ Use the commands `sos add <pattern>` or `sos rm <pattern>` to add file paths and
 
 
 ## Config options ##
-These options can be set or unset by the user and apply for all offline operations from that moment on.
-Some of these options can be set on a per-repository basis during creation (e.g. `sos offline --track --strict`), others can only be set globally (e.g. `sos config set compress no`).
+These options can be set or unset by the user and apply globally for all offline operations the user performs from that moment on.
+Some of these options can be set on a per-repository basis during creation (e.g. `sos offline --track --strict`), others can only be set in a persistant fashion (e.g. `sos config set compress no`).
+
+### Available sub-commands ###
+- `sos config set` sets a boolean flag, a string, or an initial list (semicolon-separated)
+- `sos config unset` removes a setting
+- `sos config add` adds a string entry to a list
+- `sos config rm` removes a string entry from a list
+- `sos config show` lists all defined configuration settings
+
+### Available settings ###
 - `strict`: Flag for always performing full file comparsion, not relying on file size and modification timestamp only. Default: False
 - `track`: Flag for always going offline in tracking mode (SVN-style). Default: False
 - `picky`: Flag for always going offline in picky mode (Git-styly). Default: False
 - `compress`: Flag for compressing versioned artifacts. Default: True
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN)
-- `texttype`: Semicolon-separated list of glob patterns for file names that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library can do. Default: Empty list
-- `bintype`: Semicolon-separated list of glob patterns for file names that should be recognized as binary files that cannot be merged textually. Default: Empty list
-- `ignores`: List of glob patterns for files to ignore during commit/diff/changes/update etc.
-- `ignoresWhitelist`: List of glob patterns that allow files to be added although captured by a blacklist pattern from `ignores`
+- `texttype`: List of file name glob patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. *Default*: Empty list
+- `bintype`: List of file name glob patterns that should be recognized as binary files that cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list
+- `ignores`: List of file name glob patterns to ignore during repository operations (without relative paths - matching only each directory entry)
+- `ignoresWhitelist`: List of file name glob patterns to be consider even if matched by an entry in the `ignores` list
 - `ignoreDirs`: As `ignores`, but for folder names
 - `ignoreDirsWhitelist`: As `ignoresWhitelist`, but for folder names
 

@@ -352,6 +352,19 @@ class Tests(unittest.TestCase):
     mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> theirs
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
 
+  def testIsTextType(_):
+    m = sos.Metadata(".")
+    m.c.texttype = ["*.x", "*.md", "*.md.*"]
+    m.c.bintype = ["*.md.confluence"]
+    _.assertTrue(m.isTextType("ab.txt"))
+    _.assertTrue(m.isTextType("./ab.txt"))
+    _.assertTrue(m.isTextType("bc/ab.txt"))
+    _.assertFalse(m.isTextType("bc/ab."))
+    _.assertTrue(m.isTextType("23_3.x.x"))
+    _.assertTrue(m.isTextType("dfg/dfglkjdf7/test.md"))
+    _.assertTrue(m.isTextType("./test.md.pdf"))
+    _.assertFalse(m.isTextType("./test_a.md.confluence"))
+
   def testEolDet(_):
     _.assertEqual(b"\n", sos.eoldet(b"a\nb"))
     _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))
