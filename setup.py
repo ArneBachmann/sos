@@ -9,7 +9,7 @@ readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md
 if BUILD:
   # First compile Coconut down to universal Python source
   print("Transpiling Coconut for packaging...")
-  cmd = "-develop" if os.getenv("NODEV", "false").strip().lower() != "true" or 0 == os.system("coconut-develop --help") else ""
+  cmd = "-develop" if os.getenv("NODEV", "false").strip().lower() != "true" or 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 10000000).wait() else ""
     
   assert 0 == os.system("coconut%s -p -l -t 3 sos%ssos.coco" % (cmd, os.sep))  # TODO remove target once Python 2 problems have been fixed
   assert 0 == os.system("coconut%s -p -l -t 3 sos%sutility.coco" % (cmd, os.sep))
@@ -50,14 +50,14 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
   # Clean up old binaries for twine upload
   if os.path.exists("dist"):
     rmFiles = list(sorted(os.listdir("dist")))
-    print(repr(rmFiles))
     try:
-      for file in (f for f in rmFiles[:-1] if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
+      for file in (f for f in (rmFiles if "build" in sys.argv and "sdist" in sys.argv else rmFiles[:-1]) if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
         print("Removing old sdist archive %s" % file)
         try: os.unlink(os.path.join("dist", file))
         except: print("Cannot remove old distribution file " + file)
     except: pass
-else:  # during pip install only
+
+else:  # BUILD=false (e.g. pip install)
   import sos.version  # was already generated during build phase
   with open(readmeFile, "r") as fd: README = fd.read()
 
