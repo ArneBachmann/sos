@@ -1,7 +1,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "0.9.6"
+RELEASE = "0.9.7"
 
 BUILD = os.getenv("BUILD", "false").strip().lower() == "true"
 print("Running in %s mode." % ("build" if BUILD else "install"))

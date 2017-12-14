@@ -71,10 +71,10 @@ class Tests(unittest.TestCase):
   def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None) -> None:
     with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "wb") as fd: fd.write(contents if isinstance(contents, bytes) else contents.encode("cp1252"))
 
-  def existsFile(_, number:int, expectedContents:str = None) -> bool:
-    if not os.path.exists("." + os.sep + "file%d" % number): return False
+  def existsFile(_, number:Union[int, str], expectedContents:str = None) -> bool:
+    if not os.path.exists(("." + os.sep + "file%d" % number) if isinstance(number, int) else number): return False
     if expectedContents is None: return True
-    with open("." + os.sep + "file%d" % number, "wb") as fd: return fd.read() == expectedContents
+    with open(("." + os.sep + "file%d" % number) if isinstance(number, int) else number, "rb") as fd: return fd.read() == expectedContents
 
   def testAccessor(_):
      a = sos.Accessor({"a": 1})
@@ -495,6 +495,42 @@ class Tests(unittest.TestCase):
     _.assertInAny('TRK file1 by "./file*"', out)
     _.assertNotInAny('    file1 by "./file*"', out)
     _.assertInAny("    foo", out)
+
+  def testConfigVariations(_):
+    def checkRepoState(flag:bool) -> bool =
+      with open(sos.metaFolder + os.sep + sos.metaFile, "rb") as fd: contents:bytes = fd.read()
+      b'"strict": ' in contents and (b'"strict": ' + (b"true" if flag else b"false")) in contents
+    sos.offline("master", options = ["--plain"])
+    _.createFile(1)
+    sos.commit("Added file1")
+    import pdb; pdb.set_trace()
+    _.existsFile(branchFolder(0, 1) + os.sep + "dfdf", "x" * 10)
+    sos.config("set", ["strict", "on"])
+    _.assertTrue(checkContents(True))
+    sos.config("set", ["strict", "off"])
+    _.assertTrue(checkContents(False))
+    sos.config("set", ["strict", "yes"])
+    _.assertTrue(checkContents(True))
+    sos.config("set", ["strict", "no"])
+    _.assertTrue(checkContents(False))
+    sos.config("set", ["strict", "1"])
+    _.assertTrue(checkContents(True))
+    sos.config("set", ["strict", "0"])
+    _.assertTrue(checkContents(False))
+    sos.config("set", ["strict", "true"])
+    _.assertTrue(checkContents(True))
+    sos.config("set", ["strict", "false"])
+    _.assertTrue(checkContents(False))
+    sos.config("set", ["strict", "enable"])
+    _.assertTrue(checkContents(True))
+    sos.config("set", ["strict", "disable"])
+    _.assertTrue(checkContents(False))
+    sos.config("set", ["strict", "enabled"])
+    _.assertTrue(checkContents(True))
+    sos.config("set", ["strict", "disabled"])
+    _.assertTrue(checkContents(False))
+    try: sos.config("set", ["strict", "nope"]); _.fail()
+    except: pass
 
   def testLsSimple(_):
     _.createFile(1)

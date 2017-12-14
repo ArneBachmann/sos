@@ -44,6 +44,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        For command "offline
 
   Available commands:
     offline [<name>]                                      Start working offline, creating a branch (named <name>)
+      --plain                                               Don't compress versioned files (same as `sos config set compress off`)
       --track                                               Setup SVN-style mode: users add/remove tracking patterns per branch
       --picky                                               Setup Git-style mode: users pick files for each operation
     online                                                Finish working offline
@@ -105,10 +106,10 @@ class Metadata:
     _.branches:Dict[int,BranchInfo] = {}  # branch number zero represents the initial state at branching
     _.commits:Dict[int,CommitInfo] = {}  # consecutive numbers per branch, starting at 0
     _.paths:Dict[str,PathInfo] = {}  # utf-8 encoded relative, normalized file system paths
-    _.track:bool = _.c.track  # track files in the repository (tracked patterns are stored for each branch separately)
-    _.picky:bool = _.c.picky  # pick files on each operation
+    _.track:bool = _.c.track  # track file name patterns in the repository (per branch)
+    _.picky:bool = _.c.picky  # pick files to commit per operation
     _.strict:bool = _.c.strict  # be always strict (regarding file contents comparsion)
-    _.compress:bool = _.c.compress  # these flags are stored per branch, therefore not part of the (default) configuration
+    _.compress:bool = _.c.compress  # these flags are stored in the repository
     _.branch:int? = None  # current branch number
     _.commit:int? = None  # current revision number
 
@@ -126,11 +127,11 @@ class Metadata:
       branches:List[Tuple]
       with codecs.open(os.path.join(_.root, metaFolder, metaFile), "r", encoding = UTF8) as fd:
         flags, branches = json.load(fd)
-      _.branch = flags["branch"]
       _.track = flags["track"]
       _.picky = flags["picky"]
       _.strict = flags["strict"]
       _.compress = flags["compress"]
+      _.branch = flags["branch"]  # current branch integer
       _.branches = {i.number: i for i in (BranchInfo(*item) for item in branches)}  # re-create type info
     except Exception as E:  # if not found, create metadata folder
       _.branches = {}
@@ -379,9 +380,10 @@ def offline(argument:str? = None, options:str[] = []) -> None:
   if '--force' not in options and os.path.exists(metaFolder):
     Exit("Repository folder is either already offline or older branches and commits were left over. Use 'sos online' or continue working offline")
   m:Metadata = Metadata(os.getcwd())
-  if '--picky'   in options or m.c.picky:  m.picky =  True  # Git-like
-  elif '--track' in options or m.c.track:  m.track =  True  # Svn-like
-  if '--strict'  in options or m.c.strict: m.strict = True  # always hash contents
+  if '--plain'   in options or not m.c.compress: m.compress =  False  # plain file copies instead of compressed ones
+  if '--picky'   in options or m.c.picky:        m.picky =     True   # Git-like
+  elif '--track' in options or m.c.track:        m.track =     True   # Svn-like
+  if '--strict'  in options or m.c.strict:       m.strict =    True   # always hash contents
   debug("Preparing offline repository...")
   m.createBranch(0, argument ?? str(defaults["defaultbranch"]), initialMessage = "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
@@ -709,6 +711,7 @@ def config(argument:str, options:List[str] = []) -> None:
   if argument == "set":
     if len(options) < 2: Exit("No key nor value specified")
     if options[0] not in (["defaultbranch"] + CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS): Exit("Unsupported key %r" % options[0])
+    if options[0] in CONFIGURABLE_FLAGS and options[1].lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % options[1].lower())
     c[options[0]] = options[1].lower() in TRUTH_VALUES if options[0] in CONFIGURABLE_FLAGS else (options[1].strip() if options[0] not in CONFIGURABLE_LISTS else safeSplit(options[1], ";"))  # TODO sanitize texts?
   elif argument == "unset":
     if len(options) < 1: Exit("No key specified")

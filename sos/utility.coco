@@ -37,6 +37,7 @@ UTF8 = "utf_8"  # early used constant, not defined in standard library
 CONFIGURABLE_FLAGS = ["strict", "track", "picky", "compress"]
 CONFIGURABLE_LISTS = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
+FALSE_VALUES = ["false", "no", "off", "0", "disable", "disabled"]
 PROGRESS_MARKER = ["|", "/", "-", "\\"]
 metaFolder:str = ".sos"
 metaFile:str = ".meta"
