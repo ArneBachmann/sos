@@ -1,4 +1,4 @@
-import builtins, logging, os, shutil, sys, time, traceback, unittest
+import builtins, json, logging, os, shutil, sys, time, traceback, unittest
 StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
 try: from unittest import mock  # Py3
 except: import mock  # installed via pip
@@ -47,6 +47,11 @@ def wrapChannels(func: -> Any) =
 def mockInput(datas:str[], func) -> Any:
   with mock.patch("builtins.input" if sys.version_info.major >= 3 else "utility._coconut_raw_input", side_effect = datas): return func()
 
+def setRepoFlag(name:str, value:bool) -> None:
+  with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches = json.loads(fd.read())
+  flags[name] = value
+  with open(sos.metaFolder + os.sep + sos.metaFile, "w") as fd: fd.write(json.dumps((flags, branches)))
+
 
 class Tests(unittest.TestCase):
   ''' Entire test suite. '''
@@ -54,8 +59,8 @@ class Tests(unittest.TestCase):
   def setUp(_):
     for entry in os.listdir(testFolder):  # cannot remove testFolder on Windows when using TortoiseSVN as VCS
       resource = os.path.join(testFolder, entry)
-      try: os.unlink(resource)
-      except: shutil.rmtree(resource)
+      if os.path.isdir(resource): shutil.rmtree(resource)
+      else: os.unlink(resource)
     os.chdir(testFolder)
 
   def tearDown(_): pass
@@ -71,7 +76,7 @@ class Tests(unittest.TestCase):
   def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None) -> None:
     with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "wb") as fd: fd.write(contents if isinstance(contents, bytes) else contents.encode("cp1252"))
 
-  def existsFile(_, number:Union[int, str], expectedContents:str = None) -> bool:
+  def existsFile(_, number:Union[int, str], expectedContents:bytes = None) -> bool:
     if not os.path.exists(("." + os.sep + "file%d" % number) if isinstance(number, int) else number): return False
     if expectedContents is None: return True
     with open(("." + os.sep + "file%d" % number) if isinstance(number, int) else number, "rb") as fd: return fd.read() == expectedContents
@@ -268,6 +273,13 @@ class Tests(unittest.TestCase):
     try: sos.commit("nothing"); _.fail()  # expecting Exit due to no changes
     except: pass
 
+  def testGetBranch(_):
+    m = sos.Metadata(os.getcwd())
+    m.branches = {0: sos.BranchInfo(0, 0, "trunk")}
+    _.assertEqual(27, m.getBranchByName(27))
+    _.assertEqual(0, m.getBranchByName("trunk"))
+    _.assertIsNone(m.getBranchByName("unknwon"))
+    
   def testSwitch(_):
     _.createFile(1, "x" * 100)
     _.createFile(2, "y")
@@ -283,8 +295,10 @@ class Tests(unittest.TestCase):
     sos.switch("test")  # file1-2, remove file3 from file tree
     _.assertFalse(_.existsFile(3))  # removed when switching back to test
     out = wrapChannels(() -> sos.status()).replace("\r", "")
-    _.assertIn("  * b0   'test'", out)  # TODO dirty/insync
-    _.assertIn("    b1 'second'", out)  # TODO dirty/insync
+    _.assertIn("  * b00   'test'", out)
+    _.assertIn("    b01 'second'", out)
+    _.assertIn("(dirty)", out)  # one branch has commits
+    _.assertIn("(in sync)", out)  # the other doesn't
     _.createFile(4, "xy")  # generate a file
     sos.switch("second", "--force")  # avoids warning on uncommited changes, but keeps file4
     _.assertFalse(_.existsFile(4))  # removed when forcedly switching back to test
@@ -496,39 +510,60 @@ class Tests(unittest.TestCase):
     _.assertNotInAny('    file1 by "./file*"', out)
     _.assertInAny("    foo", out)
 
+  def testCompression(_):
+    _.createFile(1)
+    sos.offline("master", options = ["--plain", "--force"])
+    _.assertTrue(_.existsFile(branchFolder(0, 0) + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa", b"x" * 10))
+    setRepoFlag("compress", True)  # was plain = uncompressed before
+    _.createFile(2)
+    sos.commit("Added file2")
+    _.assertTrue(_.existsFile(branchFolder(0, 1) + os.sep + "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"))  # exists
+    _.assertFalse(_.existsFile(branchFolder(0, 1) + os.sep + "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2", b"x" * 10))  # but is compressed instead
+
   def testConfigVariations(_):
     def checkRepoState(flag:bool) -> bool =
       with open(sos.metaFolder + os.sep + sos.metaFile, "rb") as fd: contents:bytes = fd.read()
       b'"strict": ' in contents and (b'"strict": ' + (b"true" if flag else b"false")) in contents
-    sos.offline("master", options = ["--plain"])
-    _.createFile(1)
-    sos.commit("Added file1")
-    import pdb; pdb.set_trace()
-    _.existsFile(branchFolder(0, 1) + os.sep + "dfdf", "x" * 10)
+    def makeRepo():
+      sos.offline("master", options = ["--plain", "--force"])
+      _.createFile(1)
+      sos.commit("Added file1")
     sos.config("set", ["strict", "on"])
-    _.assertTrue(checkContents(True))
+    makeRepo()
+    _.assertTrue(checkRepoState(True))
     sos.config("set", ["strict", "off"])
-    _.assertTrue(checkContents(False))
+    makeRepo()
+    _.assertTrue(checkRepoState(False))
     sos.config("set", ["strict", "yes"])
-    _.assertTrue(checkContents(True))
+    makeRepo()
+    _.assertTrue(checkRepoState(True))
     sos.config("set", ["strict", "no"])
-    _.assertTrue(checkContents(False))
+    makeRepo()
+    _.assertTrue(checkRepoState(False))
     sos.config("set", ["strict", "1"])
-    _.assertTrue(checkContents(True))
+    makeRepo()
+    _.assertTrue(checkRepoState(True))
     sos.config("set", ["strict", "0"])
-    _.assertTrue(checkContents(False))
+    makeRepo()
+    _.assertTrue(checkRepoState(False))
     sos.config("set", ["strict", "true"])
-    _.assertTrue(checkContents(True))
+    makeRepo()
+    _.assertTrue(checkRepoState(True))
     sos.config("set", ["strict", "false"])
-    _.assertTrue(checkContents(False))
+    makeRepo()
+    _.assertTrue(checkRepoState(False))
     sos.config("set", ["strict", "enable"])
-    _.assertTrue(checkContents(True))
+    makeRepo()
+    _.assertTrue(checkRepoState(True))
     sos.config("set", ["strict", "disable"])
-    _.assertTrue(checkContents(False))
+    makeRepo()
+    _.assertTrue(checkRepoState(False))
     sos.config("set", ["strict", "enabled"])
-    _.assertTrue(checkContents(True))
+    makeRepo()
+    _.assertTrue(checkRepoState(True))
     sos.config("set", ["strict", "disabled"])
-    _.assertTrue(checkContents(False))
+    makeRepo()
+    _.assertTrue(checkRepoState(False))
     try: sos.config("set", ["strict", "nope"]); _.fail()
     except: pass
 
