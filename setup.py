@@ -9,7 +9,7 @@ readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md
 if BUILD:
   # First compile Coconut down to universal Python source
   print("Transpiling Coconut for packaging...")
-  cmd = "-develop" if os.getenv("NODEV", "false").strip().lower() != "true" or 0 == os.system("coconut-develop -l -t 3 sos%ssos.coco" % os.sep) else ""
+  cmd = "-develop" if os.getenv("NODEV", "false").strip().lower() != "true" or 0 == os.system("coconut-develop --help") else ""
     
   assert 0 == os.system("coconut%s -p -l -t 3 sos%ssos.coco" % (cmd, os.sep))  # TODO remove target once Python 2 problems have been fixed
   assert 0 == os.system("coconut%s -p -l -t 3 sos%sutility.coco" % (cmd, os.sep))
