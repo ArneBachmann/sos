@@ -33,34 +33,38 @@ SOS supports three different file handling models that you may use to your likin
 - **Picky mode**: Each operation needs the explicit declaration of file name patterns for versioning (like Git does). Drawback: Need to stage files for every single commit
 
 
-## Comparison with Traditional VCS ##
-- `switch` works like `checkout` in Git or `update to revision` in SVN
-- `update` works a bit like `pull` in Git or `update` in SVN
-
-
-## Compatibility ##
-- SOS runs on any Python 3 distribution, except PyPy. Support for Python 2 is only partial, the test suite doesn't run through entirely yet
+### Compatibility ###
+- SOS runs on any Python 3 distribution, except PyPy (TODO). Support for Python 2 is only partial, as the test suite doesn't run through entirely yet, although SOS's programming language Coconut is generally able to transpile to valid Python 2 source code
 - SOS is compatible with above mentioned traditional VCSs: Subversion, Git, gitless, Bazaar, Mercurial and Fossil
 - File name encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
 
-## Commit Semantics ##
-- A *commit* is the act of creating an immutable snapshot of the (tracked) file tree. Its result is a numbered *revision*, which is also called a *change set*.
-- The first revision (after `sos offline` or `soso branch`) always has the number `0`
-- Each `sos commit` increments the revision number by one; revisions are referenced by this numeric index only
+## Comparison with Traditional VCS ##
+When completing SOS 1.0 I incidentally discovered an interesting article by ... that discusses central weaknesses in the design of VCSs, with a focus on Git. Many of these arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
 
+- While Git is basically a large key-value store with a thin access interface on top, SOS keeps a very clear (folder) structure of branches, revisions and files
+- Compared to SVN SOS's file store is much simpler and doesn't require an integrated database
+- The term *file tree* is used thoughout this document to refer to the actual state of files and folders on the user's computer at a certain point in time. It's not exactly the same as a *checkout* or *working copy*, but largely comparable.
 
-## Update and Merge Semantics ##
-When differing contents are merged, there is always a potential for conflict; not all changes can be merged automatically with confidence. SOS takes a simplistic and pragmatic approach and largely follows a simple diff algorithm to highlight changes. Insertions and deletions are noted, and modifications are partially detected and marked as such. There are different layers of changes that SOS is able to work on:
-- File addition or removal per revision, e.g. when updating from another branch and/or revision or switching to them
-- Line insertion or deletion inside a file, e.g. when merging file modifications during update
-- Character insertion or deletion on a text line, e.g. when non-conflicting intra-line differences are detected
-- Updating in `--track` or `--picky` mode will always combine all tracked file patterns. To revert this, use the `switch --meta` command to pull back in another branch's or revision's tracking patterns to the currently active branch.
-- There may be, however, blocks of text lines that seem inserted/deleted but may have actually just been moved inside the file. SOS attempts to detect clear cases of moved blocks and silently accepts them no matter what. TODO introduce option flag to avoid this behavior
+Here is a comparison between SOS and VCS's commands:
+- `branch` creates a branch from the current file tree (or last commit), but also switches to it immediately (unless told not to). There is no requirement to name branches, removing all barriers
+    - SOS allows to branch from the latest committed revision via `sos branch [<name>] --last`; this automatically applies when in tracking and picky mode. In consequence any changes performed since last commit will automatically be considered as a change for the next commit on the branch unless `--stay` was added as well to not switch to the new branch
+- `commit` creates a numbered revision similar to SVN, but revision numbers are only unique per branch, as they aren't stored in a global namespace. The commit message is optional on purpose (since `sos commit` serves largely as a CTRL+S replacement)
+    - The first revision (created during execution of `sos offline` or `sos branch`) always has the number `0`
+    - Each `sos commit` increments the revision number by one; revisions are referenced by this numeric index only
+- `delete` destroys and removes a branch. It's a command, not an option flag as in `git branch -d <name>`
+- `switch` works like `checkout` in Git for a revision of another branch (or of the current), or `update` to latest or a specific revision in SVN. Note that switch will always change the current branch (in contrast to Git's checkout, I think)
+- `update` works a bit like `pull` in Git or `update` in SVN and replays the given branch's and/or revision's changes into the file tree. There are plenty of options to configure what changes are actually integrated. This command will not change the current branch like `switch` does
 
+    When differing contents are merged, there is always a potential for conflict; not all changes can be merged automatically with confidence. SOS takes a simplistic and pragmatic approach and largely follows a simple diff algorithm to detect and highlight changes. Insertions and deletions are noted, and modifications are partially detected and marked as such. There are different layers of changes that SOS is able to work on:
+    - File addition or removal in the file tree, e.g. when updating from another branch and/or revision or switching to them
+    - Line insertion or deletion inside a file, e.g. when merging file modifications during update
+    - Character insertion or deletion on a text line, e.g. when non-conflicting intra-line differences are detected
+    - Updating state from another branch in the `--track` or `--picky` mode will always combine all tracked file patterns. To revert this, use the `switch --meta` command to pull back in another branch's and/or revision's tracking patterns to the currently active branch
+    - There may be, however, blocks of text lines that seem inserted/deleted but may have actually just been moved inside the file. SOS attempts to detect clear cases of moved blocks and silently accepts them no matter what. TODO implement and introduce option flag to avoid this behavior
 
-## Working in *Track* and *Picky* Modes ##
-Use the commands `sos add <pattern>` or `sos rm <pattern>` to add file paths and glob patterns.
+### Working in *Track* and *Picky* Modes ###
+Use the commands `sos add <pattern>` or `sos rm <pattern>` to add or remove file paths and glob patterns. These patterns always refer to a specific (relative) file path and may contain globbing characters `?*[]` only in the filename part of the path.
 
 
 ## Configuration Options ##
@@ -73,6 +77,10 @@ Some of these options can be set on a per-repository basis during creation (e.g.
 - `sos config add` adds a string entry to a list
 - `sos config rm` removes a string entry from a list
 - `sos config show` lists all defined configuration settings
+
+### User Configuration and Defaults ###
+SOS optionally uses the [`configr`](https://github.com/ArneBachmann/configr) library to manage per-user global defaults, e.g. for the `--strict` and `--track` flags that the `offline` command takes, but also for file and folder exclusion patterns.
+By means of the `sos config set <key> <value>` command, you can set these flags flag with values like `1`, `no`, `on`, `false`, `enable` or `disabled`.
 
 ### Available Configuration Settings ###
 - `strict`: Flag for always performing full file comparsion, not relying on file size and modification timestamp only. Default: False
@@ -88,27 +96,10 @@ Some of these options can be set on a per-repository basis during creation (e.g.
 - `ignoreDirsWhitelist`: As `ignoresWhitelist`, but for folder names
 
 
-## Branching Semantics ##
-- SOS usually branches from the current file tree state (in simple mode), but allows to branch from the latest revision via `sos branch <name> --last`; this is always true in track and picky mode. That means, however, that any changes performed since last commit will automatically be considered for the next commit on the branch unless `--stay` was used as well
-- The `branch` command switches to the new branch by default. Use `sos branch <name> --stay` to continue working on the current branch
-
-Levels of interactive merging:
-- One rule set for entire revision
-- One rule set per file
-- One decision per block of lines
-- Conflict resolution decision per conflicted line
-
-
 ## Noteworthy Details ##
 - SOS doesn't store branching point information (or references); each branch stands alone and has no relation whatsoever to other branches or certain revisions thereof, except incidentally its initial file contents
 - File tracking patterns are stored per branch, but not versioned with commits. This means that the "what to track" metadata is not part of the changesets.
-- Updating is allowed even if uncommitted changes are present (no matter if from last revision or after switching to any other revision) TODO explain
-- Python 2 support was ditched completely for the time being, as type safety was difficult to guarantee and external library support is partially missing TODO retest
-
-
-## User Configuration and Defaults ##
-SOS optionally uses the [`configr`](https://github.com/ArneBachmann/configr) library to manage per-user global defaults, e.g. for the `--strict` and `--track` flags that the `offline` command takes, but also for file and folder exclusion patterns.
-By means of the `sos config set <key> <value>` command, you can set these flags flag with values like `1`, `no`, `on`, `false`, `enable` or `disabled`.
+- `sos update` will **not warn** if local changes are present! This is a noteworthy exception to the failsafe approach taken for most other commands
 
 
 ## FAQ ##
@@ -125,7 +116,8 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Development and Contribution ##
-Please send in your pull requests against `master`. This project uses trunk-based development for the same reason SOS was originally developed - it's much more natural than feature-branching and simply does what most developers want - regularly save your current development state to the VCS.
+You are very welcome to contribute and augment SOS by missing features! Please send in your pull requests against `master`. This project uses trunk-based development for the same reason SOS was originally developed - it's much more natural than feature- and release-branching and simply does what most developers want - regularly save your current development state to the VCS.
+Note that SOS is currently developed using SVN and only mirrored to Git from time to time.
 
 
 ## Release Management ##
@@ -134,6 +126,6 @@ Please send in your pull requests against `master`. This project uses trunk-base
 - Run `twine upload dist/*.tar.gz` to upload the previously created distribution archive to PyPI.
 
 
-## To Dos and Notes ##
+## Open Tasks and Useful Notes ##
 - diffCommand = "diff -d {old!s} {new!s}"  # requires diffutils on OpenSUSE
 - mergeCommand = "merge -A -L z -L a -L b c a b"  # requires rce on OpenSUSE

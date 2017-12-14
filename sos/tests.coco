@@ -59,11 +59,8 @@ class Tests(unittest.TestCase):
   def setUp(_):
     for entry in os.listdir(testFolder):  # cannot remove testFolder on Windows when using TortoiseSVN as VCS
       resource = os.path.join(testFolder, entry)
-      if os.path.isdir(resource): shutil.rmtree(resource)
-      else: os.unlink(resource)
+      shutil.rmtree(resource) if os.path.isdir(resource) else os.unlink(resource)
     os.chdir(testFolder)
-
-  def tearDown(_): pass
 
   def assertAllIn(_, what:str[], where:Union[str,List[str]]) -> None: [_.assertIn(w, where) for w in what]
 
