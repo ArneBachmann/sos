@@ -35,7 +35,7 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
 
   README = "\n".join(["# Subversion Offline Solution (SOS %s) #" % RELEASE] + open(readmeFile).read().split("\n")[1:])  # replace title in original README file
   with open(readmeFile, "w") as fd: fd.write(README)
-  assert 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
+  if not os.system("pandoc --from=markdown --to=rst --output=README.rst README.md"): print("Warning: Cannot run pandoc")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
 
   import sos.sos as sos
