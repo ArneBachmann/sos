@@ -7,13 +7,13 @@
 
 License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
 
-#### List of Abbreviations ####
-- **MPL**: *Mozilla Public License
+### List of Abbreviations ###
+- **MPL**: *Mozilla Public License*
 - **PyPI**: *Python Package Index*
 - **SCM**: *Source Control Management*
 - **SOS**: *Subversion Offline Solution*
 - **SVN**: Subversion
-- **VCS**: *Version Control Systems*
+- **VCS**: *Version Control System*
 
 
 ## Introduction ##

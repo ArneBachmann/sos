@@ -3,20 +3,20 @@ from setuptools import setup, find_packages
 
 RELEASE = "1.0.0"
 
-BUILD = os.getenv("BUILD", "false").strip().lower() == "true"
-print("Running in %s mode." % ("build" if BUILD else "install"))
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
-if BUILD:
-  # First compile Coconut down to universal Python source
+if 'build' in sys.argv:
   print("Transpiling Coconut for packaging...")
+  if not os.path.exists("build"):
+    try: os.mkdir("build")
+    except: print("Cannot create build folder")
   cmd = "-develop" if os.getenv("NODEV", "false").strip().lower() != "true" or 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 10000000).wait() else ""
-    
+
   assert 0 == os.system("coconut%s -p -l -t 3 sos%ssos.coco" % (cmd, os.sep))  # TODO remove target once Python 2 problems have been fixed
   assert 0 == os.system("coconut%s -p -l -t 3 sos%sutility.coco" % (cmd, os.sep))
   assert 0 == os.system("coconut%s -p -l -t 3 sos%stests.coco" % (cmd, os.sep))
 
-  # Prepare documentation for PyPI by converting from Markdown to reStructuredText via pandoc
   if os.path.exists(".git"):
+    print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")
     try:
       so, se = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE).communicate()  # use tag or hash
       extra = (so.strip() if sys.version_info.major < 3 else so.strip().decode(sys.stdout.encoding)).replace("\n", "-")
@@ -35,39 +35,36 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
 
   README = "\n".join(["# Subversion Offline Solution (SOS %s) #" % RELEASE] + open(readmeFile).read().split("\n")[1:])  # replace title in original README file
   with open(readmeFile, "w") as fd: fd.write(README)
-  assert BUILD or 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
+  assert 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
 
   # Ensure unit tests are fine
   import sos.sos as sos
-  import sos.tests as tests  # needed for version strings
-  if not BUILD:
-    testrun = unittest.defaultTestLoader.loadTestsFromModule(tests).run(unittest.TestResult())
-    print("Test results: %r" % testrun)
-    if len(testrun.errors) > 0: print("Test errors:\n%r" % testrun.errors)
-    if len(testrun.failures) > 0: print("Test failures:\n%r" % testrun.failures)
 
-  # Clean up old binaries for twine upload
+if 'sdist' in sys.argv:
+  print("Cleaning up old archives for twine upload")
+  import sos.tests as tests  # needed for version strings
+  testrun = unittest.defaultTestLoader.loadTestsFromModule(tests).run(unittest.TestResult())
+  print("Test results: %r" % testrun)
+  if len(testrun.errors) > 0: print("Test errors:\n%r" % testrun.errors)
+  if len(testrun.failures) > 0: print("Test failures:\n%r" % testrun.failures)
+  if not os.path.exists("dist"):
+    try: os.mkdir("dist")
+    except: print("Cannot create dist folder")
   if os.path.exists("dist"):
     rmFiles = list(sorted(os.listdir("dist")))
     try:
-      for file in (f for f in (rmFiles if "build" in sys.argv and "sdist" in sys.argv else rmFiles[:-1]) if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
+      for file in (f for f in (rmFiles if "build" in sys.argv else rmFiles[:-1]) if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
         print("Removing old sdist archive %s" % file)
         try: os.unlink(os.path.join("dist", file))
         except: print("Cannot remove old distribution file " + file)
     except: pass
 
-else:  # BUILD=false (e.g. pip install)
+if 'build' not in sys.argv:
   import sos.version  # was already generated during build phase
   with open(readmeFile, "r") as fd: README = fd.read()
 
 print("\nRunning setup() for SOS version " + sos.version.__version__)
-if not os.path.exists("build"):
-  try: os.mkdir("build")
-  except: print("Cannot create build folder")
-if not os.path.exists("dist"):
-  try: os.mkdir("dist")
-  except: print("Cannot create dist folder")
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
@@ -82,6 +79,7 @@ setup(
         Intended Audience :: Other Audience
         Intended Audience :: Science/Research
         Intended Audience :: System Administrators
+        License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)
         Operating System :: OS Independent
         Programming Language :: Other
         Programming Language :: Python
@@ -93,14 +91,13 @@ setup(
         Programming Language :: Python :: 3 :: Only
         """.split('\n') if c.strip()],  # https://pypi.python.org/pypi?:action=list_classifiers
 #        Programming Language :: Coconut
-#        License :: Creative Commons Attribution-ShareAlike 4.0
   keywords = 'VCS SCM version control system Subversion Git gitless Fossil Bazaar Mercurial CVS SVN gl fsl bzr hg',
   author = 'Arne Bachmann',
   author_email = 'ArneBachmann@users.noreply.github.com',
   maintainer = 'Arne Bachmann',
   maintainer_email = 'ArneBachmann@users.noreply.github.com',
   url = 'http://github.com/ArneBachmann/sos',
-  license = 'CC-BY-SA 4.0',
+  license = 'MPL-2.0',
   packages = find_packages(),  # should return ["sos"], but returns []
   package_dir = {"sos": "sos"},
   package_data = {"": ["../LICENSE", "../README.md", "../README.rst", "*.coco"]},
@@ -109,8 +106,8 @@ setup(
   entry_points = {
     'console_scripts': [
       'sos=sos.sos:main',  # Subversion offline solution
-      'vcos=sos.sos:main',  # version control offline solution
-      'mvcs=sos.sos:main'  # meta version control system
+  #    'vcos=sos.sos:main',  # version control offline solution
+  #    'mvcs=sos.sos:main'  # meta version control system
     ]
   },
 #  extras_require = {
