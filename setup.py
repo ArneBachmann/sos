@@ -1,7 +1,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.0.0"
+RELEASE = "1.0.1"
 
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 if 'build' in sys.argv:
@@ -43,18 +43,13 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
 
 if 'sdist' in sys.argv:
   print("Cleaning up old archives for twine upload")
-  import sos.tests as tests  # needed for version strings
-  testrun = unittest.defaultTestLoader.loadTestsFromModule(tests).run(unittest.TestResult())
-  print("Test results: %r" % testrun)
-  if len(testrun.errors) > 0: print("Test errors:\n%r" % testrun.errors)
-  if len(testrun.failures) > 0: print("Test failures:\n%r" % testrun.failures)
   if not os.path.exists("dist"):
     try: os.mkdir("dist")
     except: print("Cannot create dist folder")
   if os.path.exists("dist"):
     rmFiles = list(sorted(os.listdir("dist")))
     try:
-      for file in (f for f in (rmFiles if "build" in sys.argv else rmFiles[:-1]) if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
+      for file in (f for f in (rmFiles if 'build' in sys.argv else rmFiles[:-1]) if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
         print("Removing old sdist archive %s" % file)
         try: os.unlink(os.path.join("dist", file))
         except: print("Cannot remove old distribution file " + file)
@@ -69,11 +64,11 @@ setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
   install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820", "termwidth >= 2017.2204.2811"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8
-#  test_suite = "tests",  # is this executed automatically? Is also called above
+  test_suite = "sos.tests",
   description = "Subversion Offline Solution (SOS)",
   long_description = README,
   classifiers = [c.strip() for c in """
-        Development Status :: 4 - Beta
+        Development Status :: 5 - Production/Stable
         License :: Free To Use But Restricted
         Intended Audience :: Developers
         Intended Audience :: Other Audience

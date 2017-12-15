@@ -105,7 +105,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 ## FAQ ##
 > Q: I don't want to risk data loss in case SOS has some undiscovered bugs. What can I do?
 >
-> A: Configure SOS to store all versioned files as plain file copies instead of compressed artifacts: `sos config set compress off` before going offline should do the trick. All offline repositories created after that will simply copy files when branching and/or versioning: note, however, that the filenames will be hashed and stored in the metadata file instead (which is human-readable, thankfully).
+> A: Configure SOS to store all versioned files as plain file copies instead of compressed artifacts: `sos offline --plain` for one repository only, or `sos config set compress off` to define a user-preset before going offline. Plain repositories simply copy files when branching and/or versioning; note, however, that filenames will be hashed and stored in the metadata file instead (which is human-readable, thankfully).
 
 
 ## Hints and Tipps ##
@@ -124,8 +124,3 @@ Note that SOS is currently developed using SVN and only mirrored to Git from tim
 - Run `export BUILD=true && python3 setup.py clean build sdist` to update the PyPI version number, compile and test the code, and package it into an archive. If you need evelated rights to do so, use `sudo -E python...`.
 - Run `git add`, `git commit` and `git push` and let Travis CI and AppVeyor run the tests against different target platforms. If there were no problems, continue:
 - Run `twine upload dist/*.tar.gz` to upload the previously created distribution archive to PyPI.
-
-
-## Open Tasks and Useful Notes ##
-- diffCommand = "diff -d {old!s} {new!s}"  # requires diffutils on OpenSUSE
-- mergeCommand = "merge -A -L z -L a -L b c a b"  # requires rce on OpenSUSE

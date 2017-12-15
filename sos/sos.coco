@@ -37,13 +37,14 @@ def saveConfig(c:configr.Configr) -> Tuple[str?, Exception?] =
   c.saveSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))
 
 def usage() -> None:
-  print("""/// {appname} ///
+  print("""/|\\ {appname} /|\\
 
-Usage: {cmd} <command> [<argument>] [<option1>, ...]        For command "offline" and when in offline mode
-       {cmd} <underlying vcs command and arguments>         Unless working in offline mode
+Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in offline mode, or command is "sos offline"
+       {cmd} --sos <underlying vcs command and arguments>   When operating in offline mode, forced passthrough to traditional VCS
+       {cmd} <underlying vcs command and arguments>         When operating in online mode, automatic passthrough to traditional VCS
 
   Available commands:
-    offline [<name>]                                      Start working offline, creating a branch (named <name>)
+    offline [<name>]                                      Start working offline, creating a branch (named <name>), default name depending on VCS
       --plain                                               Don't compress versioned files (same as `sos config set compress off`)
       --track                                               Setup SVN-style mode: users add/remove tracking patterns per branch
       --picky                                               Setup Git-style mode: users pick files for each operation
@@ -438,7 +439,7 @@ def changes(argument:str = None, options:str[] = []) -> ChangeSet =
   m.loadBranch(branch)  # knows commits
   revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
   if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%02d" % revision)
-  info("/// Changes of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
+  info("/|\\ Changes of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = None if not m.track else m.getTrackingPatterns() | m.getTrackingPatterns(branch))
   m.listChanges(changes)
@@ -454,14 +455,14 @@ def diff(argument:str, options:str[] = []) -> None:
   m.loadBranch(branch)  # knows commits
   revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
   if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%02d" % revision)
-  info("/// Differences of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
+  info("/|\\ Differences of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, inverse = True, considerOnly = None if not m.track else m.getTrackingPatterns() | m.getTrackingPatterns(branch))
   onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changes, modifications = {k: v for k, v in changes.modifications.items() if not m.isTextType(k)})
-  if modified(onlyBinaryModifications): debug("/// File changes")
+  if modified(onlyBinaryModifications): debug("/|\\ File changes")
   m.listChanges(onlyBinaryModifications)  # only list modified binary files
 
-  if changes.modifications: debug("%s/// Textual modifications" % ("\n" if modified(onlyBinaryModifications) else ""))  # TODO only text files, not binary
+  if changes.modifications: debug("%s/|\\ Textual modifications" % ("\n" if modified(onlyBinaryModifications) else ""))  # TODO only text files, not binary
   for path, pinfo in changes.modifications.items():  # only consider modified files TODO also show A/D here? or replace listing above?
     content:bytes?  # ; othr:str[]; curr:str[]
     if pinfo.size == 0: content = b""  # empty file contents
@@ -509,7 +510,7 @@ def status() -> None:
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()  # knows current branch
   current:int = m.branch
-  info("/// Offline repository status")
+  info("/|\\ Offline repository status")
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
     m.loadBranch(branch.number)  # knows commit history
@@ -552,7 +553,7 @@ def switch(argument:str, options:str[] = []) -> None:
   ''' Continue work on another branch, replacing file tree changes. '''
   changes:ChangeSet
   m, branch, revision, changes, strict, force, trackingPatterns = exitOnChanges(argument, options)
-  info("/// Switching to branch %sb%02d/r%02d" % ("'%s' " % m.branches[branch].name if m.branches[branch].name else "", branch, revision))
+  info("/|\\ Switching to branch %sb%02d/r%02d" % ("'%s' " % m.branches[branch].name if m.branches[branch].name else "", branch, revision))
 
   # Determine file changes from other branch to current file tree
   if '--meta' in options:  # only switch meta data
@@ -701,7 +702,7 @@ def log() -> None:
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()  # knows current branch
   m.loadBranch(m.branch)  # knows commit history
-  info("/// Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
+  info("/|\\ Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
   changeset = m.computeSequentialPathSetIterator(m.branch, max(m.commits))
   for no in range(max(m.commits) + 1):
