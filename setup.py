@@ -38,7 +38,6 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
   assert 0 == os.system("pandoc --from=markdown --to=rst --output=README.rst README.md")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to let the tests pass on CI
 
-  # Ensure unit tests are fine
   import sos.sos as sos
 
 if 'sdist' in sys.argv:
