@@ -13,6 +13,9 @@ except: configr = None  # declare as undefined
 import sos
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 
+def sync() -> None:
+  if (sys.version_info.major, sys.version_info.minor) >= (3, 3): os.sync()
+
 
 def debugTestRunner(post_mortem = None) =
   ''' Unittest runner doing post mortem debugging on failing tests. '''
@@ -353,7 +356,7 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
     sos.branch("mod")
     _.createFile("test.txt", "x" * 5 + "y" * 5)
-    time.sleep(1.1)
+    sync()
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
@@ -637,7 +640,7 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     sos.commit()
     _.createFile(1, "sdfsdgfsdf")
-    time.sleep(1.1)
+    os.sync()
     sos.commit()  # TODO this sometimes fails "nothing to commit"
     _.createFile(1, "foobar")
     _.assertAllIn(["MOD ./file1", "DIF ./file1", "- | 0000 |xxxxxxxxxx|", "+ | 0000 |foobar|"], wrapChannels(() -> sos.diff("/-2")))  # second last
