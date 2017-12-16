@@ -546,7 +546,7 @@ class Tests(unittest.TestCase):
 
   def testConfigVariations(_):
     def makeRepo():
-      sos.offline("master", options = ["--plain", "--force"])
+      sos.offline("master", options = ["--plain", "--force", "--strict"])
       _.createFile(1)
       sos.commit("Added file1")
     sos.config("set", ["strict", "on"])
