@@ -1,4 +1,4 @@
-import builtins, json, logging, os, shutil, sys, time, traceback, unittest
+import builtins, json, logging, os, shutil, sys, time, traceback, unittest, uuid
 StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
 try: from unittest import mock  # Py3
 except: import mock  # installed via pip
@@ -19,15 +19,15 @@ def sync() -> None:
 
 def determineFilesystemTimeResolution() -> float =
   name = str(uuid.uuid4())
-  with open(name, "wb") as fd: fd.write("x")  # create temporary file
+  with open(name, "w") as fd: fd.write("x")  # create temporary file
   mt = os.stat(name)[8]  # get current timestamp
 
   while os.stat(name)[8] == mt:  # wait until timestamp modified
-    with open(name, "wb") as fd: fd.write("x")
+    with open(name, "w") as fd: fd.write("x")
   mt, start, count = os.stat(name)[8], time.time(), 0
   while os.stat(name)[8] == mt:  # now cound and measure time until modified again
     count += 1
-    with open(name, "wb") as fd: fd.write("x")
+    with open(name, "w") as fd: fd.write("x")
   os.unlink(name)
   fsprecision = round(time.time() - start, 2)
   print("File system timestamp precision is %.2fs; wrote to the file %d times during that time" % (fsprecision, count))
@@ -74,6 +74,10 @@ def setRepoFlag(name:str, value:bool) -> None:
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches = json.loads(fd.read())
   flags[name] = value
   with open(sos.metaFolder + os.sep + sos.metaFile, "w") as fd: fd.write(json.dumps((flags, branches)))
+
+def checkRepoFlag(name:str, flag:bool) -> bool =
+  with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches = json.loads(fd.read())
+  name in flags and flags[name] == flag
 
 
 class Tests(unittest.TestCase):
@@ -541,49 +545,46 @@ class Tests(unittest.TestCase):
     _.assertFalse(_.existsFile(branchFolder(0, 1) + os.sep + "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2", b"x" * 10))  # but is compressed instead
 
   def testConfigVariations(_):
-    def checkRepoState(flag:bool) -> bool =
-      with open(sos.metaFolder + os.sep + sos.metaFile, "rb") as fd: contents:bytes = fd.read()
-      b'"strict": ' in contents and (b'"strict": ' + (b"true" if flag else b"false")) in contents
     def makeRepo():
       sos.offline("master", options = ["--plain", "--force"])
       _.createFile(1)
       sos.commit("Added file1")
     sos.config("set", ["strict", "on"])
     makeRepo()
-    _.assertTrue(checkRepoState(True))
+    _.assertTrue(checkRepoFlag("strict", True))
     sos.config("set", ["strict", "off"])
     makeRepo()
-    _.assertTrue(checkRepoState(False))
+    _.assertTrue(checkRepoFlag("strict", False))
     sos.config("set", ["strict", "yes"])
     makeRepo()
-    _.assertTrue(checkRepoState(True))
+    _.assertTrue(checkRepoFlag("strict", True))
     sos.config("set", ["strict", "no"])
     makeRepo()
-    _.assertTrue(checkRepoState(False))
+    _.assertTrue(checkRepoFlag("strict", False))
     sos.config("set", ["strict", "1"])
     makeRepo()
-    _.assertTrue(checkRepoState(True))
+    _.assertTrue(checkRepoFlag("strict", True))
     sos.config("set", ["strict", "0"])
     makeRepo()
-    _.assertTrue(checkRepoState(False))
+    _.assertTrue(checkRepoFlag("strict", False))
     sos.config("set", ["strict", "true"])
     makeRepo()
-    _.assertTrue(checkRepoState(True))
+    _.assertTrue(checkRepoFlag("strict", True))
     sos.config("set", ["strict", "false"])
     makeRepo()
-    _.assertTrue(checkRepoState(False))
+    _.assertTrue(checkRepoFlag("strict", False))
     sos.config("set", ["strict", "enable"])
     makeRepo()
-    _.assertTrue(checkRepoState(True))
+    _.assertTrue(checkRepoFlag("strict", True))
     sos.config("set", ["strict", "disable"])
     makeRepo()
-    _.assertTrue(checkRepoState(False))
+    _.assertTrue(checkRepoFlag("strict", False))
     sos.config("set", ["strict", "enabled"])
     makeRepo()
-    _.assertTrue(checkRepoState(True))
+    _.assertTrue(checkRepoFlag("strict", True))
     sos.config("set", ["strict", "disabled"])
     makeRepo()
-    _.assertTrue(checkRepoState(False))
+    _.assertTrue(checkRepoFlag("strict", False))
     try: sos.config("set", ["strict", "nope"]); _.fail()
     except: pass
 
