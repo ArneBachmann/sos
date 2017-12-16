@@ -17,6 +17,26 @@ def sync() -> None:
   if (sys.version_info.major, sys.version_info.minor) >= (3, 3): os.sync()
 
 
+def determineFilesystemTimeResolution() -> float =
+  name = str(uuid.uuid4())
+  with open(name, "wb") as fd: fd.write("x")  # create temporary file
+  mt = os.stat(name)[8]  # get current timestamp
+
+  while os.stat(name)[8] == mt:  # wait until timestamp modified
+    with open(name, "wb") as fd: fd.write("x")
+  mt, start, count = os.stat(name)[8], time.time(), 0
+  while os.stat(name)[8] == mt:  # now cound and measure time until modified again
+    count += 1
+    with open(name, "wb") as fd: fd.write("x")
+  os.unlink(name)
+  fsprecision = round(time.time() - start, 2)
+  print("File system timestamp precision is %.2fs; wrote to the file %d times during that time" % (fsprecision, count))
+  fsprecision
+
+
+FS_PRECISION = determineFilesystemTimeResolution() * 1.05
+
+
 def debugTestRunner(post_mortem = None) =
   ''' Unittest runner doing post mortem debugging on failing tests. '''
   import pdb
@@ -99,7 +119,7 @@ class Tests(unittest.TestCase):
     _.createFile(1, "1")
     m.createBranch(0)
     _.assertEqual(1, len(m.paths))
-    time.sleep(1.1)  # time required by filesystem time resolution issues
+    time.sleep(FS_PRECISION)  # time required by filesystem time resolution issues
     _.createFile(1, "2")
     _.createFile(2, "2")
     changes = m.findChanges()  # detect time skew
@@ -356,7 +376,7 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
     sos.branch("mod")
     _.createFile("test.txt", "x" * 5 + "y" * 5)
-    sync()
+    time.sleep(FS_PRECISION)
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
@@ -640,7 +660,7 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     sos.commit()
     _.createFile(1, "sdfsdgfsdf")
-    os.sync()
+    time.sleep(FS_PRECISION)
     sos.commit()  # TODO this sometimes fails "nothing to commit"
     _.createFile(1, "foobar")
     _.assertAllIn(["MOD ./file1", "DIF ./file1", "- | 0000 |xxxxxxxxxx|", "+ | 0000 |foobar|"], wrapChannels(() -> sos.diff("/-2")))  # second last

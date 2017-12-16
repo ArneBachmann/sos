@@ -121,6 +121,6 @@ Note that SOS is currently developed using SVN and only mirrored to Git from tim
 
 
 ## Release Management ##
-- Run `export BUILD=true && python3 setup.py clean build sdist` to update the PyPI version number, compile and test the code, and package it into an archive. If you need evelated rights to do so, use `sudo -E python...`.
+- Run `python3 setup.py clean build test sdist` to update the PyPI version number, compile and test the code, and package it into an archive. If you need evelated rights to do so, use `sudo -E python...`.
 - Run `git add`, `git commit` and `git push` and let Travis CI and AppVeyor run the tests against different target platforms. If there were no problems, continue:
 - Run `twine upload dist/*.tar.gz` to upload the previously created distribution archive to PyPI.
