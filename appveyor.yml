@@ -8,7 +8,7 @@ deploy: false
 environment: 
   PYTHONDONTWRITEBYTECODE: true
   matrix:
-    - PYTHON_VERSION: 2.7
+#    - PYTHON_VERSION: 2.7
     - PYTHON_VERSION: 3.3
     - PYTHON_VERSION: 3.4
     - PYTHON_VERSION: 3.5
@@ -20,7 +20,7 @@ init:
   - "set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 install: 
   - cmd: "python --version"
-  - cmd: "pip install --upgrade appdirs chardet configr coconut-develop coverage python-coveralls"
+  - cmd: "pip install --upgrade appdirs chardet configr coconut coverage python-coveralls"
 platform:
   - x86
   - x64
