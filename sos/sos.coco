@@ -20,7 +20,7 @@ _int:Union[Type] = eval("long") if sys.version_info.major < 3 else int  # for Py
 
 # Constants
 APPNAME:str = "Subversion Offline Solution  V%s  (C) Arne Bachmann" % version.__release_version__
-defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": True, "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
+defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": True, "tags": [], "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
 termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
 
 
@@ -58,7 +58,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     update  [<branch>][/<revision>]                       Integrate work from another branch TODO add many merge and conflict resolution options
     delete  [<branch>]                                    Remove (current) branch entirely
 
-    commit  [<message>]                                   Create a new revision from current state file tree, with an optional commit message
+    commit  [<message>] [--tag]                           Create a new revision from current state file tree, with an optional commit message
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
     diff    [<branch>][/<revision>]                       List changes vs. last or specified revision
     add     [<filename or glob pattern>]                  Add a tracking pattern to current branch (path/filename or glob pattern)
@@ -107,6 +107,7 @@ class Metadata:
     _.branches:Dict[int,BranchInfo] = {}  # branch number zero represents the initial state at branching
     _.commits:Dict[int,CommitInfo] = {}  # consecutive numbers per branch, starting at 0
     _.paths:Dict[str,PathInfo] = {}  # utf-8 encoded relative, normalized file system paths
+    _.tags:List[str] = []
     _.branch:int? = None  # current branch number
     _.commit:int? = None  # current revision number
     _.track:bool = _.c.track  # track file name patterns in the repository (per branch)
@@ -128,6 +129,7 @@ class Metadata:
       branches:List[Tuple]
       with codecs.open(os.path.join(_.root, metaFolder, metaFile), "r", encoding = UTF8) as fd:
         flags, branches = json.load(fd)
+      _.tags = flags["tags"]  # list of commit messages to treat as globally unique tags
       _.branch = flags["branch"]  # current branch integer
       _.track = flags["track"]
       _.picky = flags["picky"]
@@ -141,11 +143,19 @@ class Metadata:
   def saveBranches(_) -> None:
     ''' Save list of branches and current branch info to metadata file. '''
     with codecs.open(os.path.join(_.root, metaFolder, metaFile), "w", encoding = UTF8) as fd:
-      json.dump(({"branch": _.branch, "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress}, list(_.branches.values())), fd, ensure_ascii = False)
+      json.dump(({"tags": _.tags, "branch": _.branch, "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress}, list(_.branches.values())), fd, ensure_ascii = False)
 
-  def getBranchByName(_, name:Union[str,int]) -> int? =
+  def getRevisionByName(_, name:str) -> int? =
+    ''' Convenience accessor for named revisions (using commit message as name). '''
+    if name == "": return -1
+    try: return _int(name)  # attempt to parse integer string
+    except ValueError: pass
+    found = [number for number, commit in _.commits.items() if name == commit.message]
+    found[0] if found else None
+
+  def getBranchByName(_, name:str) -> int? =
     ''' Convenience accessor for named branches. '''
-    if isinstance(name, int): return name
+    if name == "": return _.branch
     try: return _int(name)  # attempt to parse integer string
     except ValueError: pass
     found = [number for number, branch in _.branches.items() if name == branch.name]
@@ -305,15 +315,15 @@ class Metadata:
     ''' Commit identifiers can be str or int for branch, and int for revision.
         Revision identifiers can be negative, with -1 being last commit.
     '''
-    if argument is None: return (_.branch, -1)  # no branch/revision specified
+    if argument is None or argument == SLASH: return (_.branch, -1)  # no branch/revision specified
     argument = argument.strip()
-    if argument.startswith(SLASH): return (_.branch, _int(argument[1:]))  # current branch
+    if argument.startswith(SLASH): return (_.branch, _.getRevisionByName(argument[1:]))  # current branch
     if argument.endswith(SLASH):
       try: return (_.getBranchByName(argument[:-1]), -1)
       except ValueError: Exit("Unknown branch label")
     if SLASH in argument:
       b, r = argument.split(SLASH)[:2]
-      try: return (_.getBranchByName(b), _int(r))
+      try: return (_.getBranchByName(b), _.getRevisionByName(r))
       except ValueError: Exit("Unknown branch label or wrong number format")
     branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
@@ -490,6 +500,9 @@ def diff(argument:str, options:str[] = []) -> None:
 
 def commit(argument:str? = None, options:str[] = []) -> None:
   ''' Create new revision from file tree changes vs. last commit. '''
+  m:Metadata = Metadata(os.getcwd())
+  m.loadBranches()  # knows current branch
+  if argument is not None and argument in m.tags: Exit("Illegal commit message. It was already used as a tag name")
   changes:ChangeSet
   m, branch, revision, changes, strict, force, trackingPatterns = exitOnChanges(None, options, commit = True)  # special flag creates new revision for detected changes, but abort if no changes
   info("Committing changes to branch '%s'..." % m.branches[m.branch].name ?? "b%d" % m.branch)
@@ -502,6 +515,7 @@ def commit(argument:str? = None, options:str[] = []) -> None:
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], insync = False)  # remove tracked patterns
   else:  # track or simple mode
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], insync = False)  # set branch dirty
+  if "--tag" in options and argument is not None: m.tags.append(argument)  # memorize unique tag
   m.saveBranches()
   info("Created new revision r%02d%s (+%02d/-%02d/*%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications)))
 

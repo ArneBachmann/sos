@@ -222,6 +222,7 @@ class Tests(unittest.TestCase):
     _.assertEqual((1, -1), m.parseRevisionString(None))
     _.assertEqual((2, -1), m.parseRevisionString("2/"))
     _.assertEqual((1, -2), m.parseRevisionString("/-2"))
+    _.assertEqual((1, -1), m.parseRevisionString("/"))
 
   def testOfflineEmpty(_):
     os.mkdir("." + os.sep + sos.metaFolder)
@@ -299,11 +300,27 @@ class Tests(unittest.TestCase):
 
   def testGetBranch(_):
     m = sos.Metadata(os.getcwd())
+    m.branch = 1  # current branch
     m.branches = {0: sos.BranchInfo(0, 0, "trunk")}
     _.assertEqual(27, m.getBranchByName(27))
     _.assertEqual(0, m.getBranchByName("trunk"))
-    _.assertIsNone(m.getBranchByName("unknwon"))
-    
+    _.assertEqual(1, m.getBranchByName(""))  # split from "/"
+    _.assertIsNone(m.getBranchByName("unknown"))
+    m.commits = {0: sos.CommitInfo(0, 0, "bla")}
+    _.assertEqual(13, m.getRevisionByName("13"))
+    _.assertEqual(0, m.getRevisionByName("bla"))
+    _.assertEqual(-1, m.getRevisionByName(""))  # split from "/"
+
+  def testTagging(_):
+    m = sos.Metadata(os.getcwd())
+    sos.offline()
+    _.createFile(111)
+    sos.commit("tag", ["--tag"])
+    _.createFile(2)
+    try: sos.commit("tag"); _.fail()
+    except: pass
+    sos.commit("tag-2", ["--tag"])
+
   def testSwitch(_):
     _.createFile(1, "x" * 100)
     _.createFile(2, "y")
