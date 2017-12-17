@@ -11,8 +11,8 @@ if 'build' in sys.argv:
     except: print("Cannot create build folder")
   cmd = "-develop" if os.getenv("NODEV", "false").strip().lower() != "true" or 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 10000000).wait() else ""
 
-  assert 0 == os.system("coconut%s -p -l -t 3 sos%ssos.coco" % (cmd, os.sep))  # TODO remove target once Python 2 problems have been fixed
   assert 0 == os.system("coconut%s -p -l -t 3 sos%sutility.coco" % (cmd, os.sep))
+  assert 0 == os.system("coconut%s -p -l -t 3 sos%ssos.coco" % (cmd, os.sep))  # TODO remove target once Python 2 problems have been fixed
   assert 0 == os.system("coconut%s -p -l -t 3 sos%stests.coco" % (cmd, os.sep))
 
   if os.path.exists(".git"):

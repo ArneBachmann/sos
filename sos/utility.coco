@@ -8,13 +8,13 @@ except: pass  # typing not available (e.g. Python 2)
 
 # Classes
 class JustOnce:
-  def __init__(_, value:str, depleted:str = ""): _.value:str = value; _.depleted = depleted
+  def __init__(_, value:str, depleted:str = "") -> None: _.value:str = value; _.depleted = depleted
   def __call__(_) -> str: value = _.value; _.value = None; return value ?? _.depleted
 
 class Accessor(dict):
   ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
-  def __init__(_, mapping) -> None: dict.__init__(_, mapping)
-  def __getattribute__(_, name:str) -> List[str]:
+  def __init__(_, mapping:Dict[str,Any]) -> None: dict.__init__(_, mapping)
+  def __getattribute__(_, name:str) -> Any:
     try: return _[name]
     except: return dict.__getattribute__(_, name)
 
@@ -167,7 +167,7 @@ def diffPathSets(last:Dict[str,PathInfo], diff:Dict[str,PathInfo]) -> ChangeSet 
   assert not any([path in changes.additions for path in changes.deletions])
   changes
 
-try: DataType = TypeVar("DataType", MergeBlock, BranchInfo)
+try: DataType = TypeVar("DataType", ChangeSet, MergeBlock, BranchInfo)
 except: pass  # Python 2
 
 def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, **_kwargs) -> DataType: r = _old._asdict(); r.update(**_kwargs); return makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))
@@ -252,7 +252,7 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
         output.extend(block.lines)  # default or not .replaces?
   debug("Merge output: " + "; ".join(output))
   nl:bytes = curreol ?? othreol ?? b"\n"
-  nl.join([line.encode(encoding) for line in output])
+  nl.join([line.encode(encoding) for line in output])  # returning bytes
   # TODO handle check for more/less lines in found -/+ blocks to find common section and splitting prefix/suffix out
 
 def getIntraLineMarkers(line:str) -> Range =

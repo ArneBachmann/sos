@@ -1,7 +1,7 @@
 # Standard modules
 import codecs, fnmatch, json, logging, mimetypes, os, shutil, sys, time
 try:
-  from typing import Any, Dict, FrozenSet, IO, Iterator, List, Set, Tuple, Union  # only required for mypy
+  from typing import Any, Dict, FrozenSet, IO, Iterator, List, Set, Tuple, Type, Union  # only required for mypy
 except: pass  # typing not available (e.g. Python 2)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
@@ -15,7 +15,7 @@ except:
 try: import configr  # optional dependency
 except: configr = None  # declare as undefined
 #from enforce import runtime_validation  # https://github.com/RussBaz/enforce  TODO doesn't work for "data" types
-if sys.version_info.major < 3: int = long  # for Python 2 compatibility
+_int:Union[Type] = eval("long") if sys.version_info.major < 3 else int  # for Python 2 compatibility
 
 
 # Constants
@@ -146,7 +146,7 @@ class Metadata:
   def getBranchByName(_, name:Union[str,int]) -> int? =
     ''' Convenience accessor for named branches. '''
     if isinstance(name, int): return name
-    try: return int(name)  # attempt to parse integer string
+    try: return _int(name)  # attempt to parse integer string
     except ValueError: pass
     found = [number for number, branch in _.branches.items() if name == branch.name]
     found[0] if found else None
@@ -177,7 +177,7 @@ class Metadata:
     _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
     for path, pinfo in _.paths.items():
       _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
-    _.commits = {0: CommitInfo(0, int(time.time() * 1000), "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))}  # store initial commit
+    _.commits = {0: CommitInfo(0, _int(time.time() * 1000), "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))}  # store initial commit
     _.saveBranch(branch)  # save branch meta data to branch folder
     _.saveCommit(branch, 0)  # save commit meta data to revision folder
     _.branches[branch] = BranchInfo(branch, _.commits[0].ctime, name, _.branches[_.branch].insync, tracked)  # save branch info, before storing repo state at caller
@@ -204,7 +204,7 @@ class Metadata:
         _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
         for path, pinfo in _.paths.items():
           _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
-    ts = int(time.time() * 1000)
+    ts = _int(time.time() * 1000)
     _.commits = {0: CommitInfo(0, ts, initialMessage ?? "Branched on %s" % strftime(ts))}  # store initial commit for new branch
     _.saveBranch(branch)  # save branch meta data (revisions) to branch folder
     _.saveCommit(branch, 0)  # save commit meta data to revision folder
@@ -257,7 +257,7 @@ class Metadata:
         filename = relpath + SLASH + file
         filepath = os.path.join(path, file)
         stat = os.stat(filepath)
-        size, mtime, newtime = stat.st_size, int(stat.st_mtime * 1000), time.time()
+        size, mtime, newtime = stat.st_size, _int(stat.st_mtime * 1000), time.time()
         if progress and newtime - timer > .1:
           outstring = "\rPreparing %s  %s" % (PROGRESS_MARKER[counter.inc() % 4], filename)
           sys.stdout.write(outstring + " " * max(0, termWidth - len(outstring))); sys.stdout.flush(); timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
@@ -289,7 +289,7 @@ class Metadata:
   def computeSequentialPathSet(_, branch:int, revision:int) -> None:
     next(_.computeSequentialPathSetIterator(branch, revision, incrementally = False))  # simply invoke the generator once
 
-  def computeSequentialPathSetIterator(_, branch:int, revision:int, incrementally:bool = True) -> Optional[Iterator[ChangeSet]]:
+  def computeSequentialPathSetIterator(_, branch:int, revision:int, incrementally:bool = True) -> Iterator[ChangeSet]?:
     ''' In-memory computation of current list of valid PathInfo entries for specified branch and until specified revision (inclusively) by traversing revision on the file system. '''
     _.loadCommit(branch, 0)  # load initial paths
     if incrementally: yield diffPathSets({}, _.paths)
@@ -307,17 +307,17 @@ class Metadata:
     '''
     if argument is None: return (_.branch, -1)  # no branch/revision specified
     argument = argument.strip()
-    if argument.startswith(SLASH): return (_.branch, int(argument[1:]))  # current branch
+    if argument.startswith(SLASH): return (_.branch, _int(argument[1:]))  # current branch
     if argument.endswith(SLASH):
       try: return (_.getBranchByName(argument[:-1]), -1)
       except ValueError: Exit("Unknown branch label")
     if SLASH in argument:
       b, r = argument.split(SLASH)[:2]
-      try: return (_.getBranchByName(b), int(r))
+      try: return (_.getBranchByName(b), _int(r))
       except ValueError: Exit("Unknown branch label or wrong number format")
     branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
-    try: return (branch ?? _.branch, int(argument) if branch is None else -1)  # either branch name/number or reverse/absolute revision number
+    try: return (branch ?? _.branch, _int(argument) if branch is None else -1)  # either branch name/number or reverse/absolute revision number
     except: Exit("Unknown branch label or wrong number format")
     return (None, None)  # should never be reached TODO raise exception instead?
 
@@ -495,7 +495,7 @@ def commit(argument:str? = None, options:str[] = []) -> None:
   info("Committing changes to branch '%s'..." % m.branches[m.branch].name ?? "b%d" % m.branch)
   m.integrateChangeset(changes, clear = True)  # update pathset to changeset only
   m.saveCommit(m.branch, revision)  # revision has already been incremented
-  m.commits[revision] = CommitInfo(revision, int(time.time() * 1000), argument)  # comment can be None
+  m.commits[revision] = CommitInfo(revision, _int(time.time() * 1000), argument)  # comment can be None
   m.saveBranch(m.branch)
   m.loadBranches()  # TODO is it necessary to load again?
   if m.picky:  # HINT was changed from only picky to include track as well
