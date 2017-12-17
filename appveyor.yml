@@ -1,36 +1,28 @@
---- 
+# https://ci.appveyor.com/tools/validate-yaml
+# http://www.yamllint.com/
 build_script: 
-  - 
-    cmd: "python setup.py clean build test && coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py"
+  - cmd: "python setup.py clean build test && coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py"
 clone_script: 
-  - 
-    cmd: "git clone https://github.com/ArneBachmann/sos .\\"
+  - cmd: "git clone https://github.com/ArneBachmann/sos .\\"
 deploy: false
 environment: 
   PYTHONDONTWRITEBYTECODE: true
-  matrix: 
-    - 
-      PYTHON_VERSION: 2.7
-    - 
-      PYTHON_VERSION: 3.3
-    - 
-      PYTHON_VERSION: 3.4
-    - 
-      PYTHON_VERSION: 3.5
-    - 
-      PYTHON_VERSION: 3.6
-  platform: 
-    - x86
-    - x64
+  matrix:
+    - PYTHON_VERSION: 2.7
+    - PYTHON_VERSION: 3.3
+    - PYTHON_VERSION: 3.4
+    - PYTHON_VERSION: 3.5
+    - PYTHON_VERSION: 3.6
 init: 
   - "set PY_VER=%PYTHON_VERSION:.=%"
   - "set PYTHON=C:\\PYTHON%PY_VER%"
   - "if %PLATFORM%==x64 (set PYTHON=%PYTHON%-x64)"
   - "set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 install: 
-  - 
-    cmd: "python --version"
-  - 
-    cmd: "pip install --upgrade appdirs chardet configr coconut-develop coverage python-coveralls"
+  - cmd: "python --version"
+  - cmd: "pip install --upgrade appdirs chardet configr coconut-develop coverage python-coveralls"
+platform:
+  - x86
+  - x64
 skip_branch_with_pr: true
 version: "{build}.{branch}"
