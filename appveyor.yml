@@ -1,50 +1,36 @@
-version: '{build}.{branch}'
+--- 
+build_script: 
+  - 
+    cmd: "python setup.py clean build test && coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py"
+clone_script: 
+  - 
+    cmd: "git clone https://github.com/ArneBachmann/sos .\\"
+deploy: false
+environment: 
+  PYTHONDONTWRITEBYTECODE: true
+  matrix: 
+    - 
+      PYTHON_VERSION: 2.7
+    - 
+      PYTHON_VERSION: 3.3
+    - 
+      PYTHON_VERSION: 3.4
+    - 
+      PYTHON_VERSION: 3.5
+    - 
+      PYTHON_VERSION: 3.6
+  platform: 
+    - x86
+    - x64
+init: 
+  - "set PY_VER=%PYTHON_VERSION:.=%"
+  - "set PYTHON=C:\\PYTHON%PY_VER%"
+  - "if %PLATFORM%==x64 (set PYTHON=%PYTHON%-x64)"
+  - "set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+install: 
+  - 
+    cmd: "python --version"
+  - 
+    cmd: "pip install --upgrade appdirs chardet configr coconut-develop coverage python-coveralls"
 skip_branch_with_pr: true
-init:
-  - set PY_VER=%PYTHON_VERSION:.=%
-  - set PYTHON=C:\PYTHON%PY_VER%
-  - if %PLATFORM%==x64 (set PYTHON=%PYTHON%-x64)
-  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
-install:
-#  - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
-#        https://ci.appveyor.com/api/projects/$env:APPVEYOR_ACCOUNT_NAME/$env:APPVEYOR_PROJECT_SLUG/history?recordsNumber=50).builds | `
-#        Where-Object pullRequestId -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)[0].buildNumber) { `
-#          throw "There are newer queued builds for this pull request, failing early." }
-#  - ps: If(($env:PYTHON).Contains("pypy2")) { (New-Object Net.WebClient).DownloadFile('https://bitbucket.org/pypy/pypy/downloads/pypy2-v5.6.0-win32.zip', "$env:appveyor_build_folder\pypy2.zip"); 7z x pypy2.zip | Out-Null; move pypy2-v5.6.0-win32 C:\pypy2; move C:\pypy2\pypy.exe C:\pypy2\python.exe }
-#  - ps: If(($env:PYTHON).Contains("pypy3")) { (New-Object Net.WebClient).DownloadFile('https://bitbucket.org/pypy/pypy/downloads/pypy3-2.4.0-win32.zip', "$env:appveyor_build_folder\pypy3.zip"); 7z x pypy3.zip | Out-Null; move pypy3-2.4.0-win32 C:\pypy3; move C:\pypy3\pypy.exe C:\pypy3\python.exe }
-#  - ps: If(-not(Test-Path($env:PYTHON))) { & appveyor\install.ps1 }
-#  - cmd: "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-  - cmd: "python --version"
-#  - ps: If(($env:PYTHON).Contains("pypy2")) { (New-Object Net.WebClient).DownloadFile('https://bootstrap.pypa.io/get-pip.py',     "$env:appveyor_build_folder\get-pip.py"); python get-pip.py }
-#  - ps: If(($env:PYTHON).Contains("pypy3")) { (New-Object Net.WebClient).DownloadFile('https://bootstrap.pypa.io/3.2/get-pip.py', "$env:appveyor_build_folder\get-pip.py"); python get-pip.py }
-#  - ps: If(($env:PYTHON).Contains("pypy3")) { python -m pip install --disable-pip-version-check --upgrade "pip<8.0.0" } Else { python -m pip install --disable-pip-version-check --upgrade pip } # downgrade pip, https://github.com/pypa/pip/issues/2669
-#  - ps: If(($env:PYTHON).Contains("pypy3")) { python -m pip install -U --force-reinstall pip }
-#  - ps: If(($env:PYTHON).Contains("pypy")) { python -m pip --version } else { pip --version }  # points to CPython, even when running Pypy (because pypy has no \Scripts folder)
-  - cmd: "pip install --upgrade appdirs chardet configr coconut-develop coverage python-coveralls"
-#  - ps: If(($env:PYTHON).Contains("pypy")) { & ($env:PYTHON + '\bin\coverage') 'help' } Else { coverage help }
-clone_script:
-  - cmd: git clone https://github.com/ArneBachmann/sos .\
-environment:
-  PYTHONDONTWRITEBYTECODE: True  # avoid writing __pycache__ dirs for Python 3
-  platform:
-    - "x86"
-    - "x64"
-  matrix:
-    - PYTHON_VERSION: 2.7
-    - PYTHON_VERSION: 3.3
-    - PYTHON_VERSION: 3.4
-    - PYTHON_VERSION: 3.5
-    - PYTHON_VERSION: 3.6
-build_script:
-  - cmd: python setup.py clean build test && coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py
-# Examples learned from https://social.technet.microsoft.com/wiki/contents/articles/7703.powershell-running-executables.aspx
-#after_test:
-#  - ps: If(($env:PYTHON).Contains("pypy")) { & ($env:PYTHON + '\bin\coverage') 'html'; & ($env:PYTHON + '\bin\coverage') 'annotate' 'tests.py' } Else { coverage html; coverage annotate tests.py }
-#  - cmd: dir
-#  - ps: dir "$env:appveyor_build_folder"
-#  - ps: 7z a coverage.zip "$env:appveyor_build_folder\htmlcov\*"
-#artifacts:
-#  - path: htmlcov.zip
-#    name: Coverage Report
-#    type: Zip
-deploy: off
+version: "{build}.{branch}"
