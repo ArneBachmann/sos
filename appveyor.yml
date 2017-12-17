@@ -1,5 +1,10 @@
 version: '{build}.{branch}'
 skip_branch_with_pr: true
+init:
+  - set PY_VER=%PYTHON_VERSION:.=%
+  - set PYTHON=C:\PYTHON%PY_VER%
+  - if %PLATFORM%==x64 (set PYTHON=%PYTHON%-x64)
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
 install:
 #  - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
 #        https://ci.appveyor.com/api/projects/$env:APPVEYOR_ACCOUNT_NAME/$env:APPVEYOR_PROJECT_SLUG/history?recordsNumber=50).builds | `
@@ -19,16 +24,11 @@ install:
 #  - ps: If(($env:PYTHON).Contains("pypy")) { & ($env:PYTHON + '\bin\coverage') 'help' } Else { coverage help }
 clone_script:
   - cmd: git clone https://github.com/ArneBachmann/sos .\
-init:
-  - set PY_VER=%PYTHON_VERSION:.=%
-  - set PYTHON=C:\PYTHON%PY_VER%
-  - if %PLATFORM%==x64 (set PYTHON=%PYTHON%-x64)
-  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
 environment:
   PYTHONDONTWRITEBYTECODE: True  # avoid writing __pycache__ dirs for Python 3
   platform:
-    - x86
-    - x64
+    - "x86"
+    - "x64"
   matrix:
     - PYTHON_VERSION: 2.7
     - PYTHON_VERSION: 3.3
