@@ -1,7 +1,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.0.2"
+RELEASE = "1.0.3"
 
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 if 'build' in sys.argv:

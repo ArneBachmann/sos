@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.0.2) #
+# Subversion Offline Solution (SOS 1.0.3) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -18,10 +18,10 @@ License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
 
 
 ## Introduction ##
-If you (**love**, or simply **have to**) work with the *Subversion* VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
+If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
 
 SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline extension of those VCSs that either don't support offline branching and committing or are too complex, and *c)* as a standalone VCS.
-You may run `sos offline` not only inside a Subversion checkout, but in any (and also multiple, even nested) folders of your file system, even outside of VCS repository checkouts/clones.
+You may run `sos offline` not only inside a SVN checkout, but in any (and also multiple, even nested) folders of your file system, even outside of VCS repository checkouts/clones.
 
 [SOS](https://github.com/ArneBachmann/sos) thus augments [SVN](http://subversion.apache.org) with offline operation and serves the same need as [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
 
@@ -36,7 +36,7 @@ SOS supports three different file handling models that you may use to your likin
 
 ### Compatibility ###
 - SOS runs on any Python 3 distribution, except PyPy (TODO). Support for Python 2 is only partial, as the test suite doesn't run through entirely yet, although SOS's programming language Coconut is generally able to transpile to valid Python 2 source code
-- SOS is compatible with above mentioned traditional VCSs: Subversion, Git, gitless, Bazaar, Mercurial and Fossil
+- SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
 - File name encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
 

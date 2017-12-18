@@ -462,7 +462,7 @@ class Tests(unittest.TestCase):
     sos.add(".", "file?")
     sos.commit("Third")  # add nothing, because picky
     _.assertEqual(2, len(os.listdir(branchFolder(0, 3))))
-    out = wrapChannels(() -> sos.log()).replace("\r", "")
+    out = wrapChannels(() -> sos.log([])).replace("\r", "")
     _.assertIn("    r2", out)
     _.assertIn("  * r3", out)
     _.assertNotIn("  * r4", out)

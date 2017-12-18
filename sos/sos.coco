@@ -15,7 +15,6 @@ except:
 try: import configr  # optional dependency
 except: configr = None  # declare as undefined
 #from enforce import runtime_validation  # https://github.com/RussBaz/enforce  TODO doesn't work for "data" types
-_int:Union[Type] = eval("long") if sys.version_info.major < 3 else int  # for Python 2 compatibility
 
 
 # Constants
@@ -66,7 +65,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
 
     ls                                                    List file tree and mark changes and tracking status
     status                                                List branches and display repository status
-    log                                                   List commits of current branch
+    log [--changes]                                       List commits of current branch
     config  [set/unset/show/add/rm] [<param> [<value>]]   Configure user-global defaults.
                                                           Flags (1/0, on/off, true/false, yes/no):
                                                             strict, track, picky, compress
@@ -118,7 +117,6 @@ class Metadata:
   def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
 
   def listChanges(_, changes:ChangeSet) -> None:
-    ''' In diffmode, don't list modified files, because the diff is displayed elsewhere. '''
     if len(changes.additions) > 0:     print(ajoin("ADD ", sorted(changes.additions.keys()), "\n"))
     if len(changes.deletions) > 0:     print(ajoin("DEL ", sorted(changes.deletions.keys()), "\n"))
     if len(changes.modifications) > 0: print(ajoin("MOD ", sorted(changes.modifications.keys()), "\n"))
@@ -148,7 +146,7 @@ class Metadata:
   def getRevisionByName(_, name:str) -> int? =
     ''' Convenience accessor for named revisions (using commit message as name). '''
     if name == "": return -1
-    try: return _int(name)  # attempt to parse integer string
+    try: return longint(name)  # attempt to parse integer string
     except ValueError: pass
     found = [number for number, commit in _.commits.items() if name == commit.message]
     found[0] if found else None
@@ -156,7 +154,7 @@ class Metadata:
   def getBranchByName(_, name:str) -> int? =
     ''' Convenience accessor for named branches. '''
     if name == "": return _.branch
-    try: return _int(name)  # attempt to parse integer string
+    try: return longint(name)  # attempt to parse integer string
     except ValueError: pass
     found = [number for number, branch in _.branches.items() if name == branch.name]
     found[0] if found else None
@@ -187,7 +185,7 @@ class Metadata:
     _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
     for path, pinfo in _.paths.items():
       _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
-    _.commits = {0: CommitInfo(0, _int(time.time() * 1000), "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))}  # store initial commit
+    _.commits = {0: CommitInfo(0, longint(time.time() * 1000), "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))}  # store initial commit
     _.saveBranch(branch)  # save branch meta data to branch folder
     _.saveCommit(branch, 0)  # save commit meta data to revision folder
     _.branches[branch] = BranchInfo(branch, _.commits[0].ctime, name, _.branches[_.branch].insync, tracked)  # save branch info, before storing repo state at caller
@@ -214,7 +212,7 @@ class Metadata:
         _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
         for path, pinfo in _.paths.items():
           _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
-    ts = _int(time.time() * 1000)
+    ts = longint(time.time() * 1000)
     _.commits = {0: CommitInfo(0, ts, initialMessage ?? "Branched on %s" % strftime(ts))}  # store initial commit for new branch
     _.saveBranch(branch)  # save branch meta data (revisions) to branch folder
     _.saveCommit(branch, 0)  # save commit meta data to revision folder
@@ -258,6 +256,7 @@ class Metadata:
     if write: os.makedirs(os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision))
     changes:ChangeSet = ChangeSet({}, {}, {})
     counter:Counter = Counter(-1); timer = time.time()
+    hashed:str; written:longint; compressed:longint = 0; original:longint = 0
     for path, dirnames, filenames in os.walk(_.root):
       dirnames[:]  = [f for f in dirnames  if len([n for n in _.c.ignoreDirs if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoreDirsWhitelist if fnmatch.fnmatch(f, p)]) > 0]
       filenames[:] = [f for f in filenames if len([n for n in _.c.ignores    if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoresWhitelist    if fnmatch.fnmatch(f, p)]) > 0]
@@ -267,23 +266,30 @@ class Metadata:
         filename = relpath + SLASH + file
         filepath = os.path.join(path, file)
         stat = os.stat(filepath)
-        size, mtime, newtime = stat.st_size, _int(stat.st_mtime * 1000), time.time()
+        size, mtime, newtime = stat.st_size, longint(stat.st_mtime * 1000), time.time()
         if progress and newtime - timer > .1:
           outstring = "\rPreparing %s  %s" % (PROGRESS_MARKER[counter.inc() % 4], filename)
           sys.stdout.write(outstring + " " * max(0, termWidth - len(outstring))); sys.stdout.flush(); timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
         if filename not in _.paths:  # detected file not present (or untracked) in other branch
           namehash = hashStr(filename)
-          changes.additions[filename] = PathInfo(namehash, size, mtime, hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, namehash) if write else None) if size > 0 else None)
+          hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, namehash) if write else None)
+          changes.additions[filename] = PathInfo(namehash, size, mtime, hashed if size > 0 else None)
+          compressed += written; original += size
           continue
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
-          changes.additions[filename] = PathInfo(last.namehash, size, mtime, hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, last.namehash) if write else None) if size > 0 else None); continue
+          hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, last.namehash) if write else None)
+          changes.additions[filename] = PathInfo(last.namehash, size, mtime, hashed if size > 0 else None); continue
         elif size != last.size or mtime != last.mtime or (checkContent and hashFile(filepath, _.compress) != last.hash):  # detected a modification
-          changes.modifications[filename] = PathInfo(last.namehash, last.size if inverse else size, last.mtime if inverse else mtime, last.hash if inverse else hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, last.namehash) if write else None) if (last.size if inverse else size) > 0 else None)
+          hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, last.namehash) if write else None) if not inverse else (None, 0)
+          changes.modifications[filename] = PathInfo(last.namehash, last.size if inverse else size, last.mtime if inverse else mtime, last.hash if inverse else hashed if (last.size if inverse else size) > 0 else None)
+        else: continue
+        compressed += written; original += last.size if inverse else size
       # Detect deletions. Files no longer being tracked should not be found here
       for folderPath in (p for p, pinfo in _.paths.items() if p[:p.rindex(SLASH)] == relpath and pinfo.size is not None):  # only versioned (and tracked) files that match currently visited folder. TODO don't check for removal just added entries
         if folderPath[len(relpath) + 1:] not in filenames: changes.deletions[folderPath] = _.paths[folderPath]  # filename no longer in file tree TODO use basename and dirname instead of slicing?
-    if progress: print("Preparation finished." + " " * (termWidth - 21), file = sys.stdout)  # force new line
+    if progress: print("\rPreparation finished. Compression factor %s" % ("is %.1f" % (original * 100. / compressed) if compressed > 0 else "cannot be computed").ljust(termWidth), file = sys.stdout)  # force new line
+    else: debug("Finished detecting changes. Compression factor %s" % ("is %.1f" % (original * 100. / compressed) if compressed > 0 else "cannot be computed"))
     changes
 
   def integrateChangeset(_, changes:ChangeSet, clear = False) -> None:
@@ -327,7 +333,7 @@ class Metadata:
       except ValueError: Exit("Unknown branch label or wrong number format")
     branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
-    try: return (branch ?? _.branch, _int(argument) if branch is None else -1)  # either branch name/number or reverse/absolute revision number
+    try: return (branch ?? _.branch, longint(argument) if branch is None else -1)  # either branch name/number or reverse/absolute revision number
     except: Exit("Unknown branch label or wrong number format")
     return (None, None)  # should never be reached TODO raise exception instead?
 
@@ -389,7 +395,7 @@ class Metadata:
 def offline(argument:str? = None, options:str[] = []) -> None:
   ''' Initial command to start working offline. '''
   if os.path.exists(metaFolder):
-    if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over. Use 'sos online' or continue working offline")
+    if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over.\nUse 'sos online' to check for dirty branches, or\nWipe existing offline branches with 'sos offline --force'")
     try:
       for entry in os.listdir(metaFolder):
         resource = metaFolder + os.sep + entry
@@ -508,7 +514,7 @@ def commit(argument:str? = None, options:str[] = []) -> None:
   info("Committing changes to branch '%s'..." % m.branches[m.branch].name ?? "b%d" % m.branch)
   m.integrateChangeset(changes, clear = True)  # update pathset to changeset only
   m.saveCommit(m.branch, revision)  # revision has already been incremented
-  m.commits[revision] = CommitInfo(revision, _int(time.time() * 1000), argument)  # comment can be None
+  m.commits[revision] = CommitInfo(revision, longint(time.time() * 1000), argument)  # comment can be None
   m.saveBranch(m.branch)
   m.loadBranches()  # TODO is it necessary to load again?
   if m.picky:  # HINT was changed from only picky to include track as well
@@ -711,19 +717,21 @@ def ls(argument:str? = None) -> None:
         if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(pattern)  # TODO or only file basename?
     print("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "   "), file, ' by "%s"' % ignore if ignore is not None else (" by " + ";".join(['"%s"' % match for match in matches]) if len(matches) > 0 else "")))
 
-def log() -> None:
-  ''' List previous commits on current branch. '''  # TODO --verbose for changesets
+def log(options:str[]) -> None:
+  ''' List previous commits on current branch. '''
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()  # knows current branch
   m.loadBranch(m.branch)  # knows commit history
   info("/|\\ Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
   changeset = m.computeSequentialPathSetIterator(m.branch, max(m.commits))
+  maxWidth:int = max([wcswidth(commit.message) for commit in m.commits.values()])
   for no in range(max(m.commits) + 1):
     commit:CommitInfo = m.commits[no]
     changes:ChangeSet = next(changeset)  # side-effect: updates m.paths
-    print("  %s r%s @%s (+%02d/-%02d/*%02d): %s" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(changes.additions), len(changes.deletions), len(changes.modifications), commit.message ?? ""))
-    # TODO list number of files and if binary/text
+    newTextFiles:int = len([file for file in changes.additions.keys() if m.isTextType(file)])
+    print("  %s r%s @%s (+%02d/-%02d/*%02d +%02dT/%05.1f%%) |%s|" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(changes.additions), len(changes.deletions), len(changes.modifications), newTextFiles, 0. if len(changes.additions) == 0 else newTextFiles * 100. / len(changes.additions), (commit.message ?? "").ljust(maxWidth)))
+    if '--changes' in options: m.listChanges(changes)
 
 def config(argument:str, options:List[str] = []) -> None:
   if argument not in ["set", "unset", "show", "list", "add", "rm"]: Exit("Unknown config command")
@@ -759,7 +767,7 @@ def parse(root:str, inFolder:str):
   ''' Main operation. '''
   debug("Parsing command-line arguments...")
   command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
-  argument = sys.argv[2].strip() if len(sys.argv) > 2 else None
+  argument = sys.argv[2].strip() if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else None
   options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
   debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
   if   command[:1] == "a":   add(inFolder, argument, options)
@@ -770,7 +778,7 @@ def parse(root:str, inFolder:str):
   elif command[:2] == "de":  delete(argument, options)
   elif command[:2] == "di":  diff(argument, options)
   elif command[:1] == "h":   usage()
-  elif command[:2] == "lo":  log()
+  elif command[:2] == "lo":  log(options)
   elif command[:2] in ["li", "ls"]:  ls(argument)
   elif command[:2] == "of":  offline(argument, options)
   elif command[:2] == "on":  online(options)

@@ -1,0 +1,9 @@
+import os
+from typing import TypeVar
+
+#reduce((a, b) -> a + b, [1, 2], 0)
+#list(reduce(lambda last, pattern: last | set(fnmatch.filter(filenames, os.path.basename(pattern))), (p for p in considerOnly if os.path.dirname(p) == relpath), set()))
+
+try: Splittable = TypeVar("Splittable", str, bytes)
+except: pass  # Python 2
+def safeSplit(s:Splittable, d:Splittable? = None) -> Splittable[]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []

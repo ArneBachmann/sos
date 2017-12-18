@@ -4,6 +4,9 @@ try:
   from typing import Any, Dict, IO, List, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = Union[int,float]
 except: pass  # typing not available (e.g. Python 2)
+try: import wcwidth
+except: pass  # optional dependency
+longint:Union[Type] = eval("long") if sys.version_info.major < 3 else int  # for Python 2 compatibility
 
 
 # Classes
@@ -78,6 +81,14 @@ except:
     except UnicodeError: pass
     "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
 
+def wcswidth(string:str) -> int =
+  l:int = None
+  try:
+    l:int = wcwidth.wcswitdh(string)
+    if l < 0: return len(string)
+  except: return len(string)
+  l
+
 def openIt(file:str, mode:str, compress:bool = False) -> IO = bz2.BZ2File(file, mode) if compress else open(file, mode + "b")  # Abstraction for opening both compressed and plain files
 
 def eoldet(file:bytes) -> bytes? =
@@ -114,9 +125,10 @@ def getTermWidth() -> int =
   except: return 80
   termwidth.getTermWidth()[0]
 
-def hashFile(path:str, compress:bool, saveTo:str? = None) -> str =
-  ''' Calculate hash of file contents. '''
+def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,longint] =
+  ''' Calculate hash of file contents, and return compressed sized, if in write mode. '''
   _hash = hashlib.sha256()
+  wsize:longint = 0
   to = openIt(saveTo, "w", compress) if saveTo else None
   with open(path, "rb") as fd:
     while True:
@@ -124,8 +136,10 @@ def hashFile(path:str, compress:bool, saveTo:str? = None) -> str =
       _hash.update(buffer)
       if to: to.write(buffer)
       if len(buffer) < bufSize: break
-    if to: to.close()
-  _hash.hexdigest()
+    if to:
+      to.close()
+      wsize = os.stat(saveTo).st_size
+  (_hash.hexdigest(), wsize)
 
 def firstOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
   ''' Utility. '''
