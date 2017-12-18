@@ -21,7 +21,6 @@ def determineFilesystemTimeResolution() -> float =
   name = str(uuid.uuid4())
   with open(name, "w") as fd: fd.write("x")  # create temporary file
   mt = os.stat(name)[8]  # get current timestamp
-
   while os.stat(name)[8] == mt:  # wait until timestamp modified
     with open(name, "w") as fd: fd.write("x")
   mt, start, count = os.stat(name)[8], time.time(), 0
@@ -278,7 +277,7 @@ class Tests(unittest.TestCase):
     _.assertEqual(0, len(changes.additions))
     _.assertEqual(0, len(changes.deletions))
     _.assertEqual(0, len(changes.modifications))
-    _.createFile(1, "z")
+    _.createFile(1, "z")  # size change
     changes = sos.changes()
     _.assertEqual(0, len(changes.additions))
     _.assertEqual(0, len(changes.deletions))
@@ -287,14 +286,16 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["r0", "r1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))
     _.assertAllIn([sos.metaFile, "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir(branchFolder(0, 1)))
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # no further files, only the modified one
-    _.assertEqual(1, len(sos.changes("/0").modifications))  # vs. implicit (same) branch revision
-    _.assertEqual(1, len(sos.changes("0/0").modifications))  # vs. explicit branch revision
-    _.createFile(1, "")  # create empty file, mentioned in meta data, but not stored as own file
+    _.assertEqual(1, len(sos.changes("/0").modifications))  # vs. explicit revision on current branch
+    _.assertEqual(1, len(sos.changes("0/0").modifications))  # vs. explicit branch/revision
+    _.createFile(1, "")  # modify to empty file, mentioned in meta data, but not stored as own file
+    os.unlink("file2")
+    changes = sos.changes()
     _.assertEqual(0, len(changes.additions))
-    _.assertEqual(0, len(changes.deletions))
+    _.assertEqual(1, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
     sos.commit("modified")
-    _.assertEqual(1, len(os.listdir(branchFolder(0, 2))))  # no further files, only the modified one
+    _.assertEqual(1, len(os.listdir(branchFolder(0, 2))))  # no additional files, only mentions in metadata
     try: sos.commit("nothing"); _.fail()  # expecting Exit due to no changes
     except: pass
 

@@ -58,6 +58,14 @@ if 'build' not in sys.argv:
   import sos.version  # was already generated during build phase
   with open(readmeFile, "r") as fd: README = fd.read()
 
+#if 'test' in sys.argv and '-v' in sys.argv: os.environ["DEBUG"] = "true"
+if 'cover' in sys.argv:
+  sys.argv.remove('cover')
+  if 'test' in sys.argv: sys.argv.remove('test')
+  if 0 != os.system("coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py"):
+    print("Cannot create coverage report when tests fail")
+
+
 print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
