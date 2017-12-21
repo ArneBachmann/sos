@@ -70,7 +70,7 @@ Use the commands `sos add <pattern>` or `sos rm <pattern>` to add or remove file
 
 ## Configuration Options ##
 These options can be set or unset by the user and apply globally for all offline operations the user performs from that moment on.
-Some of these options can be set on a per-repository basis during creation (e.g. `sos offline --track --strict`), others can only be set in a persistant fashion (e.g. `sos config set compress no`).
+Some of these options can be set on a per-repository basis during creation (e.g. `sos offline --track --strict`), others can only be set in a persistant fashion (e.g. `sos config set texttype "*.xsd"`).
 
 ### Configuration Commands ###
 - `sos config set` sets a boolean flag, a string, or an initial list (semicolon-separated)
