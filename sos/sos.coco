@@ -61,6 +61,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
     diff    [<branch>][/<revision>]                       List changes vs. last or specified revision
     add     [<filename or glob pattern>]                  Add a tracking pattern to current branch (path/filename or glob pattern)
+    mv      [<oldpattern>] [<newpattern>]                 Rename, move or move and rename tracked files according to glob patterns
     rm      [<filename or glob pattern>]                  Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
 
     ls                                                    List file tree and mark changes and tracking status
@@ -595,13 +596,13 @@ def switch(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
     else:  # integration required
       for path, pinfo in changes.deletions.items():
         m.restoreFile(path, branch, revision, pinfo)  # is deleted in current file tree: restore from branch to reach target
-        debug("ADD " + path)
+        print("ADD " + path)
       for path, pinfo in changes.additions.items():
         os.unlink(os.path.join(m.root, path.replace(SLASH, os.sep)))  # is added in current file tree: remove from branch to reach target
-        debug("DEL " + path)
+        print("DEL " + path)
       for path, pinfo in changes.modifications.items():
         m.restoreFile(path, branch, revision, pinfo)  # is modified in current file tree: restore from branch to reach target
-        debug("MOD " + path)
+        print("MOD " + path)
   m.branch = branch
   m.saveBranches()  # store switched path info
   info("Switched to branch %sb%02d/r%02d" % ("'%s' " % (m.branches[branch].name if m.branches[branch].name else ""), branch, revision))
@@ -626,8 +627,8 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for branch to integrate
   trackingUnion:FrozenSet[str] = trackingPatterns | m.getTrackingPatterns(branch)
   changes = m.findChanges(checkContent = strict, inverse = True, considerOnly = onlys if not m.track else conditionalIntersection(onlys, trackingUnion), dontConsider = excps)  # determine difference of other branch vs. file tree. "addition" means exists now but not in other, and should be removed unless in tracking mode
-  if not (mrg & MergeOperation.INSERT and changes.additions or (mrg & MergeOperation.REMOVE and changes.deletions) or changes.modifications):
-    if trackingUnion == trackingPatterns:  # nothing added
+  if not (mrg & MergeOperation.INSERT and changes.additions or (mrg & MergeOperation.REMOVE and changes.deletions) or changes.modifications):  # no file ops
+    if trackingUnion != trackingPatterns:  # nothing added
       info("No file changes detected, but tracking patterns were merged (run 'sos switch /-1 --meta' to undo)")  # TODO write test to see if this works
     else:
       info("Nothing to update")  # but write back updated branch info below
@@ -638,12 +639,12 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
     for path, pinfo in changes.additions.items():
       if m.track or m.picky: Exit("This should never happen")  # because untracked files of other branch cannot be detected (which is good)
       if mrg & MergeOperation.REMOVE: os.unlink(m.root + os.sep + path.replace(SLASH, os.sep))
-      print("DEL " if mrg & MergeOperation.REMOVE else "(D) " + path)  # not contained in other branch, but maybe kept
+      print("DEL " + path if mrg & MergeOperation.REMOVE else "(D) " + path)  # not contained in other branch, but maybe kept
     for path, pinfo in changes.modifications.items():
       into:str = os.path.join(m.root, path.replace(SLASH, os.sep))
       binary = not m.isTextType(path)
       if res & ConflictResolution.ASK or (binary and res == ConflictResolution.NEXT):  # TODO this may ask user even if no interaction was asked for (check line level for interactivity fist)
-        print(("MOD " if not binary else "BIN ") + path)
+        print(("MOD " + path if not binary else "BIN ") + path)
         reso = {"i": ConflictResolution.MINE, "t": ConflictResolution.THEIRS, "m": ConflictResolution.NEXT}.get(user_input(" Resolve: *M[I]ne, [T]heirs, [M]erge: (I)").strip().lower(), ConflictResolution.MINE)
         debug("User selected %d" % reso)
       else: reso = res
@@ -729,7 +730,7 @@ def log(options:str[]) -> None:
   info("//|\\\\ Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
   changeset = m.computeSequentialPathSetIterator(m.branch, max(m.commits))
-  maxWidth:int = max([wcswidth(commit.message) for commit in m.commits.values()])
+  maxWidth:int = max([wcswidth(commit.message ?? "") for commit in m.commits.values()])
   for no in range(max(m.commits) + 1):
     commit:CommitInfo = m.commits[no]
     changes:ChangeSet = next(changeset)  # side-effect: updates m.paths
@@ -798,7 +799,7 @@ def parse(root:str, cwd:str):
   elif command[:1] == "r":   rm(relpath, pattern)
   elif command[:2] == "st":  status()
   elif command[:2] == "sw":  switch(argument, options, onlys, excps)
-  elif command[:2] == "u":   update(argument, options, onlys, excps)
+  elif command[:1] == "u":   update(argument, options, onlys, excps)
   else: Exit("Unknown command '%s'" % command)
   sys.exit(0)
 

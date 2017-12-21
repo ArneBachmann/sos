@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.0.4) #
+# Subversion Offline Solution (SOS 1.0.5) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -54,7 +54,7 @@ Here is a comparison between SOS and VCS's commands:
     - The first revision (created during execution of `sos offline` or `sos branch`) always has the number `0`
     - Each `sos commit` increments the revision number by one; revisions are referenced by this numeric index only
 - `delete` destroys and removes a branch. It's a command, not an option flag as in `git branch -d <name>`
-- `switch` works like `checkout` in Git for a revision of another branch (or of the current), or `update` to latest or a specific revision in SVN. Note that switch will always change the current branch (in contrast to Git's checkout, I think)
+- `switch` works like `checkout` in Git for a revision of another branch (or of the current), or `update` to latest or a specific revision in SVN. Please note that switching to a different revision will in no way fix or remember that revision. The file tree will always be compared to the branch's latest commit for change detection
 - `update` works a bit like `pull` in Git or `update` in SVN and replays the given branch's and/or revision's changes into the file tree. There are plenty of options to configure what changes are actually integrated. This command will not change the current branch like `switch` does
 
     When differing contents are merged, there is always a potential for conflict; not all changes can be merged automatically with confidence. SOS takes a simplistic and pragmatic approach and largely follows a simple diff algorithm to detect and highlight changes. Insertions and deletions are noted, and modifications are partially detected and marked as such. There are different layers of changes that SOS is able to work on:
@@ -122,6 +122,7 @@ Note that SOS is currently developed using SVN and only mirrored to Git from tim
 
 
 ## Release Management ##
+- Increase version number in `setup.py`
 - Run `python3 setup.py clean build test sdist` to update the PyPI version number, compile and test the code, and package it into an archive. If you need evelated rights to do so, use `sudo -E python...`.
 - Run `git add`, `git commit` and `git push` and let Travis CI and AppVeyor run the tests against different target platforms. If there were no problems, continue:
 - Run `twine upload dist/*.tar.gz` to upload the previously created distribution archive to PyPI.
