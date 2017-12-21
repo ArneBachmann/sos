@@ -767,6 +767,9 @@ def config(argument:str, options:List[str] = []) -> None:
   f, g = saveConfig(c)
   if f is None: error("Error saving user configuration: %r" % g)
 
+def move(relpath:str, pattern:str, newrelpath:str, newpattern:str, options:List[str] = []) -> None:
+  pass
+
 def parse(root:str, cwd:str):
   ''' Main operation. Main has already chdir into VCS root folder, cwd is original working directory for add, rm. '''
   debug("Parsing command-line arguments...")
@@ -775,23 +778,27 @@ def parse(root:str, cwd:str):
   options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
   onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
   debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
-  if command[:1] in "ar": relpath, pattern = relativize(root, os.path.join(cwd, argument))
+  if command[:1] in "amr": relpath, pattern = relativize(root, os.path.join(cwd, argument))
+  if command[:1] == "m":   newrelpath, newpattern = relativize(root, os.path.join(cwd, options[0]))  # TODO add error message if target pattern is missing
   if   command[:1] == "a":   add(relpath, pattern, options)
   elif command[:1] == "b":   branch(argument, options)
   elif command[:2] == "ch":  changes(argument, options, onlys, excps)
-  elif command[:3] == "com" or command[:2] == "ci": commit(argument, options, onlys, excps)
+  elif command[:3] == "com": commit(argument, options, onlys, excps)
+  elif command[:2] == "ci":  commit(argument, options, onlys, excps)
   elif command[:3] == 'con': config(argument, options)
   elif command[:2] == "de":  delete(argument, options)
   elif command[:2] == "di":  diff(argument, options, onlys, excps)
   elif command[:1] == "h":   usage()
   elif command[:2] == "lo":  log(options)
-  elif command[:2] in ["li", "ls"]:  ls(argument)
+  elif command[:2] == "li":  ls(argument)
+  elif command[:2] == "ls":  ls(argument)
+  elif command[:1] == "m":   move(relpath, pattern, newrelpath, newpattern, options[1:])
   elif command[:2] == "of":  offline(argument, options)
   elif command[:2] == "on":  online(options)
   elif command[:1] == "r":   rm(relpath, pattern)
   elif command[:2] == "st":  status()
   elif command[:2] == "sw":  switch(argument, options, onlys, excps)
-  elif command[:2] == "u":  update(argument, options, onlys, excps)
+  elif command[:2] == "u":   update(argument, options, onlys, excps)
   else: Exit("Unknown command '%s'" % command)
   sys.exit(0)
 

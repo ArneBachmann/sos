@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.0.3) #
+# Subversion Offline Solution (SOS 1.0.4) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
