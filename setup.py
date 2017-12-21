@@ -6,9 +6,6 @@ RELEASE = "1.0.3"
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 if 'build' in sys.argv:
   print("Transpiling Coconut for packaging...")
-  if not os.path.exists("build"):
-    try: os.mkdir("build")
-    except: print("Cannot create build folder")
   cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 10000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
 
   assert 0 == os.system("coconut%s -p -l -t 3 sos%sutility.coco" % (cmd, os.sep))
@@ -40,11 +37,10 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
 
   import sos.sos as sos
 
+if 'test' in sys.argv : print("Warning: Won't build distribution after running unit tests")
+
 if 'sdist' in sys.argv:
   print("Cleaning up old archives for twine upload")
-  if not os.path.exists("dist"):
-    try: os.mkdir("dist")
-    except: print("Cannot create dist folder")
   if os.path.exists("dist"):
     rmFiles = list(sorted(os.listdir("dist")))
     try:
@@ -54,18 +50,19 @@ if 'sdist' in sys.argv:
         except: print("Cannot remove old distribution file " + file)
     except: pass
 
-if 'build' not in sys.argv:
-  import sos.version  # was already generated during build phase
-  with open(readmeFile, "r") as fd: README = fd.read()
-
-#if 'test' in sys.argv and '-v' in sys.argv: os.environ["DEBUG"] = "true"
 if 'cover' in sys.argv:
   sys.argv.remove('cover')
   if 'test' in sys.argv: sys.argv.remove('test')
   if 0 != os.system("coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py"):
     print("Cannot create coverage report when tests fail")
 
+if 'checkdocs' in sys.argv:
+  try: import collective.checkdocs
+  except: raise Exception("Setup requires the pip package 'collective.checkdocs'")
 
+import sos.version
+
+with open(readmeFile.split(".")[0] + ".rst", "r") as fd: README = fd.read()
 print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',

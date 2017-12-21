@@ -1,7 +1,7 @@
 # Utiliy functions
 import bz2, codecs, difflib, hashlib, logging, os, sys, time
 try:
-  from typing import Any, Dict, IO, List, Tuple, Type, TypeVar, Union  # only required for mypy
+  from typing import Any, Callable, Dict, IO, List, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = Union[int,float]
 except: pass  # typing not available (e.g. Python 2)
 try: import wcwidth
@@ -10,9 +10,10 @@ longint:Type = eval("long") if sys.version_info.major < 3 else int  # for Python
 
 
 # Classes
-class JustOnce:
-  def __init__(_, value:str, depleted:str = "") -> None: _.value:str = value; _.depleted = depleted
-  def __call__(_) -> str: value = _.value; _.value = None; return value ?? _.depleted
+class CallOnce:
+  ''' This object can be called any time, but will call the wrapped function only once. '''
+  def __init__(_, func:Callable[[], None]) -> None: _.func:Callable[[], None]? = func
+  def __call__(_) -> None: _.func = _.func() if _.func else None  # sets to None
 
 class Accessor(dict):
   ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
@@ -22,6 +23,7 @@ class Accessor(dict):
     except: return dict.__getattribute__(_, name)
 
 class Counter:
+  ''' A simple counter. Can be augmented to return the last value instead. '''
   def __init__(_, initial:Number = 0) -> None: _.value:Number = initial
   def inc(_, by = 1) -> Number: _.value += by; return _.value
 
@@ -84,7 +86,7 @@ except:
 def wcswidth(string:str) -> int =
   l:int = None
   try:
-    l:int = wcwidth.wcswitdh(string)
+    l = wcwidth.wcswitdh(string)
     if l < 0: return len(string)
   except: return len(string)
   l
@@ -104,7 +106,7 @@ def eoldet(file:bytes) -> bytes? =
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
 
-def Exit(message:str = "") -> None: print(message, file = sys.stderr); sys.exit(1)
+def Exit(message:str = "") -> None: print("[EXIT] " + message + ".", file = sys.stderr); sys.exit(1)
 
 def user_input(msg:str) -> str = input(msg)  # referenceso __builtin__.raw_input on Python 2
 
@@ -309,3 +311,26 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
       elif len(vcss) > 0: choice = vcss[0]
       if choice: return (sos, path, choice)
   (None, vcs[0], vcs[1])
+
+def relativize(root:str, path:str) -> Tuple[str,str] =
+  ''' Gets relative path for specified file. '''
+  relpath = os.path.relpath(os.path.dirname(os.path.abspath(path)), root)
+  relpath, os.path.join(relpath, os.path.basename(path)).replace(os.sep, SLASH)
+
+def parseOnlyOptions(root:str, options:str[]) -> Tuple[Frozenset[str]?, Frozenset[str]?] =
+  cwd:str = os.getcwd()
+  onlys:str[] = []; excps:str[] = []; index:int = 0
+  while True:
+    try:
+      index = 1 + options.index("--only", index)
+      onlys.append(options[index])
+    except: break
+  index = 0
+  while True:
+    try:
+      index = 1 + options.index("--except", index)
+      excps.append(options[index])
+    except: break
+  (frozenset(relativize(root, o) for o in onlys) if onlys else None, frozenset(relativize(root, e) for e in excps) if excps else None)
+
+def conditionalIntersection(a:FrozenSet[str]?, b:FrozenSet[str]) -> FrozenSet[str] = a & b if a else b
