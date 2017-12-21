@@ -55,7 +55,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     switch  [<branch>][/<revision>] [--meta]              Continue work on another branch
       --meta                                                Only switch file tracking patterns for current branch, don't update any files
     update  [<branch>][/<revision>]                       Integrate work from another branch TODO add many merge and conflict resolution options
-    delete  [<branch>]                                    Remove (current) branch entirely
+    destroy [<branch>]                                    Remove (current) branch entirely
 
     commit  [<message>] [--tag]                           Create a new revision from current state file tree, with an optional commit message
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
