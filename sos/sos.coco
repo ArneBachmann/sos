@@ -567,9 +567,9 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
   trackingPatterns:FrozenSet[str] = m.getTrackingPatterns()
   m.computeSequentialPathSet(m.branch, max(m.commits))  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(m.branch if commit else None, max(m.commits) + 1 if commit else None, checkContent = strict, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, trackingPatterns), dontConsider = excps)
-  if modified(changes) and not force:  # and check?
+  if check and modified(changes) and not force:
     m.listChanges(changes)
-    if check and not commit: Exit("File tree contains changes. Use --force to proceed")
+    if not commit: Exit("File tree contains changes. Use --force to proceed")
   elif commit and not force: Exit("Nothing to commit")  #  and not check
 
   if argument is not None:  # branch/revision specified
