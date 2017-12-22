@@ -1,5 +1,5 @@
 # Standard modules
-import codecs, fnmatch, json, logging, mimetypes, os, shutil, sys, time
+import codecs, collections, fnmatch, json, logging, mimetypes, os, shutil, sys, time
 try:
   from typing import Any, Dict, FrozenSet, IO, Iterator, List, Set, Tuple, Type, Union  # only required for mypy
 except: pass  # typing not available (e.g. Python 2)
@@ -252,7 +252,7 @@ class Metadata:
         The function returns the state of file tree *differences*, unless "inverse" is True -> then return original data
         checkContent: also computes file content hashes
         inverse: retain original state (size, mtime, hash) instead of updated one
-        considerOnly: set of tracking patterns. For update operation, consider union of other and current branch
+        considerOnly: set of tracking patterns. None for simple mode. For update operation, consider union of other and current branch
         dontConsider: set of tracking patterns to not consider in changes
         progress: Show file names during processing
     '''
@@ -261,6 +261,12 @@ class Metadata:
     changes:ChangeSet = ChangeSet({}, {}, {})
     counter:Counter = Counter(-1); timer = time.time()
     hashed:str?; written:longint; compressed:longint = 0; original:longint = 0
+    knownPaths:Dict[str,List[str]] = collections.defaultdict(list)
+    for path, pinfo in _.paths.items():  # TODO check dontConsider below
+      if pinfo.size is not None\
+          and (considerOnly is None or any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH) and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern)] for pattern in considerOnly))\
+          and (dontConsider is None or not any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH) and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern)] for pattern in dontConsider)):  # TODO inefficient due to pattern matching
+        knownPaths[os.path.dirname(path)].append(os.path.basename(path))
     for path, dirnames, filenames in os.walk(_.root):
       dirnames[:]  = [f for f in dirnames  if len([n for n in _.c.ignoreDirs if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoreDirsWhitelist if fnmatch.fnmatch(f, p)]) > 0]
       filenames[:] = [f for f in filenames if len([n for n in _.c.ignores    if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoresWhitelist    if fnmatch.fnmatch(f, p)]) > 0]
@@ -292,9 +298,9 @@ class Metadata:
           changes.modifications[filename] = PathInfo(last.namehash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
         else: continue
         compressed += written; original += last.size if inverse else size
-      # Detect deletions. Files no longer being tracked should not be found here
-      for folderPath in (p for p, pinfo in _.paths.items() if p[:p.rindex(SLASH)] == relpath and pinfo.size is not None):  # only versioned (and tracked) files that match currently visited folder. TODO don't check for removal just added entries
-        if folderPath[len(relpath) + 1:] not in filenames: changes.deletions[folderPath] = _.paths[folderPath]  # filename no longer in file tree TODO use basename and dirname instead of slicing?
+      if relpath in knownPaths: knownPaths[relpath][:] = list(set(knownPaths[relpath]) - set(walk))  # at least one file is tracked
+    for path, names in knownPaths.items():  # all paths that weren't walked by
+      for file in names: changes.deletions[path + SLASH + file] = _.paths[path + SLASH + file]
     if progress: print("\rPreparation finished. Compression factor %s" % ("is %.1f" % (original * 100. / compressed) if compressed > 0 else "cannot be computed").ljust(termWidth), file = sys.stdout)  # force new line
     else: debug("Finished detecting changes. Compression factor %s" % ("is %.1f" % (original * 100. / compressed) if compressed > 0 else "cannot be computed"))
     changes
@@ -373,10 +379,13 @@ class Metadata:
     except Exception as E: warn("Cannot read versioned file: %r (%d/%d/%s)" % (E, branch, revision, namehash))
     None
 
-  def restoreFile(_, relpath:str?, branch:int, revision:int, pinfo:PathInfo) -> bytes? =
+  def restoreFile(_, relpath:str?, branch:int, revision:int, pinfo:PathInfo, ensurePath:bool = False) -> bytes? =
     ''' Recreate file for given revision, or return contents if path is None. '''
     if relpath is None: return _.readOrCopyVersionedFile(branch, _.findRevision(branch, revision, pinfo.namehash)[0], pinfo.namehash) if pinfo.size > 0 else b''  # just return contents
     target:str = os.path.join(_.root, relpath.replace(SLASH, os.sep))
+    if ensurePath:  #  and not os.path.exists(os.path.dirname(target)):
+      try: os.makedirs(os.path.dirname(target))
+      except: pass
     if pinfo.size == 0:
       with open(target, "wb"): pass
       try: os.utime(target, (-1, pinfo.mtime / 1000.))  # update access/modification timestamps on file system
@@ -595,7 +604,7 @@ def switch(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
       info("No changes to current file tree")
     else:  # integration required
       for path, pinfo in changes.deletions.items():
-        m.restoreFile(path, branch, revision, pinfo)  # is deleted in current file tree: restore from branch to reach target
+        m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # is deleted in current file tree: restore from branch to reach target
         print("ADD " + path)
       for path, pinfo in changes.additions.items():
         os.unlink(os.path.join(m.root, path.replace(SLASH, os.sep)))  # is added in current file tree: remove from branch to reach target
@@ -634,7 +643,7 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
       info("Nothing to update")  # but write back updated branch info below
   else:  # integration required
     for path, pinfo in changes.deletions.items():  # deletions mark files not present in current file tree -> needs additon
-      if mrg & MergeOperation.INSERT: m.restoreFile(path, branch, revision, pinfo)  # deleted in current file tree: restore from branch to reach target
+      if mrg & MergeOperation.INSERT: m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # deleted in current file tree: restore from branch to reach target
       print("ADD " + path if mrg & MergeOperation.INSERT else "(A) " + path)
     for path, pinfo in changes.additions.items():
       if m.track or m.picky: Exit("This should never happen")  # because untracked files of other branch cannot be detected (which is good)

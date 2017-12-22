@@ -430,6 +430,7 @@ class Tests(unittest.TestCase):
     _.assertFalse(m.isTextType("./test_a.md.confluence"))
 
   def testEolDet(_):
+    ''' Check correct end-of-line detection. '''
     _.assertEqual(b"\n", sos.eoldet(b"a\nb"))
     _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))
     _.assertEqual(b"\r", sos.eoldet(b"\ra\rb"))
@@ -439,6 +440,7 @@ class Tests(unittest.TestCase):
     _.assertIsNone(sos.eoldet(b"sdf"))
 
   def testMerge(_):
+    ''' Check merge results depending on conflict solution options. '''
     a = b"a\nb\ncc\nd"
     b = b"a\nb\nee\nd"
     _.assertEqual(b"a\nb\ncc\nee\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT))  # means insert changes from a into b, but don't replace
@@ -460,6 +462,7 @@ class Tests(unittest.TestCase):
     _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb"))  # in doubt, use "mine" CR-LF
 
   def testPickyMode(_):
+    ''' Confirm that picky mode reset tracked patterns after commits. '''
     sos.offline("trunk", ["--picky"])
     sos.add(".", "./file?", ["--force"])
     _.createFile(1, "aa")
@@ -475,6 +478,7 @@ class Tests(unittest.TestCase):
     _.assertIn("  * r2", out)
 
   def testTrackedSubfolder(_):
+    ''' See if patterns for files in sub folders are picked up correctly. '''
     os.mkdir("." + os.sep + "sub")
     sos.offline("trunk", ["--track"])
     _.createFile(1, "x")
@@ -521,7 +525,7 @@ class Tests(unittest.TestCase):
     sos.branch("Other")  # second branch containing file1 and file2 tracked by "./file?"
     sos.rm(".", "./file?")  # remove tracking pattern, but don't touch previously created and versioned files
     sos.add(".", "./a*a")  # add tracking pattern
-    changes = sos.changes()  # should pick up addition
+    changes = sos.changes()  # should pick up addition only, because tracked, but not the deletion, as not tracked anymore
     _.assertEqual(0, len(changes.modifications))
     _.assertEqual(0, len(changes.deletions))  # not tracked anymore, but contained in version history and not removed
     _.assertEqual(1, len(changes.additions))  # detected one addition "a123a", but won't recognize untracking files as deletion
