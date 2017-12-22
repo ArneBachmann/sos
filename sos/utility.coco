@@ -314,7 +314,7 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
 
 def relativize(root:str, path:str) -> Tuple[str,str] =
   ''' Gets relative path for specified file. '''
-  relpath = os.path.relpath(os.path.dirname(os.path.abspath(path)), root)
+  relpath = os.path.relpath(os.path.dirname(os.path.abspath(path)), root).replace(os.sep, SLASH)
   relpath, os.path.join(relpath, os.path.basename(path)).replace(os.sep, SLASH)
 
 def parseOnlyOptions(root:str, options:str[]) -> Tuple[Frozenset[str]?, Frozenset[str]?] =

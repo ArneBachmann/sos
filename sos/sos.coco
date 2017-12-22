@@ -272,9 +272,9 @@ class Metadata:
       filenames[:] = [f for f in filenames if len([n for n in _.c.ignores    if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoresWhitelist    if fnmatch.fnmatch(f, p)]) > 0]
       dirnames.sort(); filenames.sort()
       relPath = os.path.relpath(path, _.root).replace(os.sep, SLASH)
-      walk = filenames if considerOnly is None else list(reduce((last, pattern) -> last | set(fnmatch.filter(filenames, os.path.basename(pattern))), (p for p in considerOnly if os.path.dirname(p) == relPath), s{}))
+      walk = filenames if considerOnly is None else list(reduce((last, pattern) -> last | set(fnmatch.filter(filenames, os.path.basename(pattern))), (p for p in considerOnly if os.path.dirname(p).replace(os.sep, SLASH) == relPath), s{}))
       if dontConsider:
-        walk[:] = [fn for fn in walk if not any(fnmatch.fnmatch(fn, os.path.basename(p)) for p in dontConsider if os.path.dirname(p) == relPath)]  # TODO dirname is correct noramalized? same above?
+        walk[:] = [fn for fn in walk if not any(fnmatch.fnmatch(fn, os.path.basename(p)) for p in dontConsider if os.path.dirname(p).replace(os.sep, SLASH) == relPath)]  # TODO dirname is correct noramalized? same above?
       for file in walk:  # if m.track or m.picky: only files that match any path-relevant tracking patterns
         filename = relPath + SLASH + file
         filepath = os.path.join(path, file)
@@ -473,7 +473,7 @@ def changes(argument:str = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%02d" % revision)
   info("//|\\\\ Changes of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
-  changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = onlys if not m.track else conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)), dontConsider = excps)
+  changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)), dontConsider = excps)
   m.listChanges(changes)
   changes
 
@@ -489,7 +489,7 @@ def diff(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps:F
   if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%02d" % revision)
   info("//|\\\\ Differences of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
-  changes:ChangeSet = m.findChanges(checkContent = strict, inverse = True, considerOnly = onlys if not m.track else conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)), dontConsider = excps)
+  changes:ChangeSet = m.findChanges(checkContent = strict, inverse = True, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)), dontConsider = excps)
   onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changes, modifications = {k: v for k, v in changes.modifications.items() if not m.isTextType(k)})
   if modified(onlyBinaryModifications): debug("//|\\\\ File changes")
   m.listChanges(onlyBinaryModifications)  # only list modified binary files
@@ -599,7 +599,7 @@ def switch(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = m.branches[branch].tracked)
   else:  # full file switch
     m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for target branch into memory
-    changes = m.findChanges(checkContent = strict, inverse = True, considerOnly = onlys if not m.track else conditionalIntersection(onlys, trackingPatterns | m.getTrackingPatterns(branch)), dontConsider = excps)  # determine difference of other branch vs. file tree (forced or in sync with current branch; "addition" means exists now and should be removed)
+    changes = m.findChanges(checkContent = strict, inverse = True, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, trackingPatterns | m.getTrackingPatterns(branch)), dontConsider = excps)  # determine difference of other branch vs. file tree (forced or in sync with current branch; "addition" means exists now and should be removed)
     if not modified(changes):
       info("No changes to current file tree")
     else:  # integration required
@@ -635,7 +635,7 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
   # Determine file changes from other branch over current file tree
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for branch to integrate
   trackingUnion:FrozenSet[str] = trackingPatterns | m.getTrackingPatterns(branch)
-  changes = m.findChanges(checkContent = strict, inverse = True, considerOnly = onlys if not m.track else conditionalIntersection(onlys, trackingUnion), dontConsider = excps)  # determine difference of other branch vs. file tree. "addition" means exists now but not in other, and should be removed unless in tracking mode
+  changes = m.findChanges(checkContent = strict, inverse = True, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, trackingUnion), dontConsider = excps)  # determine difference of other branch vs. file tree. "addition" means exists now but not in other, and should be removed unless in tracking mode
   if not (mrg & MergeOperation.INSERT and changes.additions or (mrg & MergeOperation.REMOVE and changes.deletions) or changes.modifications):  # no file ops
     if trackingUnion != trackingPatterns:  # nothing added
       info("No file changes detected, but tracking patterns were merged (run 'sos switch /-1 --meta' to undo)")  # TODO write test to see if this works
@@ -689,7 +689,8 @@ def add(relPath:str, pattern:str, options:str[] = []) -> None:
   m.loadBranches()
   if not m.track and not m.picky: Exit("Repository is in simple mode. Use 'offline --track' or 'offline --picky' instead")
   if pattern in m.branches[m.branch].tracked: Exit("Pattern '%s' already tracked" % pattern)
-  if not force and len(fnmatch.filter(os.listdir(os.path.abspath(relPath)), os.path.basename(pattern.replace(SLASH, os.sep)))) == 0:  # doesn't match any current file
+  if not force and not os.path.exists(os.path.basename(relPath.replace(SLASH, os.sep))): Exit("The pattern folder doesn't exist. Use --force to add it anyway")
+  if not force and len(fnmatch.filter(os.listdir(os.path.abspath(relPath.replace(SLASH, os.sep))), os.path.basename(pattern.replace(SLASH, os.sep)))) == 0:  # doesn't match any current file
     Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")
   m.branches[m.branch].tracked.append(pattern)  # TODO set inSync flag to False? same for rm
   m.saveBranches()
@@ -708,7 +709,7 @@ def rm(relPath:str, pattern:str) -> None:
     Exit("Tracked pattern '%s' not found" % pattern)
   m.branches[m.branch].tracked.remove(pattern)
   m.saveBranches()
-  info("Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), os.path.abspath(relPath)))
+  info("Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), os.path.abspath(relPath.replace(SLASH, os.sep))))
 
 def ls(argument:str? = None) -> None:
   ''' List specified directory, augmenting with repository metadata. '''
@@ -727,7 +728,7 @@ def ls(argument:str? = None) -> None:
         if fnmatch.fnmatch(file, wl): ignore = None; break  # found a white list entry for ignored file, undo ignoring it
     if ignore is None:
       matches:List[str] = []
-      for pattern in (p for p in trackingPatterns if os.path.dirname(p) == relPath):  # only patterns matching current folder
+      for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
         if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(pattern)  # TODO or only file basename?
     print("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "   "), file, ' by "%s"' % ignore if ignore is not None else (" by " + ";".join(['"%s"' % match for match in matches]) if len(matches) > 0 else "")))
 
