@@ -54,9 +54,9 @@ vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg
 
 
 # Value types
-data BranchInfo(number:int, ctime:int, name:str? = None, insync:bool = False, tracked:List[str] = [])  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
+data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [])  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
 data CommitInfo(number:int, ctime:int, message:str? = None)
-data PathInfo(namehash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
+data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
 data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
 data Range(tipe:int, indexes:int[])  # MergeBlockType[1,2,4], line number, length
 data MergeBlock(tipe:int, lines:str[], line:int, replaces:MergeBlock? = None, changes:Range? = None)
