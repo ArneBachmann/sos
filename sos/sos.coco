@@ -689,7 +689,7 @@ def add(relPath:str, pattern:str, options:str[] = []) -> None:
   m.loadBranches()
   if not m.track and not m.picky: Exit("Repository is in simple mode. Use 'offline --track' or 'offline --picky' instead")
   if pattern in m.branches[m.branch].tracked: Exit("Pattern '%s' already tracked" % pattern)
-  if not force and not os.path.exists(os.path.basename(relPath.replace(SLASH, os.sep))): Exit("The pattern folder doesn't exist. Use --force to add it anyway")
+  if not force and not os.path.exists(relPath.replace(SLASH, os.sep)): Exit("The pattern folder doesn't exist. Use --force to add it anyway")
   if not force and len(fnmatch.filter(os.listdir(os.path.abspath(relPath.replace(SLASH, os.sep))), os.path.basename(pattern.replace(SLASH, os.sep)))) == 0:  # doesn't match any current file
     Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")
   m.branches[m.branch].tracked.append(pattern)  # TODO set inSync flag to False? same for rm
