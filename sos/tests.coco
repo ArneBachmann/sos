@@ -195,6 +195,30 @@ class Tests(unittest.TestCase):
     try: sos.commit("nothing"); _.fail()  # should not commit anything, as the file in base folder doesn't match the tracked pattern
     except: pass
 
+  def testTokenizeGlobPattern(_):
+    _.assertEqual([], sos.tokenizeGlobPattern(""))
+    _.assertEqual([sos.GlobBlock(False, "*", 0)], sos.tokenizeGlobPattern("*"))
+    _.assertEqual([sos.GlobBlock(False, "*", 0), sos.GlobBlock(False, "???", 1)], sos.tokenizeGlobPattern("*???"))
+    _.assertEqual([sos.GlobBlock(True, "x", 0),  sos.GlobBlock(False, "*", 1),  sos.GlobBlock(True, "x", 2)], sos.tokenizeGlobPattern("x*x"))
+    _.assertEqual([sos.GlobBlock(True, "x", 0),  sos.GlobBlock(False, "*", 1),  sos.GlobBlock(False, "??", 2), sos.GlobBlock(False, "*", 4), sos.GlobBlock(True, "x", 5)], sos.tokenizeGlobPattern("x*??*x"))
+    _.assertEqual([sos.GlobBlock(False, "?", 0), sos.GlobBlock(True, "abc", 1), sos.GlobBlock(False, "*", 4)], sos.tokenizeGlobPattern("?abc*"))
+
+  def testTokenizeGlobPatterns(_):
+    try: sos.tokenizeGlobPatterns("x*x", "x*"); _.fail()  # because number of literal strings differs
+    except: pass
+    try: sos.tokenizeGlobPatterns("x*", "x?"); _.fail()  # because glob patterns differ
+    except: pass
+    try: sos.tokenizeGlobPatterns("x*", "?x"); _.fail()  # glob patterns differ, regardless of position
+    except: pass
+    sos.tokenizeGlobPatterns("x*", "*x")  # succeeds, because glob patterns match (differ only in position)
+    sos.tokenizeGlobPatterns("*xb?c", "*x?bc")  # succeeds, because glob patterns match (differ only in position)
+    try: sos.tokenizeGlobPatterns("a???b*", "ab???*"); _.fail()  # succeeds, because glob patterns match (differ only in position)
+    except: pass
+  
+  def testConvertGlobFiles(_):
+    _.assertEqual(["xxayb", "aacb"], [r[1] for r in sos.convertGlobFiles(["axxby", "aabc"], *sos.tokenizeGlobPatterns("a*b?", "*a?b"))])
+    _.assertEqual(["1qq2ww3", "1abcbx2xbabc3"], [r[1] for r in sos.convertGlobFiles(["qqxbww", "abcbxxbxbabc"], *sos.tokenizeGlobPatterns("*xb*", "1*2*3"))])
+
   def testComputeSequentialPathSet(_):
     os.makedirs(branchFolder(0, 0))
     os.makedirs(branchFolder(0, 1))

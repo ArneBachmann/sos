@@ -33,11 +33,33 @@ SOS supports three different file handling models that you may use to your likin
 - **Tracking mode**: Only files that match certain file name tracking patterns are respected during `commit`, `update` and `branch` (just like in SVN, gitless, and Fossil), requiring users to specifically add or remove files per branch. Drawback: Need to declare files to track for every offline repository
 - **Picky mode**: Each operation needs the explicit declaration of file name patterns for versioning (like Git does). Drawback: Need to stage files for every single commit
 
+### Unique features of SOS ###
+- Initializes repositories by default with the *simple mode*, which makes effortless versioning a piece of cake
+- In the optional tracking mode, files are tracked based on glob patterns instead of pure filenames or paths (in a manner comparable to how SVN ignores files)
+- In-place command line replacement for traditional VCS that transparently pipes commands to them
+- Straightforward and simplified semantics for common VCS operations (`branch`, `commit`, integrate changes)
+
+### Limitations ###
+- Designed for use by single user, network synchronization is a non-goal. Don't attempt to use SOS in a shared location, concurrent access to the repository may corrupt your data, as there is currently no locking in place (could be augmented, but it's a non-goal too)
+- Has a small user base as of now, therefore no reliable reports of compatibility and operational capability except for the automatic unit tests run on Travis CI and AppVeyor
 
 ### Compatibility ###
 - SOS runs on any Python 3 distribution, except PyPy (TODO). Support for Python 2 is only partial, as the test suite doesn't run through entirely yet, although SOS's programming language Coconut is generally able to transpile to valid Python 2 source code
 - SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
 - File name encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
+
+
+## Latest changes ##
+- Version 1.1 published on 2017-12-26:
+    - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
+    - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
+    - [Enhancement 63](https://github.com/ArneBachmann/sos/issues/63) Show more change details in `log` and `status`
+    - [Enhancement 86](https://github.com/ArneBachmann/sos/issues/86) Renamed command for branch removal to `destroy`
+    - [Feature 61](https://github.com/ArneBachmann/sos/issues/61) Added option to only consider or exclude certain file patterns for relevant operations using `--only` and `--except`
+    - [Feature 8](https://github.com/ArneBachmann/sos/issues/8) Added functionality to rename tracking patterns and move files accordingly
+    - [Feature 80](https://github.com/ArneBachmann/sos/issues/80) Added functionality to use tags
+    - [QA 79](https://github.com/ArneBachmann/sos/issues/79) Added AppVeyor automated testing
+    - [QA 94](https://github.com/ArneBachmann/sos/issues/94) More test coverage
 
 
 ## Comparison with Traditional VCS ##
@@ -54,6 +76,7 @@ Here is a comparison between SOS and VCS's commands:
     - The first revision (created during execution of `sos offline` or `sos branch`) always has the number `0`
     - Each `sos commit` increments the revision number by one; revisions are referenced by this numeric index only
 - `delete` destroys and removes a branch. It's a command, not an option flag as in `git branch -d <name>`
+- `move` renames a file tracking pattern and all matching files accordingly; only useful in tracking or picky mode. It supports reordering of literal substrings, but no reordering of glob markers, and no adjacent glob markers. Use `--soft` to avoid files actually being renamed in the file tree
 - `switch` works like `checkout` in Git for a revision of another branch (or of the current), or `update` to latest or a specific revision in SVN. Please note that switching to a different revision will in no way fix or remember that revision. The file tree will always be compared to the branch's latest commit for change detection
 - `update` works a bit like `pull` in Git or `update` in SVN and replays the given branch's and/or revision's changes into the file tree. There are plenty of options to configure what changes are actually integrated. This command will not change the current branch like `switch` does
 

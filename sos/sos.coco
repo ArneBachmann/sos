@@ -61,7 +61,8 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
     diff    [<branch>][/<revision>]                       List changes vs. last or specified revision
     add     [<filename or glob pattern>]                  Add a tracking pattern to current branch (path/filename or glob pattern)
-    mv      [<oldpattern>] [<newPattern>]                 Rename, move or move and rename tracked files according to glob patterns
+    mv      [<oldpattern>] [<newPattern>]                 Rename, move, or move and rename tracked files according to glob patterns
+      --soft                                              Don't move or rename files, only the tracking pattern
     rm      [<filename or glob pattern>]                  Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
 
     ls                                                    List file tree and mark changes and tracking status
@@ -91,8 +92,8 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     --only <filename or glob>    Restrict operation to specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
     --except <filename or glob>  Avoid operation for specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
     --{cmd}                      When executing {CMD} not being offline, pass arguments to {CMD} instead (e.g. {cmd} --{cmd} config set key value.)
-    --log                        Enable internals logger
-    --verbose                    Enable debugging output""".format(appname = APPNAME, cmd = "sos", CMD = "SOS"))
+    --log                        Enable logging details
+    --verbose                    Enable verbose output""".format(appname = APPNAME, cmd = "sos", CMD = "SOS"))
 
 # Main data class
 #@runtime_validation
@@ -780,7 +781,40 @@ def config(argument:str, options:List[str] = []) -> None:
 
 def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[str] = []) -> None:
   ''' Path differs: Move files, create folder if not existing. Pattern differs: Attempt to rename file, unless exists in target or not unique. '''
-  pass
+  force:bool = '--force' in options
+  soft:bool = '--soft' in options
+  if not os.path.exists(relPath): Exit("Source folder doesn't exist")
+  matching:str[] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)), os.path.basename(pattern))  # find matching files in source
+  if not matching and not force: Exit("No files match the specified file or glob pattern. Use --force to proceed anyway")
+  m:Metadata = Metadata(os.getcwd())
+  m.loadBranches()  # knows current branch
+  if not m.track and not m.picky: Exit("Repository is in simple mode. Simply use basic file operations to modify files, then execute 'sos commit' to version the changes")
+  if pattern not in m.branches[m.branch].tracked:
+    for tracked in (t for t in m.branches[m.branch].tracked if os.path.dirname(t) == relPath):  # for all patterns of the same source folder
+      alternative:str[] = fnmatch.filter(matching, os.path.basename(tracked))  # find if it matches any of the files in the source folder, too
+      if alternative: info("  '%s' matches %d files" % (tracked, len(alternative)))
+    Exit("File or glob pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)
+  basePattern:str = os.path.basename(pattern)  # pure glob without folder
+  newBasePattern:str = os.path.basename(newPattern)
+  if basePattern.count("*") != newBasePattern.count("*")\
+      or (basePattern.count("?") - basePattern.count("[?]")) != (newBasePattern.count("?") - newBasePattern.count("[?]"))\
+      or (basePattern.count("[") - basePattern.count("\\[")) != (newBasePattern.count("[") - newBasePattern.count("\\["))\
+      or (basePattern.count("]") - basePattern.count("\\]")) != (newBasePattern.count("]") - newBasePattern.count("\\]")):
+    Exit("Glob markers don't match, cannot move/rename tracked matching files")
+  oldTokens:GlobBlock[]; newToken:GlobBlock[]
+  oldTokens, newTokens = tokenizeGlobPatterns(os.path.basename(pattern), os.path.basename(newPattern))
+  matches:Tuple[str,str][] = convertGlobFiles(matching, oldTokens, newTokens)  # computes list of source - target filename pairs
+  matches = reorderRenameActions(matches, exitOnConflict = not soft)  # attempts to find conflict-free renaming order, or exits
+  if os.path.exists(newRelPath):
+    exists:str[] = [filename[1] for filename in matches if os.path.exists(os.path.join(newRelPath, filename[1]).replace(SLASH, os.sep))]
+    if exists and not (force or soft): Exit("%s files would write over existing files in %s cases. Use --force to execute it anyway" % ("Moving" if relPath != newRelPath else "Renaming", "all" if len(exists) == len(matches) else "some"))
+  else: os.makedirs(os.path.absdir(newRelPath.replace(SLASH, os.sep)))
+  if not soft:  # perform actual renaming
+    for (source, target) in matches:
+      try: shutil.move(os.path.abspath(os.path.join(relPath, source).replace(SLASH, os.sep)), os.path.abspath(os.path.join(newRelPath, target).replace(SLASH, os.sep)))
+      except Exception as E: error("Cannot move/rename file '%s' to '%s'" % (source, os.path.join(newRelPath, target)))  # one error can lead to another in case of delicate renaming order
+  m.branches[m.branch].tracked[m.branches[m.branch].tracked.index(pattern)] = newPattern
+  m.saveBranches()
 
 def parse(root:str, cwd:str):
   ''' Main operation. Main has already chdir into VCS root folder, cwd is original working directory for add, rm. '''
