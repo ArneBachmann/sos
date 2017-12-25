@@ -349,7 +349,7 @@ class Metadata:
     if branch not in _.branches: branch = None
     try: return (branch ?? _.branch, longint(argument) if branch is None else -1)  # either branch name/number or reverse/absolute revision number
     except: Exit("Unknown branch label or wrong number format")
-    Exit("This should never happen")  # return (None, None)
+    Exit("This should never happen"); return (None, None)
 
   def findRevision(_, branch:int, revision:int, nameHash:str) -> Tuple[int,str] =
     while True:  # find latest revision that contained the file physically
@@ -808,7 +808,7 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   if os.path.exists(newRelPath):
     exists:str[] = [filename[1] for filename in matches if os.path.exists(os.path.join(newRelPath, filename[1]).replace(SLASH, os.sep))]
     if exists and not (force or soft): Exit("%s files would write over existing files in %s cases. Use --force to execute it anyway" % ("Moving" if relPath != newRelPath else "Renaming", "all" if len(exists) == len(matches) else "some"))
-  else: os.makedirs(os.path.absdir(newRelPath.replace(SLASH, os.sep)))
+  else: os.makedirs(os.path.abspath(newRelPath.replace(SLASH, os.sep)))
   if not soft:  # perform actual renaming
     for (source, target) in matches:
       try: shutil.move(os.path.abspath(os.path.join(relPath, source).replace(SLASH, os.sep)), os.path.abspath(os.path.join(newRelPath, target).replace(SLASH, os.sep)))

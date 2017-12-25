@@ -1,14 +1,16 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.0.7"
+RELEASE = "1.0.8"
 
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 if 'build' in sys.argv:
   print("Transpiling Coconut files to Python...")
   cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 10000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
 
-  assert 0 == os.system("coconut%s -p -l -t 3 sos" % cmd)  # TODO remove target once Python 2 problems have been fixed
+  assert 0 == os.system("coconut%s %s -l -t 3 sos %s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--mypy" if "--mypy" in sys.argv else ""))  # TODO remove target once Python 2 problems have been fixed
+  try: sys.argv.remove('--mypy')
+  except: pass
 
   if os.path.exists(".git"):
     print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")

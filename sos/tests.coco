@@ -177,14 +177,6 @@ class Tests(unittest.TestCase):
     _.assertEqual(0, len(changes.modifications))
 
   def testPatternPaths(_):
-    a:bool = False
-    def b(): nonlocal a; a = True
-    co:sos.CallOnce = sos.CallOnce(b)
-    co()
-    _.assertTrue(a)  # was modified
-    a = False
-    co()
-    _.assertFalse(a)  # was not modified again
     sos.offline(options = ["--track"])
     os.mkdir("sub")
     _.createFile("sub" + os.sep + "file1", "sdfsdf")
@@ -711,7 +703,7 @@ class Tests(unittest.TestCase):
     sos.usage()
 
   def testOnly(_):
-    _.assertEqual((f{(".", "./A"), ("x", "x/B")}, f{(".", "./C")}), sos.parseOnlyOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--only"]))
+    _.assertEqual((f{"./A", "x/B"}, f{"./C"}), sos.parseOnlyOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--only"]))
     _.assertEqual(f{"B"}, sos.conditionalIntersection(f{"A", "B", "C"}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(f{}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(None, f{"B", "D"}))

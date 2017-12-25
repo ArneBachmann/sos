@@ -10,11 +10,6 @@ longint:Type = eval("long") if sys.version_info.major < 3 else int  # for Python
 
 
 # Classes
-class CallOnce:
-  ''' This object can be called any time, but will call the wrapped function only once. '''
-  def __init__(_, func:Callable[[], None]) -> None: _.func:Callable[[], None]? = func
-  def __call__(_) -> None: _.func = _.func() if _.func else None  # sets to None
-
 class Accessor(dict):
   ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
   def __init__(_, mapping:Dict[str,Any]) -> None: dict.__init__(_, mapping)
@@ -344,7 +339,7 @@ def tokenizeGlobPatterns(oldPattern:str, newPattern:str) -> Tuple[GlobBlock[], G
 
 def convertGlobFiles(filenames:str[], oldPattern:GlobBlock[], newPattern:GlobBlock[]) -> Tuple[str,str][] =
   ''' Converts given filename according to specified file patterns. No support for adjacent glob markers currently. '''  # TODO use list of filenames instead
-  pairs:Tuple[str,str][] = []
+  pairs:List[Tuple[str,str]] = []
   for filename in filenames:
     literals:List[GlobBlock] = [l for l in oldPattern if l.isLiteral]  # source literals
     nextliteral:int = 0
@@ -371,21 +366,24 @@ def convertGlobFiles(filenames:str[], oldPattern:GlobBlock[], newPattern:GlobBlo
 
 def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -> Tuple[str,str][] =
   ''' Attempt to put all rename actions into an order that avoids target = source names. '''
-  sources:str[]; targets;str[]
+  sources:List[str]; targets:List[str]
   sources, targets = zip(*actions)
   last:int = len(actions)
   while last > 1:
+    clean:bool = True
     for i in range(1, last):
       try:
         index:int = sources[:i].index(targets[i])
         sources.insert(index, sources.pop(i))  # bubble up the action right before conflict
         targets.insert(index, targets.pop(i))
-      except: continue
+        clean = False
+      except: continue  # target not found in sources: good!
+    if clean: break
     last -= 1  # we know that the last entry in the list has the least conflicts, so we can disregard it in the next iteration
   if exitOnConflict:
     for i in range(1, len(actions)):
       if targets[i] in sources[:i]: Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))
-  zip(sources, targets)
+  list(zip(sources, targets))
 
 def relativize(root:str, path:str) -> Tuple[str,str] =
   ''' Determine OS-independent relative folder path, and relative pattern path. '''
@@ -407,4 +405,4 @@ def parseOnlyOptions(root:str, options:str[]) -> Tuple[FrozenSet[str]?, FrozenSe
       index = 1 + listindex(options, "--except", index)
       excps.append(options[index])
     except: break
-  (frozenset(relativize(root, o) for o in onlys) if onlys else None, frozenset(relativize(root, e) for e in excps) if excps else None)
+  (frozenset(relativize(root, o)[1] for o in onlys) if onlys else None, frozenset(relativize(root, e)[1] for e in excps) if excps else None)
