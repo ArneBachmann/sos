@@ -30,6 +30,6 @@ init:
   - "set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 install:
   - cmd: "python --version"
-  - cmd: "pip install --upgrade appdirs chardet configr wcwidth coconut coverage python-coveralls"
+  - cmd: "pip install --upgrade appdirs chardet configr wcwidth coconut[mypy] coverage python-coveralls"
 skip_branch_with_pr: true
 version: "{build}.{branch}"
