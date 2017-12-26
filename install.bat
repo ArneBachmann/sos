@@ -1,8 +1,6 @@
-#! /bin/bash
-echo NOMYPY=$NOMYPY
-if [ "x$NOMYPY" == "x" ]
-then
+echo NOMYPY=%NOMYPY%
+if "%NOMYPY%" == "" (
 	pip install --upgrade appdirs chardet configr wcwidth coverage python-coveralls coconut[mypy]
-else
+) else (
 	pip install --upgrade appdirs chardet configr wcwidth coverage python-coveralls coconut 
-fi
+)
