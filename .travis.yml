@@ -6,6 +6,7 @@ matrix:
       python: pypy3
       env:
         - UBUNTU=trusty
+        - NOMYPY=true
 #    - os: linux
 #      dist: precise
 #      python: pypy3
@@ -69,9 +70,8 @@ matrix:
 #      python: pypy3  (only P3.3 available)
 
 # We don't use mypy here, and cPyparsing fails e.g. in pypy
-install: if [-n "NOMYPY"]; then pip install appdirs chardet configr wcwidth coconut coverage python-coveralls; else pip install appdirs chardet configr wcwidth coconut[mypy] coverage python-coveralls; fi
+install: if [ -z ${NOMYPY+x}]; then pip install appdirs chardet configr wcwidth coconut coverage python-coveralls; else pip install appdirs chardet configr wcwidth coconut[mypy] coverage python-coveralls; fi
 # pip collective.checkdocs && setup.py checkdocs
-script: if [-n "NOMYPY"]; then python setup.py clean build test; else python setup.py clean build test --mypy; fi && coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py
+script: if [ -z ${NOMYPY+x}]; then python setup.py clean build test; else python setup.py clean build test --mypy; fi && coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py
 after_success:
   - coveralls
-# TODO add mypy step for better checks
