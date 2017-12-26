@@ -91,7 +91,7 @@ matrix:
         - NOMYPY=true
 
 # We don't use mypy here, and cPyparsing fails e.g. in pypy
-install: if [ "x$NOMYPY" = "x" ]; then pip install appdirs chardet configr wcwidth coconut coverage python-coveralls; else pip install appdirs chardet configr wcwidth coconut[mypy] coverage python-coveralls; fi
+install: ./install.sh
 # pip collective.checkdocs && setup.py checkdocs
 script: if [ "x$NOMYPY" = "x" ]; then python setup.py clean build test; else python setup.py clean build test --mypy; fi && coverage run --branch --debug=sys --source=sos sos/tests.py && coverage html && coverage annotate sos/tests.py
 after_success:
