@@ -86,9 +86,9 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
                                    for offline: ignore being already offline, start from scratch (same as 'sos online --force && sos offline')
                                    for online: ignore uncommitted branches
                                    for commit, switch, update, add: ignore uncommitted changes before executing command
-    --strict                     Perform full content comparison, don't rely only on file size and timestamp
-                                   for offline: persist strict mode in repository
-                                   for changes, diff, commit, switch, update, delete: perform operation in strict mode
+    --strict                     Always perform full content comparison, don't rely only on file size and timestamp
+                                   for offline command: memorize strict mode setting in repository
+                                   for changes, diff, commit, switch, update, delete: perform operation in strict mode, regardless of repository setting
     --only <filename or glob>    Restrict operation to specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
     --except <filename or glob>  Avoid operation for specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
     --{cmd}                      When executing {CMD} not being offline, pass arguments to {CMD} instead (e.g. {cmd} --{cmd} config set key value.)
@@ -697,7 +697,7 @@ def add(relPath:str, pattern:str, options:str[] = []) -> None:
   m.saveBranches()
   info("Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), os.path.abspath(relPath)))
 
-def rm(relPath:str, pattern:str) -> None:
+def remove(relPath:str, pattern:str) -> None:
   ''' Remove a tracked files pattern from current branch's tracked files. '''
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()
@@ -706,7 +706,7 @@ def rm(relPath:str, pattern:str) -> None:
     suggestion:Set[str] = s{}
     for pat in m.branches[m.branch].tracked:
       if fnmatch.fnmatch(pattern, pat): suggestion.add(pat)
-    if suggestion: print("Do you mean any of the following tracked globs? '%s'" % (", ".join(sorted(suggestion))))
+    if suggestion: print("Do you mean any of the following tracked globs? '%s'" % (", ".join(sorted(suggestion))))  # TODO use same wording as in move
     Exit("Tracked pattern '%s' not found" % pattern)
   m.branches[m.branch].tracked.remove(pattern)
   m.saveBranches()
@@ -783,8 +783,8 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   ''' Path differs: Move files, create folder if not existing. Pattern differs: Attempt to rename file, unless exists in target or not unique. '''
   force:bool = '--force' in options
   soft:bool = '--soft' in options
-  if not os.path.exists(relPath): Exit("Source folder doesn't exist")
-  matching:str[] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)), os.path.basename(pattern))  # find matching files in source
+  if not os.path.exists(relPath.replace(SLASH, os.sep)) and not force: Exit("Source folder doesn't exist. Use --force to proceed anyway")
+  matching:str[] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(relPath.replace(SLASH, os.sep)) else [], os.path.basename(pattern))  # find matching files in source
   if not matching and not force: Exit("No files match the specified file or glob pattern. Use --force to proceed anyway")
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()  # knows current branch
@@ -793,14 +793,14 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
     for tracked in (t for t in m.branches[m.branch].tracked if os.path.dirname(t) == relPath):  # for all patterns of the same source folder
       alternative:str[] = fnmatch.filter(matching, os.path.basename(tracked))  # find if it matches any of the files in the source folder, too
       if alternative: info("  '%s' matches %d files" % (tracked, len(alternative)))
-    Exit("File or glob pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)
+    if not (force or soft): Exit("File or glob pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)
   basePattern:str = os.path.basename(pattern)  # pure glob without folder
   newBasePattern:str = os.path.basename(newPattern)
   if basePattern.count("*") != newBasePattern.count("*")\
       or (basePattern.count("?") - basePattern.count("[?]")) != (newBasePattern.count("?") - newBasePattern.count("[?]"))\
       or (basePattern.count("[") - basePattern.count("\\[")) != (newBasePattern.count("[") - newBasePattern.count("\\["))\
       or (basePattern.count("]") - basePattern.count("\\]")) != (newBasePattern.count("]") - newBasePattern.count("\\]")):
-    Exit("Glob markers don't match, cannot move/rename tracked matching files")
+    Exit("Glob markers from '%s' to '%s' don't match, cannot move/rename tracked matching files" % (basePattern, newBasePattern))
   oldTokens:GlobBlock[]; newToken:GlobBlock[]
   oldTokens, newTokens = tokenizeGlobPatterns(os.path.basename(pattern), os.path.basename(newPattern))
   matches:Tuple[str,str][] = convertGlobFiles(matching, oldTokens, newTokens)  # computes list of source - target filename pairs
@@ -825,7 +825,9 @@ def parse(root:str, cwd:str):
   onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
   debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
   if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, argument))
-  if command[:1] == "m":   newRelPath, newPattern = relativize(root, os.path.join(cwd, options[0]))  # TODO add error message if target pattern is missing
+  if command[:1] == "m":
+    if not options: Exit("Need a second file pattern argument as target for move/rename command")
+    newRelPath, newPattern = relativize(root, os.path.join(cwd, options[0]))  # TODO add error message if target pattern is missing (???)
   if   command[:1] == "a":   add(relPath, pattern, options)
   elif command[:1] == "b":   branch(argument, options)
   elif command[:2] == "ch":  changes(argument, options, onlys, excps)
@@ -841,7 +843,7 @@ def parse(root:str, cwd:str):
   elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:])
   elif command[:2] == "of":  offline(argument, options)
   elif command[:2] == "on":  online(options)
-  elif command[:1] == "r":   rm(relPath, pattern)
+  elif command[:1] == "r":   remove(relPath, pattern)
   elif command[:2] == "st":  status()
   elif command[:2] == "sw":  switch(argument, options, onlys, excps)
   elif command[:1] == "u":   update(argument, options, onlys, excps)

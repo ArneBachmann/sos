@@ -507,8 +507,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # one new file + meta file
     os.unlink("file1")  # remove from basefolder
     _.createFile(2, "y")
-    sos.rm(".", "sub/file?")
-    try: sos.rm(".", "sub/bla"); _.fail()  # raises Exit. TODO test the "suggest a pattern" case
+    sos.remove(".", "sub/file?")
+    try: sos.remove(".", "sub/bla"); _.fail()  # raises Exit. TODO test the "suggest a pattern" case
     except: pass
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(branchFolder(0, 2))))  # one new file + meta
@@ -539,7 +539,7 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(os.listdir(branchFolder(0, 3))))  # meta file only, no other tracked path/file
 
     sos.branch("Other")  # second branch containing file1 and file2 tracked by "./file?"
-    sos.rm(".", "./file?")  # remove tracking pattern, but don't touch previously created and versioned files
+    sos.remove(".", "./file?")  # remove tracking pattern, but don't touch previously created and versioned files
     sos.add(".", "./a*a")  # add tracking pattern
     changes = sos.changes()  # should pick up addition only, because tracked, but not the deletion, as not tracked anymore
     _.assertEqual(0, len(changes.modifications))
@@ -719,6 +719,55 @@ class Tests(unittest.TestCase):
     _.createFile(1, "foobar")
     _.assertAllIn(["MOD ./file1", "MOD ./file2", "DIF ./file1", "- | 0000 |xxxxxxxxxx|", "+ | 0000 |foobar|"], wrapChannels(() -> sos.diff("/-2")))  # vs. second last
     _.assertNotIn("MOD ./file1", wrapChannels(() -> sos.diff("/-2", onlys = f{"./file2"})))
+
+  def testReorderRenameActions(_):
+    result:Tuple[str,str][] = sos.reorderRenameActions([("123", "312"), ("312", "132"), ("321", "123")], exitOnConflict = False)
+    _.assertEqual([("312", "132"), ("123", "312"), ("321", "123")], result)
+    try: sos.reorderRenameActions([("123", "312"), ("312", "123")], exitOnConflict = True); _.fail()
+    except: pass
+
+  def testMove(_):
+    sos.offline(options = ["--strict", "--track"])
+    _.createFile(1)
+    sos.add(".", "./file?")
+    # test source folder missing
+    try: sos.move("sub", "sub/file?", ".", "?file"); _.fail()
+    except: pass
+    # test target folder missing: create it
+    sos.move(".", "./file?", "sub", "sub/file?")
+    _.assertTrue(os.path.exists("sub"))
+    _.assertTrue(os.path.exists("sub/file1"))
+    _.assertFalse(os.path.exists("file1"))
+    # test move
+    sos.move("sub", "sub/file?", ".", "./?file")
+    _.assertTrue(os.path.exists("1file"))
+    _.assertFalse(os.path.exists("sub/file1"))
+    # test nothing matches source pattern
+    try: sos.move(".", "a*", ".", "b*"); _.fail()
+    except: pass
+    sos.add(".", "*")  # anything pattern
+    try: sos.move(".", "a*", ".", "b*"); _.fail()  # TODO check that alternative pattern "*" was suggested (1 hit)
+    except: pass
+    # test rename no conflict
+    _.createFile(1)
+    _.createFile(2)
+    sos.add(".", "./file*")
+    sos.move(".", "./file*", ".", "fi*le")
+    _.assertTrue(all(os.path.exists("fi%dle" % i) for i in range(1, 3)))
+    # test rename solvable conflicts
+    [_.createFile("%s-%s-%s" % tuple(c for c in n)) for n in ["312", "321", "123", "231"]]
+#    sos.move("?-?-?")
+    # test rename unsolvable conflicts
+    # test --soft option
+    sos.remove(".", "./?file")  # was renamed before
+    sos.add(".", "./?a?b", ["--force"])
+    sos.move(".", "./?a?b", ".", "./a?b?", ["--force", "--soft"])
+    _.createFile("1a2b")  # should not be tracked
+    _.createFile("a1b2")  # should be tracked
+    sos.commit()
+    _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))
+    _.assertTrue(os.path.exists(branchFolder(0, 1) + os.sep + "93b38f90892eb5c57779ca9c0b6fbdf6774daeee3342f56f3e78eb2fe5336c50"))  # a1b2
+    # only rename if actually any files are versioned? or simply what is alife?
 
   def testFindBase(_):
     old = os.getcwd()

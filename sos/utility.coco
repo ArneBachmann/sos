@@ -365,15 +365,19 @@ def convertGlobFiles(filenames:str[], oldPattern:GlobBlock[], newPattern:GlobBlo
   pairs
 
 def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -> Tuple[str,str][] =
-  ''' Attempt to put all rename actions into an order that avoids target = source names. '''
+  ''' Attempt to put all rename actions into an order that avoids target == source names.
+      Note, that it's currently not really possible to specify patterns that make this work (swapping "*" elements with a reference).
+      An alternative would be to always have one (or all) files renamed to a temporary name before renaming to target filename.
+  '''
+  if not actions: return []
   sources:List[str]; targets:List[str]
-  sources, targets = zip(*actions)
+  sources, targets = [list(l) for l in zip(*actions)]
   last:int = len(actions)
   while last > 1:
     clean:bool = True
     for i in range(1, last):
       try:
-        index:int = sources[:i].index(targets[i])
+        index:int = targets[:i].index(sources[i])  # TODO not correct? consider entries further down to push up
         sources.insert(index, sources.pop(i))  # bubble up the action right before conflict
         targets.insert(index, targets.pop(i))
         clean = False
@@ -382,7 +386,7 @@ def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -
     last -= 1  # we know that the last entry in the list has the least conflicts, so we can disregard it in the next iteration
   if exitOnConflict:
     for i in range(1, len(actions)):
-      if targets[i] in sources[:i]: Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))
+      if sources[i] in targets[:i]: Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))
   list(zip(sources, targets))
 
 def relativize(root:str, path:str) -> Tuple[str,str] =
