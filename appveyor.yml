@@ -8,9 +8,9 @@ deploy: false
 environment:
   PYTHONDONTWRITEBYTECODE: true
   matrix:
-#    - PYTHON_VERSION: 2.7
     - PYTHON_VERSION: 3.3
       platform: x86  # PyYAML dependency doesn't run on x64 for some reason
+      NOMYPY: true
     - PYTHON_VERSION: 3.4
       platform: x86
     - PYTHON_VERSION: 3.4
@@ -23,6 +23,9 @@ environment:
       platform: x86
     - PYTHON_VERSION: 3.6
       platform: x64
+    - PYTHON_VERSION: 2.7
+  allow_failures:
+    - PYTHON_VERSION: 2.7
 init:
   - "set PY_VER=%PYTHON_VERSION:.=%"
   - "set PYTHON=C:\\PYTHON%PY_VER%"
