@@ -62,6 +62,7 @@ def wrapChannels(func: -> Any) =
   logging.getLogger().addHandler(handler)
   try: func()  # capture output into buf
   except Exception as E: buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
+  except SystemExit as F: buf.write(str(F) + "\n"); traceback.print_exc(file = buf)
   logging.getLogger().removeHandler(handler)
   sys.argv, sys.stdout, sys.stderr = oldv, oldo, olde
   buf.getvalue()
@@ -596,6 +597,8 @@ class Tests(unittest.TestCase):
     _.assertInAny('TRK file1 by "./file*"', out)
     _.assertNotInAny('    file1 by "./file*"', out)
     _.assertInAny("    foo", out)
+    out = sos.safeSplit(wrapChannels(() -> sos.ls(options = ["--patterns"])).replace("\r", ""), "\n")
+    _.assertInAny("TRK ./file*", out)
 
   def testCompression(_):
     _.createFile(1)
@@ -733,7 +736,6 @@ class Tests(unittest.TestCase):
     sos.add(".", "./file2")
     sos.commit(onlys = f{"./file1"})
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # only meta and file1
-    import pdb; pdb.set_trace()
     sos.commit()  # adds also file2
     _.assertEqual(2, len(os.listdir(branchFolder(0, 2))))  # only meta and file1
     _.createFile(1, "cc")  # modify both files
@@ -802,7 +804,12 @@ class Tests(unittest.TestCase):
     sos.commit()
     _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))
     _.assertTrue(os.path.exists(branchFolder(0, 1) + os.sep + "93b38f90892eb5c57779ca9c0b6fbdf6774daeee3342f56f3e78eb2fe5336c50"))  # a1b2
-    # only rename if actually any files are versioned? or simply what is alife?
+    _.createFile("1a1b1")
+    _.createFile("1a1b2")
+    sos.add(".", "?a?b*")
+    _.assertIn("not unique", wrapChannels(() -> sos.move(".", "?a?b*", ".", "z?z?")))  # should raise error due to same target name
+    # TODO only rename if actually any files are versioned? or simply what is alife?
+    # TODO add test if two single question marks will be moved into adjacent characters
 
   def testFindBase(_):
     old = os.getcwd()

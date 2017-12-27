@@ -65,7 +65,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --soft                                              Don't move or rename files, only the tracking pattern
     rm      [<filename or glob pattern>]                  Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
 
-    ls                                                    List file tree and mark changes and tracking status
+    ls [<folder path>] [--patterns]                       List file tree and mark changes and tracking status
     status                                                List branches and display repository status
     log [--changes]                                       List commits of current branch
     config  [set/unset/show/add/rm] [<param> [<value>]]   Configure user-global defaults.
@@ -550,6 +550,9 @@ def status() -> None:
   m.loadBranches()  # knows current branch
   current:int = m.branch
   info("//|\\\\ Offline repository status")
+  print("Content checking %sactivated" % ("" if m.strict else "de"))
+  print("Data compression %sactivated" % ("" if m.compress else "de"))
+  print("Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
     m.loadBranch(branch.number)  # knows commit history
@@ -712,26 +715,31 @@ def remove(relPath:str, pattern:str) -> None:
   m.saveBranches()
   info("Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), os.path.abspath(relPath.replace(SLASH, os.sep))))
 
-def ls(argument:str? = None) -> None:
+def ls(argument:str? = None, options:str[] = []) -> None:
   ''' List specified directory, augmenting with repository metadata. '''
   cwd:str = os.getcwd() if argument is None else argument
   m:Metadata = Metadata(cwd)
   m.loadBranches()
+  info("Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
   relPath:str = os.path.relpath(cwd, m.root).replace(os.sep, SLASH)
+  trackingPatterns:FrozenSet[str]? = m.getTrackingPatterns() if m.track or m.picky else f{}  # for current branch
+  if '--patterns' in options:
+    out:str = ajoin("TRK ", [p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath], nl = "\n")
+    if out: print(out)
+    return
   files:List[str] = list(sorted(entry for entry in os.listdir(cwd) if os.path.isfile(entry)))
-  trackingPatterns:FrozenSet[str] = m.getTrackingPatterns() if m.track or m.picky else f{}  # for current branch
-  for file in files:
+  for file in files:  # for each file list all tracking patterns that match, or none (e.g. in picky mode after commit)
     ignore:str? = None
     for ig in m.c.ignores:
       if fnmatch.fnmatch(file, ig): ignore = ig; break  # remember first match TODO document this
     if ig:
       for wl in m.c.ignoresWhitelist:
         if fnmatch.fnmatch(file, wl): ignore = None; break  # found a white list entry for ignored file, undo ignoring it
-    if ignore is None:
+    if not ignore:
       matches:List[str] = []
       for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
-        if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(pattern)  # TODO or only file basename?
-    print("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "   "), file, ' by "%s"' % ignore if ignore is not None else (" by " + ";".join(['"%s"' % match for match in matches]) if len(matches) > 0 else "")))
+        if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(pattern)
+    print("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "..."), file, ' by "%s"' % ignore if ignore is not None else (" by " + ";".join(['"%s"' % match for match in matches]) if len(matches) > 0 else "")))
 
 def log(options:str[]) -> None:
   ''' List previous commits on current branch. '''
@@ -796,14 +804,15 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
     if not (force or soft): Exit("File or glob pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)
   basePattern:str = os.path.basename(pattern)  # pure glob without folder
   newBasePattern:str = os.path.basename(newPattern)
-  if basePattern.count("*") != newBasePattern.count("*")\
-      or (basePattern.count("?") - basePattern.count("[?]")) != (newBasePattern.count("?") - newBasePattern.count("[?]"))\
-      or (basePattern.count("[") - basePattern.count("\\[")) != (newBasePattern.count("[") - newBasePattern.count("\\["))\
-      or (basePattern.count("]") - basePattern.count("\\]")) != (newBasePattern.count("]") - newBasePattern.count("\\]")):
+  if basePattern.count("*") < newBasePattern.count("*")\
+      or (basePattern.count("?") - basePattern.count("[?]")) < (newBasePattern.count("?") - newBasePattern.count("[?]"))\
+      or (basePattern.count("[") - basePattern.count("\\[")) < (newBasePattern.count("[") - newBasePattern.count("\\["))\
+      or (basePattern.count("]") - basePattern.count("\\]")) < (newBasePattern.count("]") - newBasePattern.count("\\]")):
     Exit("Glob markers from '%s' to '%s' don't match, cannot move/rename tracked matching files" % (basePattern, newBasePattern))
   oldTokens:GlobBlock[]; newToken:GlobBlock[]
   oldTokens, newTokens = tokenizeGlobPatterns(os.path.basename(pattern), os.path.basename(newPattern))
   matches:Tuple[str,str][] = convertGlobFiles(matching, oldTokens, newTokens)  # computes list of source - target filename pairs
+  if len(s{st[1] for st in matches}) != len(matches): Exit("Some target filenames are not unique and different move/rename actions would point to the same target file")
   matches = reorderRenameActions(matches, exitOnConflict = not soft)  # attempts to find conflict-free renaming order, or exits
   if os.path.exists(newRelPath):
     exists:str[] = [filename[1] for filename in matches if os.path.exists(os.path.join(newRelPath, filename[1]).replace(SLASH, os.sep))]
@@ -838,8 +847,8 @@ def parse(root:str, cwd:str):
   elif command[:2] == "di":  diff(argument, options, onlys, excps)
   elif command[:1] == "h":   usage()
   elif command[:2] == "lo":  log(options)
-  elif command[:2] == "li":  ls(argument)
-  elif command[:2] == "ls":  ls(argument)
+  elif command[:2] == "li":  ls(argument, options)
+  elif command[:2] == "ls":  ls(argument, options)
   elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:])
   elif command[:2] == "of":  offline(argument, options)
   elif command[:2] == "on":  online(options)

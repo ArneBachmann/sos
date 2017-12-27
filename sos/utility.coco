@@ -113,7 +113,7 @@ try: Splittable = TypeVar("Splittable", str, bytes)
 except: pass  # Python 2
 def safeSplit(s:Splittable, d:Splittable? = None) -> Splittable[]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 
-def ajoin(sep:str, seq:str[], nl = "") -> str = sep + (nl + sep).join(seq) if seq else ""
+def ajoin(sep:str, seq:str[], nl = "") -> str = (sep + (nl + sep).join(seq)) if seq else ""
 
 def sjoin(*s:Tuple[Any]) -> str = " ".join([str(e) for e in s if e != ''])
 
@@ -333,7 +333,7 @@ def tokenizeGlobPatterns(oldPattern:str, newPattern:str) -> Tuple[GlobBlock[], G
   ot:List[GlobBlock] = tokenizeGlobPattern(oldPattern)
   nt:List[GlobBlock] = tokenizeGlobPattern(newPattern)
 #  if len(ot) != len(nt): Exit("Source and target patterns can't be translated due to differing number of parsed glob markers and literal strings")
-  if len([o for o in ot if not o.isLiteral]) != len([n for n in nt if not n.isLiteral]): Exit("Source and target file patterns contain differing number of glob markers and can't be translated")
+  if len([o for o in ot if not o.isLiteral]) < len([n for n in nt if not n.isLiteral]): Exit("Source and target file patterns contain differing number of glob markers and can't be translated")
   if any(O.content != N.content for O, N in zip([o for o in ot if not o.isLiteral], [n for n in nt if not n.isLiteral])): Exit("Source and target file patterns differ in semantics")
   (ot, nt)
 
