@@ -347,7 +347,7 @@ class Metadata:
       except ValueError: Exit("Unknown branch label or wrong number format")
     branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
-    try: return (branch ?? _.branch, longint(argument) if branch is None else -1)  # either branch name/number or reverse/absolute revision number
+    try: return (branch ?? _.branch, longint(argument if argument else "-1") if branch is None else -1)  # either branch name/number or reverse/absolute revision number
     except: Exit("Unknown branch label or wrong number format")
     Exit("This should never happen"); return (None, None)
 
@@ -478,7 +478,7 @@ def changes(argument:str = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   m.listChanges(changes)
   changes  # for unit tests only
 
-def diff(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None) -> None:
+def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None) -> None:
   ''' Show text file differences of file tree vs. (last or specified) revision on current or specified branch. '''
   m:Metadata = Metadata(os.getcwd()); branch:int?; revision:int?
   m.loadBranches()  # knows current branch

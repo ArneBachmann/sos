@@ -50,16 +50,23 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest changes ##
-- Version 1.1 published on 2017-12-26:
+- Version 1.1 released on 2017-12-28:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
-    - [Enhancement 63](https://github.com/ArneBachmann/sos/issues/63) Show more change details in `log` and `status`
+    - [Enhancement 63](https://github.com/ArneBachmann/sos/issues/63) Show more change details in `log` and `status`, and also `ls` (in [#101](https://github.com/ArneBachmann/sos/issues/101))
     - [Enhancement 86](https://github.com/ArneBachmann/sos/issues/86) Renamed command for branch removal to `destroy`
     - [Feature 8](https://github.com/ArneBachmann/sos/issues/8) Added functionality to rename tracking patterns and move files accordingly
     - [Feature 61](https://github.com/ArneBachmann/sos/issues/61) Added option to only consider or exclude certain file patterns for relevant operations using `--only` and `--except`. Note: These have to be already tracked file patterns, currently, see [#99](https://github.com/ArneBachmann/sos/issues/99) and [#100](https://github.com/ArneBachmann/sos/issues/100)
     - [Feature 80](https://github.com/ArneBachmann/sos/issues/80) Added functionality to use tags
     - [QA 79](https://github.com/ArneBachmann/sos/issues/79) Added AppVeyor automated testing
     - [QA 94](https://github.com/ArneBachmann/sos/issues/94) More test coverage
+    - Many little fixes and improvements
+- Version 1.0 released on 2017-12-14:
+    - First release with basic functionality
+    - Lots of test cases, good test coverage
+    - System integration and packaging
+    - Library integration and testing
+    - VCS integration
 
 
 ## Comparison with Traditional VCS ##
