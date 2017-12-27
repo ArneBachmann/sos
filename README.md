@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.0.8) #
+# Subversion Offline Solution (SOS 1.0.9) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -36,7 +36,7 @@ SOS supports three different file handling models that you may use to your likin
 ### Unique features of SOS ###
 - Initializes repositories by default with the *simple mode*, which makes effortless versioning a piece of cake
 - In the optional tracking mode, files are tracked based on glob patterns instead of pure filenames or paths (in a manner comparable to how SVN ignores files)
-- In-place command line replacement for traditional VCS that transparently pipes commands to them
+- Command line replacement for traditional VCS that transparently pipes commands to them
 - Straightforward and simplified semantics for common VCS operations (`branch`, `commit`, integrate changes)
 
 ### Limitations ###
@@ -44,7 +44,7 @@ SOS supports three different file handling models that you may use to your likin
 - Has a small user base as of now, therefore no reliable reports of compatibility and operational capability except for the automatic unit tests run on Travis CI and AppVeyor
 
 ### Compatibility ###
-- SOS runs on any Python 3 distribution, except PyPy (TODO). Support for Python 2 is only partial, as the test suite doesn't run through entirely yet, although SOS's programming language Coconut is generally able to transpile to valid Python 2 source code
+- SOS runs on any Python 3 distribution, including some versions of PyPy. Python 2 is not fully supported yet due to library issues, although SOS's programming language *Coconut* is generally able to transpile to valid Python 2 source code
 - SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
 - File name encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
@@ -55,8 +55,8 @@ SOS supports three different file handling models that you may use to your likin
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
     - [Enhancement 63](https://github.com/ArneBachmann/sos/issues/63) Show more change details in `log` and `status`
     - [Enhancement 86](https://github.com/ArneBachmann/sos/issues/86) Renamed command for branch removal to `destroy`
-    - [Feature 61](https://github.com/ArneBachmann/sos/issues/61) Added option to only consider or exclude certain file patterns for relevant operations using `--only` and `--except`
     - [Feature 8](https://github.com/ArneBachmann/sos/issues/8) Added functionality to rename tracking patterns and move files accordingly
+    - [Feature 61](https://github.com/ArneBachmann/sos/issues/61) Added option to only consider or exclude certain file patterns for relevant operations using `--only` and `--except`. Note: These have to be already tracked file patterns, currently, see [#99](https://github.com/ArneBachmann/sos/issues/99) and [#100](https://github.com/ArneBachmann/sos/issues/100)
     - [Feature 80](https://github.com/ArneBachmann/sos/issues/80) Added functionality to use tags
     - [QA 79](https://github.com/ArneBachmann/sos/issues/79) Added AppVeyor automated testing
     - [QA 94](https://github.com/ArneBachmann/sos/issues/94) More test coverage

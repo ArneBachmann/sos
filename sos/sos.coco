@@ -89,8 +89,8 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     --strict                     Always perform full content comparison, don't rely only on file size and timestamp
                                    for offline command: memorize strict mode setting in repository
                                    for changes, diff, commit, switch, update, delete: perform operation in strict mode, regardless of repository setting
-    --only <filename or glob>    Restrict operation to specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
-    --except <filename or glob>  Avoid operation for specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
+    --only <tracked pattern>     Restrict operation to specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
+    --except <tracked pattern >  Avoid operation for specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
     --{cmd}                      When executing {CMD} not being offline, pass arguments to {CMD} instead (e.g. {cmd} --{cmd} config set key value.)
     --log                        Enable logging details
     --verbose                    Enable verbose output""".format(appname = APPNAME, cmd = "sos", CMD = "SOS"))
@@ -265,14 +265,14 @@ class Metadata:
     knownPaths:Dict[str,List[str]] = collections.defaultdict(list)
     for path, pinfo in _.paths.items():  # TODO check dontConsider below
       if pinfo.size is not None\
-          and (considerOnly is None or any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH) and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern)] for pattern in considerOnly))\
-          and (dontConsider is None or not any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH) and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern)] for pattern in dontConsider)):
+          and (considerOnly is None or     any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH)] and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern[pattern.rindex(SLASH) + 1:]) for pattern in considerOnly))\
+          and (dontConsider is None or not any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH)] and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern[pattern.rindex(SLASH) + 1:]) for pattern in dontConsider)):
         knownPaths[os.path.dirname(path)].append(os.path.basename(path))  # TODO reimplement using fnmatch.filter for all files per path for speed
     for path, dirnames, filenames in os.walk(_.root):
       dirnames[:]  = [f for f in dirnames  if len([n for n in _.c.ignoreDirs if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoreDirsWhitelist if fnmatch.fnmatch(f, p)]) > 0]
       filenames[:] = [f for f in filenames if len([n for n in _.c.ignores    if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoresWhitelist    if fnmatch.fnmatch(f, p)]) > 0]
       dirnames.sort(); filenames.sort()
-      relPath = os.path.relpath(path, _.root).replace(os.sep, SLASH)
+      relPath = os.path.relpath(path, _.root).replace(os.sep, SLASH)  # TODO removes ./ ??
       walk = filenames if considerOnly is None else list(reduce((last, pattern) -> last | set(fnmatch.filter(filenames, os.path.basename(pattern))), (p for p in considerOnly if os.path.dirname(p).replace(os.sep, SLASH) == relPath), s{}))
       if dontConsider:
         walk[:] = [fn for fn in walk if not any(fnmatch.fnmatch(fn, os.path.basename(p)) for p in dontConsider if os.path.dirname(p).replace(os.sep, SLASH) == relPath)]  # TODO dirname is correct noramalized? same above?
@@ -284,7 +284,7 @@ class Metadata:
         if progress and newtime - timer > .1:
           outstring = "\rPreparing %s  %s" % (PROGRESS_MARKER[counter.inc() % 4], filename)
           sys.stdout.write(outstring + " " * max(0, termWidth - len(outstring))); sys.stdout.flush(); timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
-        if filename not in _.paths:  # detected file not present (or untracked) in other branch
+        if filename not in _.paths:  # detected file not present (or untracked) in (other) branch
           nameHash = hashStr(filename)
           hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, nameHash) if write else None) if size > 0 else (None, 0)
           changes.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
@@ -294,7 +294,7 @@ class Metadata:
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
           hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, last.nameHash) if write else None) if size > 0 else (None, 0)
           changes.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
-        elif size != last.size or mtime != last.mtime or (checkContent and hashFile(filepath, _.compress) != last.hash):  # detected a modification
+        elif size != last.size or mtime != last.mtime or (checkContent and hashFile(filepath, _.compress)[0] != last.hash):  # detected a modification
           hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, last.nameHash) if write else None) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
           changes.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
         else: continue
@@ -476,7 +476,7 @@ def changes(argument:str = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)), dontConsider = excps)
   m.listChanges(changes)
-  changes
+  changes  # for unit tests only
 
 def diff(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None) -> None:
   ''' Show text file differences of file tree vs. (last or specified) revision on current or specified branch. '''
@@ -536,7 +536,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   m.commits[revision] = CommitInfo(revision, longint(time.time() * 1000), argument)  # comment can be None
   m.saveBranch(m.branch)
   m.loadBranches()  # TODO is it necessary to load again?
-  if m.picky:  # HINT was changed from only picky to include track as well
+  if m.picky:
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
   else:  # track or simple mode
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # set branch dirty
@@ -576,7 +576,7 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
   # Determine current changes
   trackingPatterns:FrozenSet[str] = m.getTrackingPatterns()
   m.computeSequentialPathSet(m.branch, max(m.commits))  # load all commits up to specified revision
-  changes:ChangeSet = m.findChanges(m.branch if commit else None, max(m.commits) + 1 if commit else None, checkContent = strict, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, trackingPatterns), dontConsider = excps)
+  changes:ChangeSet = m.findChanges(m.branch if commit else None, max(m.commits) + 1 if commit else None, checkContent = strict, considerOnly = onlys if not (m.track or m.picky) else conditionalIntersection(onlys, trackingPatterns), dontConsider = excps)
   if check and modified(changes) and not force:
     m.listChanges(changes)
     if not commit: Exit("File tree contains changes. Use --force to proceed")

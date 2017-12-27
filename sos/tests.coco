@@ -97,6 +97,7 @@ class Tests(unittest.TestCase):
   def assertNotInAny(_, what:str, where:str[]) -> None: _.assertFalse(any(what in w for w in where))
 
   def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None) -> None:
+    if prefix and not os.path.exists(prefix): os.makedirs(prefix)
     with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "wb") as fd: fd.write(contents if isinstance(contents, bytes) else contents.encode("cp1252"))
 
   def existsFile(_, number:Union[int, str], expectedContents:bytes = None) -> bool:
@@ -210,6 +211,22 @@ class Tests(unittest.TestCase):
   def testConvertGlobFiles(_):
     _.assertEqual(["xxayb", "aacb"], [r[1] for r in sos.convertGlobFiles(["axxby", "aabc"], *sos.tokenizeGlobPatterns("a*b?", "*a?b"))])
     _.assertEqual(["1qq2ww3", "1abcbx2xbabc3"], [r[1] for r in sos.convertGlobFiles(["qqxbww", "abcbxxbxbabc"], *sos.tokenizeGlobPatterns("*xb*", "1*2*3"))])
+
+  def testFolderRemove(_):
+    m = sos.Metadata(os.getcwd())
+    _.createFile(1)
+    _.createFile("a", prefix = "sub")
+    sos.offline()
+    _.createFile(2)
+    os.unlink("sub" + os.sep + "a")
+    os.rmdir("sub")
+    changes = sos.changes()
+    _.assertEqual(1, len(changes.additions))
+    _.assertEqual(0, len(changes.modifications))
+    _.assertEqual(1, len(changes.deletions))
+    _.createFile("a", prefix = "sub")
+    changes = sos.changes()
+    _.assertEqual(0, len(changes.deletions))
 
   def testComputeSequentialPathSet(_):
     os.makedirs(branchFolder(0, 0))
@@ -480,6 +497,8 @@ class Tests(unittest.TestCase):
   def testPickyMode(_):
     ''' Confirm that picky mode reset tracked patterns after commits. '''
     sos.offline("trunk", ["--picky"])
+    changes = sos.changes()
+    _.assertEqual(0, len(changes.additions))  # do not list any existing file as an addition
     sos.add(".", "./file?", ["--force"])
     _.createFile(1, "aa")
     sos.commit("First")  # add one file
@@ -707,6 +726,22 @@ class Tests(unittest.TestCase):
     _.assertEqual(f{"B"}, sos.conditionalIntersection(f{"A", "B", "C"}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(f{}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(None, f{"B", "D"}))
+    sos.offline(os.getcwd(), ["--track", "--strict"])
+    _.createFile(1)
+    _.createFile(2)
+    sos.add(".", "./file1")
+    sos.add(".", "./file2")
+    sos.commit(onlys = f{"./file1"})
+    _.assertEqual(2, len(os.listdir(branchFolder(0, 1))))  # only meta and file1
+    import pdb; pdb.set_trace()
+    sos.commit()  # adds also file2
+    _.assertEqual(2, len(os.listdir(branchFolder(0, 2))))  # only meta and file1
+    _.createFile(1, "cc")  # modify both files
+    _.createFile(2, "dd")
+    changes = sos.changes(excps = ["./file1"])
+    _.assertEqual(1, len(changes.modifications))  # only file2
+    _.assertTrue("./file2" in changes.modifications)
+    _.assertAllIn(["MOD ./file2", "DIF ./file2"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
 
   def testDiff(_):
     sos.offline(options = ["--strict"])
