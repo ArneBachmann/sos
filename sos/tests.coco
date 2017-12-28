@@ -799,9 +799,13 @@ class Tests(unittest.TestCase):
     # test rename no conflict
     _.createFile(1)
     _.createFile(2)
+    _.createFile(3)
     sos.add(".", "./file*")
+    sos.config("set", ["ignores", "file3;file4"])  # define an ignore pattern
+    sos.config("set", ["ignoresWhitelist", "file3"])
     sos.move(".", "./file*", ".", "fi*le")
-    _.assertTrue(all(os.path.exists("fi%dle" % i) for i in range(1, 3)))
+    _.assertTrue(all(os.path.exists("fi%dle" % i) for i in range(1, 4)))
+    _.assertFalse(os.path.exists("fi4le"))
     # test rename solvable conflicts
     [_.createFile("%s-%s-%s" % tuple(c for c in n)) for n in ["312", "321", "123", "231"]]
 #    sos.move("?-?-?")

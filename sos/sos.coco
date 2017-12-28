@@ -793,9 +793,10 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   force:bool = '--force' in options
   soft:bool = '--soft' in options
   if not os.path.exists(relPath.replace(SLASH, os.sep)) and not force: Exit("Source folder doesn't exist. Use --force to proceed anyway")
-  matching:str[] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(relPath.replace(SLASH, os.sep)) else [], os.path.basename(pattern))  # find matching files in source
-  if not matching and not force: Exit("No files match the specified file or glob pattern. Use --force to proceed anyway")
   m:Metadata = Metadata(os.getcwd())
+  matching:str[] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(relPath.replace(SLASH, os.sep)) else [], os.path.basename(pattern))  # find matching files in source
+  matching[:] = [f for f in matching if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]
+  if not matching and not force: Exit("No files match the specified file or glob pattern. Use --force to proceed anyway")
   m.loadBranches()  # knows current branch
   if not m.track and not m.picky: Exit("Repository is in simple mode. Simply use basic file operations to modify files, then execute 'sos commit' to version the changes")
   if pattern not in m.branches[m.branch].tracked:
