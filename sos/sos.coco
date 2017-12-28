@@ -60,10 +60,10 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     commit  [<message>] [--tag]                           Create a new revision from current state file tree, with an optional commit message
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
     diff    [<branch>][/<revision>]                       List changes vs. last or specified revision
-    add     [<filename or glob pattern>]                  Add a tracking pattern to current branch (path/filename or glob pattern)
-    mv      [<oldpattern>] [<newPattern>]                 Rename, move, or move and rename tracked files according to glob patterns
+    add     [<file pattern>]                              Add a tracking pattern to current branch (file pattern)
+    mv      [<oldpattern>] [<newPattern>]                 Rename, move, or move and rename tracked files according to tracked file patterns
       --soft                                              Don't move or rename files, only the tracking pattern
-    rm      [<filename or glob pattern>]                  Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
+    rm      [<file pattern>]                              Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
 
     ls [<folder path>] [--patterns]                       List file tree and mark changes and tracking status
     status                                                List branches and display repository status
@@ -709,7 +709,7 @@ def remove(relPath:str, pattern:str) -> None:
     suggestion:Set[str] = s{}
     for pat in m.branches[m.branch].tracked:
       if fnmatch.fnmatch(pattern, pat): suggestion.add(pat)
-    if suggestion: print("Do you mean any of the following tracked globs? '%s'" % (", ".join(sorted(suggestion))))  # TODO use same wording as in move
+    if suggestion: print("Do you mean any of the following tracked file patterns? '%s'" % (", ".join(sorted(suggestion))))  # TODO use same wording as in move
     Exit("Tracked pattern '%s' not found" % pattern)
   m.branches[m.branch].tracked.remove(pattern)
   m.saveBranches()
@@ -796,14 +796,14 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   m:Metadata = Metadata(os.getcwd())
   matching:str[] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(relPath.replace(SLASH, os.sep)) else [], os.path.basename(pattern))  # find matching files in source
   matching[:] = [f for f in matching if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]
-  if not matching and not force: Exit("No files match the specified file or glob pattern. Use --force to proceed anyway")
+  if not matching and not force: Exit("No files match the specified file pattern. Use --force to proceed anyway")
   m.loadBranches()  # knows current branch
   if not m.track and not m.picky: Exit("Repository is in simple mode. Simply use basic file operations to modify files, then execute 'sos commit' to version the changes")
   if pattern not in m.branches[m.branch].tracked:
     for tracked in (t for t in m.branches[m.branch].tracked if os.path.dirname(t) == relPath):  # for all patterns of the same source folder
       alternative:str[] = fnmatch.filter(matching, os.path.basename(tracked))  # find if it matches any of the files in the source folder, too
       if alternative: info("  '%s' matches %d files" % (tracked, len(alternative)))
-    if not (force or soft): Exit("File or glob pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)
+    if not (force or soft): Exit("File pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)
   basePattern:str = os.path.basename(pattern)  # pure glob without folder
   newBasePattern:str = os.path.basename(newPattern)
   if basePattern.count("*") < newBasePattern.count("*")\

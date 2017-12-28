@@ -16,6 +16,10 @@
 - **SVN**: Subversion
 - **VCS**: *Version Control System*
 
+### List of definitions ###
+- **Filename**: Fixed term for file names
+- **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29)
+
 
 ## Introduction ##
 If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
@@ -30,12 +34,12 @@ Once you executed `sos offline`, however, all commands are interpreted by the SO
 
 SOS supports three different file handling models that you may use to your liking, thus being able to mimick different traditional VCSs, plus a new mode for super quick and easy version management (the default).
 - **Simple mode**: All files are automatically versioned and tracked. Drawback: Will pickup any little modification for any file, binary or not
-- **Tracking mode**: Only files that match certain file name tracking patterns are respected during `commit`, `update` and `branch` (just like in SVN, gitless, and Fossil), requiring users to specifically add or remove files per branch. Drawback: Need to declare files to track for every offline repository
-- **Picky mode**: Each operation needs the explicit declaration of file name patterns for versioning (like Git does). Drawback: Need to stage files for every single commit
+- **Tracking mode**: Only files that match certain file patterns are respected during `commit`, `update` and `branch` (just like in SVN, gitless, and Fossil), requiring users to specifically add or remove files per branch. Drawback: Need to declare files to track for every offline repository
+- **Picky mode**: Each operation needs the explicit declaration of file patterns for versioning (like Git does). Drawback: Need to stage files for every single commit
 
 ### Unique features of SOS ###
 - Initializes repositories by default with the *simple mode*, which makes effortless versioning a piece of cake
-- In the optional tracking mode, files are tracked based on glob patterns instead of pure filenames or paths (in a manner comparable to how SVN ignores files)
+- In the optional tracking mode, files are tracked via *file patterns* instead of pure filenames or paths (in a manner comparable to how SVN ignores files)
 - Command line replacement for traditional VCS that transparently pipes commands to them
 - Straightforward and simplified semantics for common VCS operations (`branch`, `commit`, integrate changes)
 
@@ -46,7 +50,7 @@ SOS supports three different file handling models that you may use to your likin
 ### Compatibility ###
 - SOS runs on any Python 3 distribution, including some versions of PyPy. Python 2 is not fully supported yet due to library issues, although SOS's programming language *Coconut* is generally able to transpile to valid Python 2 source code
 - SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
-- File name encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
+- Filename encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
 
 ## Latest changes ##
@@ -83,7 +87,7 @@ Here is a comparison between SOS and VCS's commands:
     - The first revision (created during execution of `sos offline` or `sos branch`) always has the number `0`
     - Each `sos commit` increments the revision number by one; revisions are referenced by this numeric index only
 - `delete` destroys and removes a branch. It's a command, not an option flag as in `git branch -d <name>`
-- `move` renames a file tracking pattern and all matching files accordingly; only useful in tracking or picky mode. It supports reordering of literal substrings, but no reordering of glob markers, and no adjacent glob markers. Use `--soft` to avoid files actually being renamed in the file tree. Warning: the `--force` option flag will be considered for several consecutive, potentially dangerous operations. TODO allow and consider `--force` several times on the command line
+- `move` renames a file tracking pattern and all matching files accordingly; only useful in tracking or picky mode. It supports reordering of literal substrings, but no reordering of glob markers (`*`, `?` etc.), and no adjacent glob markers. Use `--soft` to avoid files actually being renamed in the file tree. Warning: the `--force` option flag will be considered for several consecutive, potentially dangerous operations. TODO allow and consider `--force` several times on the command line
 - `switch` works like `checkout` in Git for a revision of another branch (or of the current), or `update` to latest or a specific revision in SVN. Please note that switching to a different revision will in no way fix or remember that revision. The file tree will always be compared to the branch's latest commit for change detection
 - `update` works a bit like `pull` in Git or `update` in SVN and replays the given branch's and/or revision's changes into the file tree. There are plenty of options to configure what changes are actually integrated. This command will not change the current branch like `switch` does
 
@@ -95,7 +99,7 @@ Here is a comparison between SOS and VCS's commands:
     - There may be, however, blocks of text lines that seem inserted/deleted but may have actually just been moved inside the file. SOS attempts to detect clear cases of moved blocks and silently accepts them no matter what. TODO implement and introduce option flag to avoid this behavior
 
 ### Working in *Track* and *Picky* Modes ###
-Use the commands `sos add <pattern>` or `sos rm <pattern>` to add or remove file paths and glob patterns. These patterns always refer to a specific (relative) file path and may contain globbing characters `?*[]` only in the filename part of the path.
+Use the commands `sos add <pattern>` or `sos rm <pattern>` to add or remove file patterns. These patterns always refer to a specific (relative) file path and may contain globbing characters `?*[!]` only in the filename part of the path.
 
 
 ## Configuration Options ##
@@ -119,10 +123,10 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - `picky`: Flag for always going offline in picky mode (Git-styly). Default: False
 - `compress`: Flag for compressing versioned artifacts. Default: True
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN)
-- `texttype`: List of file name glob patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. *Default*: Empty list
-- `bintype`: List of file name glob patterns that should be recognized as binary files that cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list
-- `ignores`: List of file name glob patterns to ignore during repository operations (without relative paths - matching only each directory entry)
-- `ignoresWhitelist`: List of file name glob patterns to be consider even if matched by an entry in the `ignores` list
+- `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. *Default*: Empty list
+- `bintype`: List of file patterns that should be recognized as binary files that cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list
+- `ignores`: List of file patterns to ignore during repository operations (without relative paths - matching only each directory entry)
+- `ignoresWhitelist`: List of file patterns to be consider even if matched by an entry in the `ignores` list
 - `ignoreDirs`: As `ignores`, but for folder names
 - `ignoreDirsWhitelist`: As `ignoresWhitelist`, but for folder names
 
@@ -140,7 +144,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Hints and Tipps ##
-- When specifying glob patterns on the command line, make sure you quote them correctly. On linux (bash, sh, zsh), put your patterns into quote (`"`), otherwise the shell will replace glob patterns by any matching file names instead of forwarding the pattern literally to SOS
+- When specifying file patterns including glob markers on the command line, make sure you quote them correctly. On linux (bash, sh, zsh), put your patterns into quote (`"`), otherwise the shell will replace file patterns by any matching filenames instead of forwarding the pattern literally to SOS
 - Many commands can be shortened to three, two or even one initial letters
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
 - dirty flag only relevant in track and picky mode (?) TODO investigate - is this true, and if yes, why

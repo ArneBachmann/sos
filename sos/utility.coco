@@ -353,7 +353,7 @@ def convertGlobFiles(filenames:str[], oldPattern:GlobBlock[], newPattern:GlobBlo
         if nextliteral >= len(literals): parsedOld.append(GlobBlock2(False, part.content, filename[index:])); break
         nxt:int = filename.index(literals[nextliteral].content, index)  # also matches empty string
         parsedOld.append(GlobBlock2(False, part.content, filename[index:nxt])); index = nxt
-      else: Exit("Invalid tracking pattern specified for move/rename")
+      else: Exit("Invalid file pattern specified for move/rename")
     globs:List[GlobBlock2] = [g for g in parsedOld if not g.isLiteral]
     literals = [l for l in newPattern if l.isLiteral]  # target literals
     nextliteral = 0; nextglob:int = 0
