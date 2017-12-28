@@ -89,8 +89,8 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     --strict                     Always perform full content comparison, don't rely only on file size and timestamp
                                    for offline command: memorize strict mode setting in repository
                                    for changes, diff, commit, switch, update, delete: perform operation in strict mode, regardless of repository setting
-    --only <tracked pattern>     Restrict operation to specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
-    --except <tracked pattern >  Avoid operation for specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
+    --only   <tracked pattern>   Restrict operation to specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
+    --except <tracked pattern>   Avoid operation for specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
     --{cmd}                      When executing {CMD} not being offline, pass arguments to {CMD} instead (e.g. {cmd} --{cmd} config set key value.)
     --log                        Enable logging details
     --verbose                    Enable verbose output""".format(appname = APPNAME, cmd = "sos", CMD = "SOS"))
@@ -340,11 +340,11 @@ class Metadata:
     if argument.startswith(SLASH): return (_.branch, _.getRevisionByName(argument[1:]))  # current branch
     if argument.endswith(SLASH):
       try: return (_.getBranchByName(argument[:-1]), -1)
-      except ValueError: Exit("Unknown branch label")
+      except ValueError: Exit("Unknown branch label '%s'" % argument)
     if SLASH in argument:
       b, r = argument.split(SLASH)[:2]
       try: return (_.getBranchByName(b), _.getRevisionByName(r))
-      except ValueError: Exit("Unknown branch label or wrong number format")
+      except ValueError: Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r))
     branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
     try: return (branch ?? _.branch, longint(argument if argument else "-1") if branch is None else -1)  # either branch name/number or reverse/absolute revision number
@@ -717,17 +717,17 @@ def remove(relPath:str, pattern:str) -> None:
 
 def ls(argument:str? = None, options:str[] = []) -> None:
   ''' List specified directory, augmenting with repository metadata. '''
-  cwd:str = os.getcwd() if argument is None else argument
-  m:Metadata = Metadata(cwd)
+  folder:str = "." if argument is None else argument
+  m:Metadata = Metadata(os.getcwd())
   m.loadBranches()
   info("Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
-  relPath:str = os.path.relpath(cwd, m.root).replace(os.sep, SLASH)
+  relPath:str = os.path.relpath(folder, m.root).replace(os.sep, SLASH)
   trackingPatterns:FrozenSet[str]? = m.getTrackingPatterns() if m.track or m.picky else f{}  # for current branch
   if '--patterns' in options:
-    out:str = ajoin("TRK ", [p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath], nl = "\n")
+    out:str = ajoin("TRK ", [os.path.basename(p) for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath], nl = "\n")
     if out: print(out)
     return
-  files:List[str] = list(sorted(entry for entry in os.listdir(cwd) if os.path.isfile(entry)))
+  files:List[str] = list(sorted(entry for entry in os.listdir(folder) if os.path.isfile(os.path.join(folder, entry))))
   for file in files:  # for each file list all tracking patterns that match, or none (e.g. in picky mode after commit)
     ignore:str? = None
     for ig in m.c.ignores:
@@ -738,8 +738,9 @@ def ls(argument:str? = None, options:str[] = []) -> None:
     if not ignore:
       matches:List[str] = []
       for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
-        if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(pattern)
-    print("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "..."), file, ' by "%s"' % ignore if ignore is not None else (" by " + ";".join(['"%s"' % match for match in matches]) if len(matches) > 0 else "")))
+        if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(os.path.basename(pattern))
+    matches.sort(key = (element) -> len(element))
+    print("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "..."), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
 
 def log(options:str[]) -> None:
   ''' List previous commits on current branch. '''
@@ -833,7 +834,7 @@ def parse(root:str, cwd:str):
   options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
   onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
   debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
-  if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, argument))
+  if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, argument ?? "."))
   if command[:1] == "m":
     if not options: Exit("Need a second file pattern argument as target for move/rename command")
     newRelPath, newPattern = relativize(root, os.path.join(cwd, options[0]))  # TODO add error message if target pattern is missing (???)
@@ -847,8 +848,8 @@ def parse(root:str, cwd:str):
   elif command[:2] == "di":  diff(argument, options, onlys, excps)
   elif command[:1] == "h":   usage()
   elif command[:2] == "lo":  log(options)
-  elif command[:2] == "li":  ls(argument, options)
-  elif command[:2] == "ls":  ls(argument, options)
+  elif command[:2] == "li":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO handle absolute paths as well, also for Windows
+  elif command[:2] == "ls":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO avoid root super paths (..)
   elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:])
   elif command[:2] == "of":  offline(argument, options)
   elif command[:2] == "on":  online(options)

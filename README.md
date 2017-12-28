@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.0.9) #
+# Subversion Offline Solution (SOS 1.0.10) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -23,7 +23,7 @@ If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or
 SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline extension of those VCSs that either don't support offline branching and committing or are too complex, and *c)* as a standalone VCS.
 You may run `sos offline` not only inside a SVN checkout, but in any (and also multiple, even nested) folders of your file system, even outside of VCS repository checkouts/clones.
 
-[SOS](https://github.com/ArneBachmann/sos) thus augments [SVN](http://subversion.apache.org) with offline operation and serves the same need as [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
+[SOS](https://arnebachmann.github.io/sos/) thus augments [SVN](http://subversion.apache.org) with offline operation and serves the same need as [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
 
 As an additional practical benefit, the `sos` command will double as the command line interface of any popular VCS and will execute any `svn`, `git`, etc. command by `sos <command> [<arguments-and-options>]`, e.g. `sos commit -m "Message"` instead of `svn commit -m "Message"` or `git commit -m "Message"`.
 Once you executed `sos offline`, however, all commands are interpreted by the SOS tool instead, until leaving the offline mode via `sos online` (with the exception of `sos config`, cf. details below).
@@ -140,6 +140,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Hints and Tipps ##
+- When specifying glob patterns on the command line, make sure you quote them correctly. On linux (bash, sh, zsh), put your patterns into quote (`"`), otherwise the shell will replace glob patterns by any matching file names instead of forwarding the pattern literally to SOS
 - Many commands can be shortened to three, two or even one initial letters
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
 - dirty flag only relevant in track and picky mode (?) TODO investigate - is this true, and if yes, why
@@ -147,8 +148,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Development and Contribution ##
-You are very welcome to contribute and augment SOS by missing features! Please send in your pull requests against `master`. This project uses trunk-based development for the same reason SOS was originally developed - it's much more natural than feature- and release-branching and simply does what most developers want - regularly save your current development state to the VCS.
-Note that SOS is currently developed using SVN and only mirrored to Git from time to time.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for information.
 
 
 ## Release Management ##

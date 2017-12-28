@@ -182,7 +182,7 @@ class Tests(unittest.TestCase):
     sos.offline(options = ["--track"])
     os.mkdir("sub")
     _.createFile("sub" + os.sep + "file1", "sdfsdf")
-    sos.add("./sub", "sub/file?")
+    sos.add("sub", "sub/file?")
     sos.commit("test")  # should pick up sub/file1 pattern
     _.assertEqual(2, len(os.listdir(os.path.join(sos.metaFolder, "b0", "r1"))))  # sub/file1 was added
     _.createFile(1)
@@ -513,6 +513,11 @@ class Tests(unittest.TestCase):
     _.assertEqual(2, len(os.listdir(branchFolder(0, 2))))
     out = wrapChannels(() -> sos.log([])).replace("\r", "")
     _.assertIn("  * r2", out)
+    _.createFile(3, prefix = "sub")
+    sos.add("sub", "sub/file?")
+    changes = sos.changes()
+    _.assertEqual(1, len(changes.additions))
+    _.assertTrue("sub/file3" in changes.additions)
 
   def testTrackedSubfolder(_):
     ''' See if patterns for files in sub folders are picked up correctly. '''
@@ -594,12 +599,17 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     _.createFile("foo")
     sos.add(".", "./file*")  # capture one file
+    sos.ls()
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
-    _.assertInAny('TRK file1 by "./file*"', out)
-    _.assertNotInAny('... file1 by "./file*"', out)
+    _.assertInAny("TRK file1  (file*)", out)
+    _.assertNotInAny("... file1  (file*)", out)
     _.assertInAny("... foo", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls(options = ["--patterns"])).replace("\r", ""), "\n")
-    _.assertInAny("TRK ./file*", out)
+    _.assertInAny("TRK file*", out)
+    _.createFile("a", prefix = "sub")
+    sos.add("sub", "sub/a")
+    sos.ls("sub")
+    _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(() -> sos.ls("sub")).replace("\r", ""), "\n"))
 
   def testCompression(_):
     _.createFile(1)
