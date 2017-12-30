@@ -131,7 +131,6 @@ class Tests(unittest.TestCase):
     m = sos.Metadata(os.getcwd())
     m.loadBranches()
     _.createFile(1, "1")
-    import pdb; pdb.set_trace()
     m.createBranch(0)
     _.assertEqual(1, len(m.paths))
     time.sleep(FS_PRECISION)  # time required by filesystem time resolution issues
@@ -684,7 +683,7 @@ class Tests(unittest.TestCase):
     _.createFile("ign2")
     sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)
     sos.config("set", ["ignores", "ign1"])  # define an ignore pattern
-    sos.config("add", ["ignores", "ign2"])  # define an ignore pattern
+    sos.config("add", ["ignores", "ign2"])  # additional ignore pattern
     sos.config("set", ["ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
     out = wrapChannels(() -> sos.config("show")).replace("\r", "")
     _.assertIn("ignores => ['ign1', 'ign2']", out)
