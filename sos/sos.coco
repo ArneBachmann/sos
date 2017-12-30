@@ -63,7 +63,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
 
     commit  [<message>] [--tag]                           Create a new revision from current state file tree, with an optional commit message
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
-    diff    [<branch>][/<revision>]                       List changes vs. last or specified revision
+    diff    [<branch>][/<revision>] [--from=branch/rev.]  List changes in file tree (or `--from` specified revision) vs. last (or specified) revision
     add     [<file pattern>]                              Add a tracking pattern to current branch (file pattern)
     mv      [<oldpattern>] [<newPattern>]                 Rename, move, or move and rename tracked files according to tracked file patterns
       --soft                                              Don't move or rename files, only the tracking pattern
@@ -488,7 +488,8 @@ def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, ex
   m:Metadata = Metadata(os.getcwd()); branch:int?; revision:int?
   m.loadBranches()  # knows current branch
   strict:bool = '--strict' in options or m.strict
-  branch, revision = m.parseRevisionString(argument)
+  _from:str? = {None: option.split("--from=")[1] for option in options if options.startswith("--from=")}.get(None, None)
+  branch, revision = m.parseRevisionString(argument)  # if nothing given, use last commit
   if branch not in m.branches: Exit("Unknown branch")
   m.loadBranch(branch)  # knows commits
   revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing

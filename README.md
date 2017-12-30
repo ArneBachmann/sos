@@ -2,14 +2,14 @@
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
-[![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 [![Code coverage badge](https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master)](https://coveralls.io/github/ArneBachmann/sos?branch=master)
+[![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
-- [Documentation](https://arnebachmann.github.io/sos/)
-- If you enjoy using SOS, [buy the developer a coffee](http://PayPal.Me/ArneBachmann/) for motivation!
+- [Documentation](http://sos-vcs.net) [Code Repository](https://github.com/ArneBachmann/sos)
+- [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
 
-### List of Abbreviations ###
+### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
 - **PyPI**: [*Python Package Index*](https://pypi.python.org/pypi)
 - **SCM**: *Source Control Management*
@@ -17,8 +17,7 @@
 - **SVN**: [Apache Subversion](http://subversion.apache.org/)
 - **VCS**: *Version Control System*
 
-### List of Definitions ###
-- **Filename**: Fixed term for file names
+- **Filename**: Fixed term for file names used throughout SOS and this documentation
 - **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29)
 
 
