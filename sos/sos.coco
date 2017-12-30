@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 # Standard modules
 import codecs, collections, fnmatch, json, logging, mimetypes, os, shutil, sys, time
 try:
@@ -54,7 +58,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --stay                                                Don't switch to new branch, continue on current one
     switch  [<branch>][/<revision>] [--meta]              Continue work on another branch
       --meta                                                Only switch file tracking patterns for current branch, don't update any files
-    update  [<branch>][/<revision>]                       Integrate work from another branch TODO add many merge and conflict resolution options
+    update  [<branch>][/<revision>]                       Integrate work from another branch  TODO add many merge and conflict resolution options
     destroy [<branch>]                                    Remove (current) branch entirely
 
     commit  [<message>] [--tag]                           Create a new revision from current state file tree, with an optional commit message
@@ -181,7 +185,7 @@ class Metadata:
         name: optional name of new branch
         _.branch: current branch
     '''
-    debug("Duplicating branch '%s' to '%d'..." % (_.branches[_.branch].name ?? "b%d" % _.branch, branch))
+    debug("Duplicating branch '%s' to '%s'..." % (_.branches[_.branch].name ?? ("b%d" % _.branch), (name ?? "b%d" % branch)))
     tracked = [t for t in _.branches[_.branch].tracked]  # copy
     os.makedirs(os.path.join(_.root, metaFolder, "b%d" % branch, "r0"))
     _.loadBranch(_.branch)
@@ -263,19 +267,19 @@ class Metadata:
     counter:Counter = Counter(-1); timer = time.time()
     hashed:str?; written:longint; compressed:longint = 0; original:longint = 0
     knownPaths:Dict[str,List[str]] = collections.defaultdict(list)
-    for path, pinfo in _.paths.items():  # TODO check dontConsider below
+    for path, pinfo in _.paths.items():
       if pinfo.size is not None\
           and (considerOnly is None or     any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH)] and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern[pattern.rindex(SLASH) + 1:]) for pattern in considerOnly))\
           and (dontConsider is None or not any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH)] and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern[pattern.rindex(SLASH) + 1:]) for pattern in dontConsider)):
-        knownPaths[os.path.dirname(path)].append(os.path.basename(path))  # TODO reimplement using fnmatch.filter for all files per path for speed
+        knownPaths[os.path.dirname(path)].append(os.path.basename(path))  # TODO reimplement using fnmatch.filter and set operations for all files per path for speed
     for path, dirnames, filenames in os.walk(_.root):
       dirnames[:]  = [f for f in dirnames  if len([n for n in _.c.ignoreDirs if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoreDirsWhitelist if fnmatch.fnmatch(f, p)]) > 0]
       filenames[:] = [f for f in filenames if len([n for n in _.c.ignores    if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoresWhitelist    if fnmatch.fnmatch(f, p)]) > 0]
       dirnames.sort(); filenames.sort()
-      relPath = os.path.relpath(path, _.root).replace(os.sep, SLASH)  # TODO removes ./ ??
+      relPath = os.path.relpath(path, _.root).replace(os.sep, SLASH)
       walk = filenames if considerOnly is None else list(reduce((last, pattern) -> last | set(fnmatch.filter(filenames, os.path.basename(pattern))), (p for p in considerOnly if os.path.dirname(p).replace(os.sep, SLASH) == relPath), s{}))
       if dontConsider:
-        walk[:] = [fn for fn in walk if not any(fnmatch.fnmatch(fn, os.path.basename(p)) for p in dontConsider if os.path.dirname(p).replace(os.sep, SLASH) == relPath)]  # TODO dirname is correct noramalized? same above?
+        walk[:] = [fn for fn in walk if not any(fnmatch.fnmatch(fn, os.path.basename(p)) for p in dontConsider if os.path.dirname(p).replace(os.sep, SLASH) == relPath)]
       for file in walk:  # if m.track or m.picky: only files that match any path-relevant tracking patterns
         filename = relPath + SLASH + file
         filepath = os.path.join(path, file)
@@ -283,7 +287,7 @@ class Metadata:
         size, mtime, newtime = stat.st_size, longint(stat.st_mtime * 1000), time.time()
         if progress and newtime - timer > .1:
           outstring = "\rPreparing %s  %s" % (PROGRESS_MARKER[counter.inc() % 4], filename)
-          sys.stdout.write(outstring + " " * max(0, termWidth - len(outstring))); sys.stdout.flush(); timer = newtime  # TODO could write to new line instead of carriage return, also needs terminal width
+          sys.stdout.write(outstring + " " * max(0, termWidth - len(outstring))); sys.stdout.flush(); timer = newtime  # TODO could write to new line instead of carriage return (still true?)
         if filename not in _.paths:  # detected file not present (or untracked) in (other) branch
           nameHash = hashStr(filename)
           hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, nameHash) if write else None) if size > 0 else (None, 0)
@@ -450,13 +454,14 @@ def branch(argument:str? = None, options:str[] = []) -> None:
   force:bool = '--force' in options  # branch even with local modifications
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()
+  m.loadBranch(m.branch)
   if argument and m.getBranchByName(argument) is not None: Exit("Branch '%s' already exists. Cannot proceed" % argument)  # create a named branch
   branch = max(m.branches.keys()) + 1  # next branch's key - this isn't atomic but we assume single-user non-concurrent use here
   debug("Branching to %sbranch b%02d%s%s..." % ("unnamed " if argument is None else "", branch, " '%s'" % argument if argument else "", " from last revision" if last else ""))
   if last:
-    m.duplicateBranch(branch, argument)  # branch from branch's last revision
+    m.duplicateBranch(branch, argument ?? "Branched from r%02d/b%02d" % (m.branch, max(m.commits.keys())))  # branch from branch's last revision
   else:  # from file tree state
-    m.createBranch(branch, argument)  # branch from current file tree
+    m.createBranch(branch, argument ?? "Branched from r%02d/b%02d" % (m.branch, max(m.commits.keys())))  # branch from current file tree
   if not stay:
     m.branch = branch
     m.saveBranches()
@@ -491,12 +496,12 @@ def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, ex
   info("//|\\\\ Differences of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, inverse = True, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)), dontConsider = excps)
-  onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changes, modifications = {k: v for k, v in changes.modifications.items() if not m.isTextType(k)})
+  onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changes, modifications = {k: v for k, v in changes.modifications.items() if not m.isTextType(os.path.basename(k))})
   if modified(onlyBinaryModifications): debug("//|\\\\ File changes")
   m.listChanges(onlyBinaryModifications)  # only list modified binary files
 
-  if changes.modifications: debug("%s//|\\\\ Textual modifications" % ("\n" if modified(onlyBinaryModifications) else ""))  # TODO only text files, not binary
-  for path, pinfo in changes.modifications.items():  # only consider modified files TODO also show A/D here? or replace listing above?
+  if changes.modifications: debug("%s//|\\\\ Textual modifications" % ("\n" if modified(onlyBinaryModifications) else ""))
+  for path, pinfo in (c for c in changes.modifications.items() if m.isTextType(os.path.basename(c[0]))):  # only consider modified text files
     content:bytes?  # ; othr:str[]; curr:str[]
     if pinfo.size == 0: content = b""  # empty file contents
     else: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
@@ -506,7 +511,7 @@ def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, ex
     for block in blocks:
       if block.tipe in [MergeBlockType.INSERT, MergeBlockType.REMOVE]:
         pass  # TODO print some previous and following lines - which aren't accessible here anymore
-      if block.tipe == MergeBlockType.INSERT:  # TODO show color via curses?
+      if block.tipe == MergeBlockType.INSERT:  # TODO show color via (n)curses or other library?
         for no, line in enumerate(block.lines):
           print("+++ %04d |%s|" % (no + block.line, line))
       elif block.tipe == MergeBlockType.REMOVE:
@@ -667,12 +672,12 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
       elif reso & ConflictResolution.MINE:
         print("MNE " + path)  # nothing to do! same as skip
       else:  # NEXT: line-based merge
-        file:bytes? = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # parse lines TODO decode etc.
+        file:bytes? = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # parse lines
         if file is not None:  # if None, error message was already logged
           contents:bytes = merge(file = file, intoname = into, mergeOperation = mrgline, conflictResolution = resline)
-          with open(path, "wb") as fd: fd.write(contents)  # TODO write to temp file first
+          with open(path, "wb") as fd: fd.write(contents)  # TODO write to temp file first, in case writing fails
   info("Integrated changes from '%s/r%02d' into file tree" % (m.branches[branch].name ?? "b%02d" % branch, revision))
-  m.branches[currentBranch] = dataCopy(BranchInfo, m.branches[currentBranch], inSync = False, tracked = list(trackingUnion))  # TODO really? it's a change that cannot be undone easily by the user
+  m.branches[currentBranch] = dataCopy(BranchInfo, m.branches[currentBranch], inSync = False, tracked = list(trackingUnion))
   m.branch = currentBranch  # need to restore setting before saving TODO operate on different objects instead
   m.saveBranches()
 
@@ -696,7 +701,7 @@ def add(relPath:str, pattern:str, options:str[] = []) -> None:
   if not force and not os.path.exists(relPath.replace(SLASH, os.sep)): Exit("The pattern folder doesn't exist. Use --force to add it anyway")
   if not force and len(fnmatch.filter(os.listdir(os.path.abspath(relPath.replace(SLASH, os.sep))), os.path.basename(pattern.replace(SLASH, os.sep)))) == 0:  # doesn't match any current file
     Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")
-  m.branches[m.branch].tracked.append(pattern)  # TODO set inSync flag to False? same for rm
+  m.branches[m.branch].tracked.append(pattern)
   m.saveBranches()
   info("Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), os.path.abspath(relPath)))
 
@@ -731,7 +736,7 @@ def ls(argument:str? = None, options:str[] = []) -> None:
   for file in files:  # for each file list all tracking patterns that match, or none (e.g. in picky mode after commit)
     ignore:str? = None
     for ig in m.c.ignores:
-      if fnmatch.fnmatch(file, ig): ignore = ig; break  # remember first match TODO document this
+      if fnmatch.fnmatch(file, ig): ignore = ig; break  # remember first match
     if ig:
       for wl in m.c.ignoresWhitelist:
         if fnmatch.fnmatch(file, wl): ignore = None; break  # found a white list entry for ignored file, undo ignoring it
@@ -794,7 +799,7 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   soft:bool = '--soft' in options
   if not os.path.exists(relPath.replace(SLASH, os.sep)) and not force: Exit("Source folder doesn't exist. Use --force to proceed anyway")
   m:Metadata = Metadata(os.getcwd())
-  matching:str[] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(relPath.replace(SLASH, os.sep)) else [], os.path.basename(pattern))  # find matching files in source
+  matching:List[str] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(relPath.replace(SLASH, os.sep)) else [], os.path.basename(pattern))  # find matching files in source
   matching[:] = [f for f in matching if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]
   if not matching and not force: Exit("No files match the specified file pattern. Use --force to proceed anyway")
   m.loadBranches()  # knows current branch
@@ -830,35 +835,41 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
 def parse(root:str, cwd:str):
   ''' Main operation. Main has already chdir into VCS root folder, cwd is original working directory for add, rm. '''
   debug("Parsing command-line arguments...")
-  command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
-  argument = sys.argv[2].strip() if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else None
-  options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
-  onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
-  debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
-  if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, argument ?? "."))
-  if command[:1] == "m":
-    if not options: Exit("Need a second file pattern argument as target for move/rename command")
-    newRelPath, newPattern = relativize(root, os.path.join(cwd, options[0]))  # TODO add error message if target pattern is missing (???)
-  if   command[:1] == "a":   add(relPath, pattern, options)
-  elif command[:1] == "b":   branch(argument, options)
-  elif command[:2] == "ch":  changes(argument, options, onlys, excps)
-  elif command[:3] == "com": commit(argument, options, onlys, excps)
-  elif command[:2] == "ci":  commit(argument, options, onlys, excps)
-  elif command[:3] == 'con': config(argument, options)
-  elif command[:2] == "de":  delete(argument, options)
-  elif command[:2] == "di":  diff(argument, options, onlys, excps)
-  elif command[:1] == "h":   usage()
-  elif command[:2] == "lo":  log(options)
-  elif command[:2] == "li":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO handle absolute paths as well, also for Windows
-  elif command[:2] == "ls":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO avoid root super paths (..)
-  elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:])
-  elif command[:2] == "of":  offline(argument, options)
-  elif command[:2] == "on":  online(options)
-  elif command[:1] == "r":   remove(relPath, pattern)
-  elif command[:2] == "st":  status()
-  elif command[:2] == "sw":  switch(argument, options, onlys, excps)
-  elif command[:1] == "u":   update(argument, options, onlys, excps)
-  else: Exit("Unknown command '%s'" % command)
+  try:
+    raise Exception()
+    command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
+    argument = sys.argv[2].strip() if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else None
+    options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
+    onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
+    debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
+    if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, argument ?? "."))
+    if command[:1] == "m":
+      if not options: Exit("Need a second file pattern argument as target for move/rename command")
+      newRelPath, newPattern = relativize(root, os.path.join(cwd, options[0]))
+    if   command[:1] == "a":   add(relPath, pattern, options)
+    elif command[:1] == "b":   branch(argument, options)
+    elif command[:2] == "ch":  changes(argument, options, onlys, excps)
+    elif command[:3] == "com": commit(argument, options, onlys, excps)
+    elif command[:2] == "ci":  commit(argument, options, onlys, excps)
+    elif command[:3] == 'con': config(argument, options)
+    elif command[:2] == "de":  delete(argument, options)
+    elif command[:2] == "di":  diff(argument, options, onlys, excps)
+    elif command[:1] == "h":   usage()
+    elif command[:2] == "lo":  log(options)
+    elif command[:2] == "li":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO handle absolute paths as well, also for Windows
+    elif command[:2] == "ls":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO avoid root super paths (..)
+    elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:])
+    elif command[:2] == "of":  offline(argument, options)
+    elif command[:2] == "on":  online(options)
+    elif command[:1] == "r":   remove(relPath, pattern)
+    elif command[:2] == "st":  status()
+    elif command[:2] == "sw":  switch(argument, options, onlys, excps)
+    elif command[:1] == "u":   update(argument, options, onlys, excps)
+    else: Exit("Unknown command '%s'" % command)
+  except Exception, RuntimeError as E:
+    import traceback
+    traceback.print_stack()
+    print("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version ('sos version'), and what you were doing.")
   sys.exit(0)
 
 def main() -> None:

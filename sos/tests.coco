@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 import builtins, json, logging, os, shutil, sys, time, traceback, unittest, uuid
 StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
 try: from unittest import mock  # Py3
@@ -20,11 +24,11 @@ def sync() -> None:
 def determineFilesystemTimeResolution() -> float =
   name = str(uuid.uuid4())
   with open(name, "w") as fd: fd.write("x")  # create temporary file
-  mt = os.stat(name)[8]  # get current timestamp
-  while os.stat(name)[8] == mt:  # wait until timestamp modified
+  mt = os.stat(name).st_mtime  # get current timestamp
+  while os.stat(name).st_mtime == mt:  # wait until timestamp modified
     with open(name, "w") as fd: fd.write("x")
-  mt, start, count = os.stat(name)[8], time.time(), 0
-  while os.stat(name)[8] == mt:  # now cound and measure time until modified again
+  mt, start, count = os.stat(name).st_mtime, time.time(), 0
+  while os.stat(name).st_mtime == mt:  # now cound and measure time until modified again
     count += 1
     with open(name, "w") as fd: fd.write("x")
   os.unlink(name)
@@ -91,6 +95,8 @@ class Tests(unittest.TestCase):
 
   def assertAllIn(_, what:str[], where:Union[str,List[str]]) -> None: [_.assertIn(w, where) for w in what]
 
+  def assertAllNotIn(_, what:str[], where:Union[str,List[str]]) -> None: [_.assertNotIn(w, where) for w in what]
+
   def assertInAll(_, what:str, where:str[]) -> None: [_.assertIn(what, w) for w in where]
 
   def assertInAny(_, what:str, where:str[]) -> None: _.assertTrue(any(what in w for w in where))
@@ -120,8 +126,12 @@ class Tests(unittest.TestCase):
 
   def testFindChanges(_):
     m = sos.Metadata(os.getcwd())
+    sos.config("set", ["texttype", "*"])
+    sos.config("set", ["ignores", "*.cfg;*.cfg.bak"])
+    m = sos.Metadata(os.getcwd())
     m.loadBranches()
     _.createFile(1, "1")
+    import pdb; pdb.set_trace()
     m.createBranch(0)
     _.assertEqual(1, len(m.paths))
     time.sleep(FS_PRECISION)  # time required by filesystem time resolution issues
@@ -538,7 +548,7 @@ class Tests(unittest.TestCase):
     except: pass
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(branchFolder(0, 2))))  # one new file + meta
-    # TODO check if /file1 and sub/file1 were removed from index
+    # TODO also check if /file1 and sub/file1 were removed from index
 
   def testTrackedMode(_):
     ''' Difference in semantics vs simple mode:
@@ -591,7 +601,7 @@ class Tests(unittest.TestCase):
     sos.switch("Other")  # switch back to just integrated branch that tracks only "a*a" - shouldn't do anything
     _.assertTrue(os.path.exists("." + os.sep + "file1"))
     _.assertTrue(os.path.exists("." + os.sep + "a123a"))
-    _.assertFalse(os.path.exists("." + os.sep + "axxxa"))  # because tracked in both branches, but not present in other -> delete in file tree TODO document
+    _.assertFalse(os.path.exists("." + os.sep + "axxxa"))  # because tracked in both branches, but not present in other -> delete in file tree
     # TODO test switch --meta
 
   def testLsTracked(_):
@@ -751,12 +761,15 @@ class Tests(unittest.TestCase):
     _.assertEqual(2, len(os.listdir(branchFolder(0, 2))))  # only meta and file1
     _.createFile(1, "cc")  # modify both files
     _.createFile(2, "dd")
+    sos.config("set", ["texttype", "file2"])
     changes = sos.changes(excps = ["./file1"])
     _.assertEqual(1, len(changes.modifications))  # only file2
     _.assertTrue("./file2" in changes.modifications)
-    _.assertAllIn(["MOD ./file2", "DIF ./file2"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
+    _.assertIn("DIF ./file2", wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
+    _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
 
   def testDiff(_):
+    sos.config("set", ["texttype", "file1"])
     sos.offline(options = ["--strict"])
     _.createFile(1)
     _.createFile(2)
@@ -765,8 +778,8 @@ class Tests(unittest.TestCase):
     _.createFile(2, "12343")
     sos.commit()
     _.createFile(1, "foobar")
-    _.assertAllIn(["MOD ./file1", "MOD ./file2", "DIF ./file1", "- | 0000 |xxxxxxxxxx|", "+ | 0000 |foobar|"], wrapChannels(() -> sos.diff("/-2")))  # vs. second last
-    _.assertNotIn("MOD ./file1", wrapChannels(() -> sos.diff("/-2", onlys = f{"./file2"})))
+    _.assertAllIn(["MOD ./file2", "DIF ./file1", "- | 0000 |xxxxxxxxxx|", "+ | 0000 |foobar|"], wrapChannels(() -> sos.diff("/-2")))  # vs. second last
+    _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(() -> sos.diff("/-2", onlys = f{"./file2"})))
 
   def testReorderRenameActions(_):
     result:Tuple[str,str][] = sos.reorderRenameActions([("123", "312"), ("312", "132"), ("321", "123")], exitOnConflict = False)

@@ -1,7 +1,11 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.0.11"
+RELEASE = "1.0.12"
 
 print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
@@ -9,7 +13,7 @@ if 'build' in sys.argv:
   print("Transpiling Coconut files to Python...")
   cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 10000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
 
-  assert 0 == os.system("coconut%s %s -l -t 3 sos %s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--mypy" if "--mypy" in sys.argv else ""))  # TODO remove target once Python 2 problems have been fixed
+  assert 0 == os.system("coconut%s %s -l -t 3 sos %s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--mypy" if "--mypy" in sys.argv else ""))  # TODO remove --target once Python 2 problems have been fixed
   try: sys.argv.remove('--mypy')
   except: pass
 
@@ -45,7 +49,7 @@ if 'sdist' in sys.argv:
   if os.path.exists("dist"):
     rmFiles = list(sorted(os.listdir("dist")))
     try:
-      for file in (f for f in (rmFiles if 'build' in sys.argv else rmFiles[:-1]) if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
+      for file in (f for f in rmFiles if any([f.endswith(ext) for ext in (".tar.gz", "zip")])):
         print("Removing old sdist archive %s" % file)
         try: os.unlink(os.path.join("dist", file))
         except: print("Cannot remove old distribution file " + file)

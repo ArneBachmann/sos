@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.0.10) #
+# Subversion Offline Solution (SOS 1.0.12) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -6,17 +6,18 @@
 [![Code coverage badge](https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master)](https://coveralls.io/github/ArneBachmann/sos?branch=master)
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
+- [Documentation](https://arnebachmann.github.io/sos/)
 - If you enjoy using SOS, [buy the developer a coffee](http://PayPal.Me/ArneBachmann/) for motivation!
 
 ### List of Abbreviations ###
-- **MPL**: *Mozilla Public License*
-- **PyPI**: *Python Package Index*
+- **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
+- **PyPI**: [*Python Package Index*](https://pypi.python.org/pypi)
 - **SCM**: *Source Control Management*
 - **SOS**: *Subversion Offline Solution*
-- **SVN**: Subversion
+- **SVN**: [Apache Subversion](http://subversion.apache.org/)
 - **VCS**: *Version Control System*
 
-### List of definitions ###
+### List of Definitions ###
 - **Filename**: Fixed term for file names
 - **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29)
 
@@ -32,12 +33,14 @@ You may run `sos offline` not only inside a SVN checkout, but in any (and also m
 As an additional practical benefit, the `sos` command will double as the command line interface of any popular VCS and will execute any `svn`, `git`, etc. command by `sos <command> [<arguments-and-options>]`, e.g. `sos commit -m "Message"` instead of `svn commit -m "Message"` or `git commit -m "Message"`.
 Once you executed `sos offline`, however, all commands are interpreted by the SOS tool instead, until leaving the offline mode via `sos online` (with the exception of `sos config`, cf. details below).
 
+
+### Flexible VCS Modes ###
 SOS supports three different file handling models that you may use to your liking, thus being able to mimick different traditional VCSs, plus a new mode for super quick and easy version management (the default).
 - **Simple mode**: All files are automatically versioned and tracked. Drawback: Will pickup any little modification for any file, binary or not
 - **Tracking mode**: Only files that match certain file patterns are respected during `commit`, `update` and `branch` (just like in SVN, gitless, and Fossil), requiring users to specifically add or remove files per branch. Drawback: Need to declare files to track for every offline repository
 - **Picky mode**: Each operation needs the explicit declaration of file patterns for versioning (like Git does). Drawback: Need to stage files for every single commit
 
-### Unique features of SOS ###
+### Unique Features of SOS ###
 - Initializes repositories by default with the *simple mode*, which makes effortless versioning a piece of cake
 - In the optional tracking mode, files are tracked via *file patterns* instead of pure filenames or paths (in a manner comparable to how SVN ignores files)
 - Command line replacement for traditional VCS that transparently pipes commands to them
@@ -53,7 +56,7 @@ SOS supports three different file handling models that you may use to your likin
 - Filename encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
 
-## Latest changes ##
+## Latest Changes ##
 - Version 1.1 released on 2017-12-28:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
@@ -73,7 +76,7 @@ SOS supports three different file handling models that you may use to your likin
     - VCS integration
 
 
-## Comparison with Traditional VCS ##
+## Comparison with Traditional VCSs ##
 When completing SOS 1.0 I incidentally discovered an interesting article by ... that discusses central weaknesses in the design of VCSs, with a focus on Git. Many of these arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
 
 - While Git is basically a large key-value store with a thin access interface on top, SOS keeps a very clear (folder) structure of branches, revisions and files
@@ -89,9 +92,9 @@ Here is a comparison between SOS and VCS's commands:
 - `delete` destroys and removes a branch. It's a command, not an option flag as in `git branch -d <name>`
 - `move` renames a file tracking pattern and all matching files accordingly; only useful in tracking or picky mode. It supports reordering of literal substrings, but no reordering of glob markers (`*`, `?` etc.), and no adjacent glob markers. Use `--soft` to avoid files actually being renamed in the file tree. Warning: the `--force` option flag will be considered for several consecutive, potentially dangerous operations. TODO allow and consider `--force` several times on the command line
 - `switch` works like `checkout` in Git for a revision of another branch (or of the current), or `update` to latest or a specific revision in SVN. Please note that switching to a different revision will in no way fix or remember that revision. The file tree will always be compared to the branch's latest commit for change detection
-- `update` works a bit like `pull` in Git or `update` in SVN and replays the given branch's and/or revision's changes into the file tree. There are plenty of options to configure what changes are actually integrated. This command will not change the current branch like `switch` does
+- `update` works a bit like `pull` in Git or `update` in SVN and replays the given branch's and/or revision's changes into the file tree. There are plenty of options to configure what changes are actually integrated. This command will not switch the current branch like `switch` does. Note, that this is not a real 3-way *merge*, just an enhanced *diff* logic.
 
-    When differing contents are merged, there is always a potential for conflict; not all changes can be merged automatically with confidence. SOS takes a simplistic and pragmatic approach and largely follows a simple diff algorithm to detect and highlight changes. Insertions and deletions are noted, and modifications are partially detected and marked as such. There are different layers of changes that SOS is able to work on:
+    When differing contents are to be merged, there is always a potential for conflict; not all changes can be merged automatically with confidence. SOS takes a simplistic and pragmatic approach and largely follows a simple diff algorithm to detect and highlight changes. Insertions and deletions are noted, and modifications are partially detected and marked as such. There are different layers of changes that SOS is able to work on:
     - File addition or removal in the file tree, e.g. when updating from another branch and/or revision or switching to them
     - Line insertion or deletion inside a file, e.g. when merging file modifications during update
     - Character insertion or deletion on a text line, e.g. when non-conflicting intra-line differences are detected
@@ -125,8 +128,8 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN)
 - `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. *Default*: Empty list
 - `bintype`: List of file patterns that should be recognized as binary files that cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list
-- `ignores`: List of file patterns to ignore during repository operations (without relative paths - matching only each directory entry)
-- `ignoresWhitelist`: List of file patterns to be consider even if matched by an entry in the `ignores` list
+- `ignores`: List of filename patterns (without folder path) to ignore during repository operations. Any match from the corresponding white list will negate any hit for `ignores`
+- `ignoresWhitelist`: List of filename patterns to be consider even if matched by an entry in the `ignores` list
 - `ignoreDirs`: As `ignores`, but for folder names
 - `ignoreDirsWhitelist`: As `ignoresWhitelist`, but for folder names
 

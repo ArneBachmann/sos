@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 # Utiliy functions
 import bz2, codecs, difflib, hashlib, logging, os, re, sys, time
 try:
@@ -326,7 +330,6 @@ def tokenizeGlobPattern(pattern:str) -> List[GlobBlock] =
     count = 1
     while index + count < len(pattern) and pattern[index + count] not in "*?[": count += 1
     out.append(GlobBlock(True, pattern[index:index + count], index)); index += count
-    # TODO [abc]
   out
 
 def tokenizeGlobPatterns(oldPattern:str, newPattern:str) -> Tuple[GlobBlock[], GlobBlock[]] =
@@ -338,7 +341,7 @@ def tokenizeGlobPatterns(oldPattern:str, newPattern:str) -> Tuple[GlobBlock[], G
   (ot, nt)
 
 def convertGlobFiles(filenames:str[], oldPattern:GlobBlock[], newPattern:GlobBlock[]) -> Tuple[str,str][] =
-  ''' Converts given filename according to specified file patterns. No support for adjacent glob markers currently. '''  # TODO use list of filenames instead
+  ''' Converts given filename according to specified file patterns. No support for adjacent glob markers currently. '''
   pairs:List[Tuple[str,str]] = []
   for filename in filenames:
     literals:List[GlobBlock] = [l for l in oldPattern if l.isLiteral]  # source literals
@@ -357,11 +360,11 @@ def convertGlobFiles(filenames:str[], oldPattern:GlobBlock[], newPattern:GlobBlo
     globs:List[GlobBlock2] = [g for g in parsedOld if not g.isLiteral]
     literals = [l for l in newPattern if l.isLiteral]  # target literals
     nextliteral = 0; nextglob:int = 0
-    outname:str = ""  # TODO join a list instead?
+    outname:List[str] = []
     for part in newPattern:  # generate new filename
-      if part.isLiteral: outname += literals[nextliteral].content; nextliteral += 1
-      else: outname += globs[nextglob].matches; nextglob += 1
-    pairs.append((filename, outname))
+      if part.isLiteral: outname.append(literals[nextliteral].content); nextliteral += 1
+      else: outname.append(globs[nextglob].matches); nextglob += 1
+    pairs.append((filename, "".join(outname)))
   pairs
 
 def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -> Tuple[str,str][] =
@@ -377,7 +380,7 @@ def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -
     clean:bool = True
     for i in range(1, last):
       try:
-        index:int = targets[:i].index(sources[i])  # TODO not correct? consider entries further down to push up
+        index:int = targets[:i].index(sources[i])
         sources.insert(index, sources.pop(i))  # bubble up the action right before conflict
         targets.insert(index, targets.pop(i))
         clean = False
