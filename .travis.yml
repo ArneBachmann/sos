@@ -68,22 +68,6 @@ matrix:
         - UBUNTU=precise
   allow_failures:
     - os: linux
-      dist: trusty
-      python: "3.7-dev"
-      env:
-        - UBUNTU=trusty
-    - os: linux
-      dist: precise
-      python: "3.7-dev"
-      env:
-        - UBUNTU=precise
-    - os: linux
-      dist: trusty
-      python: pypy3
-      env:
-        - UBUNTU=trusty
-        - NOMYPY=true
-    - os: linux
       dist: precise
       python: pypy3
       env:
