@@ -5,7 +5,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.0.13"
+RELEASE = "1.1"
 
 print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
