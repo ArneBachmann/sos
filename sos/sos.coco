@@ -39,11 +39,13 @@ def loadConfig() -> Union[configr.Configr,Accessor] =  # Simplifies loading conf
 def saveConfig(config:configr.Configr) -> Tuple[str?, Exception?] =
   config.saveSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))
 
-def usage() -> None:
-  print("""//|\\\\ {appname} //|\\\\
+def usage(short:bool = False) -> None:
+  print("//|\\\\ {appname} {version} //|\\\\".format(appname = APPNAME, version = "" if not short else "(PyPI: %s)" % version.__version__))
+  if not short: print("""
 
-Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in offline mode, or command is "sos offline"
-       {cmd} --sos <underlying vcs command and arguments>   When operating in offline mode, forced passthrough to traditional VCS
+Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in offline mode, or command is one of "help", "offline", "version"
+       {cmd} --sos <sos command and arguments>              When operating in offline mode, forced passthrough to SOS
+       {cmd} --vcs <underlying vcs command and arguments>   When operating in offline mode, forced passthrough to traditional VCS
        {cmd} <underlying vcs command and arguments>         When operating in online mode, automatic passthrough to traditional VCS
 
   Available commands:
@@ -837,7 +839,6 @@ def parse(root:str, cwd:str):
   ''' Main operation. Main has already chdir into VCS root folder, cwd is original working directory for add, rm. '''
   debug("Parsing command-line arguments...")
   try:
-    raise Exception()
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
     argument = sys.argv[2].strip() if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else None
     options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
@@ -866,11 +867,14 @@ def parse(root:str, cwd:str):
     elif command[:2] == "st":  status()
     elif command[:2] == "sw":  switch(argument, options, onlys, excps)
     elif command[:1] == "u":   update(argument, options, onlys, excps)
+    elif command[:1] == "v":   usage(short = True)
     else: Exit("Unknown command '%s'" % command)
   except Exception, RuntimeError as E:
+    print(str(E))
     import traceback
+    traceback.print_last()
     traceback.print_stack()
-    print("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version ('sos version'), and what you were doing.")
+    print("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
   sys.exit(0)
 
 def main() -> None:
@@ -883,11 +887,11 @@ def main() -> None:
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Found root folders for SOS|VCS: %s|%s" % (root ?? "", vcs ?? ""))
   defaults["defaultbranch"] = vcsBranches.get(cmd, "trunk")  # sets dynamic default with SVN fallback
-  if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] == "h":  # in offline mode or just going offline TODO what about git config?
+  if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] in ["h", "v"]:  # in offline mode or just going offline TODO what about git config?
     cwd = os.getcwd()
     os.chdir(cwd if command[:2] == "of" else root ?? cwd)
     parse(root, cwd)
-  elif cmd is not None:  # online mode - delegate to VCS
+  elif force_vcs or cmd is not None:  # online mode - delegate to VCS
     info("SOS: Running '%s %s'" % (cmd, " ".join(sys.argv[1:])))
     import subprocess  # only required in this section
     process = subprocess.Popen([cmd] + sys.argv[1:], shell = False, stdin = subprocess.PIPE, stdout = sys.stdout, stderr = sys.stderr)
@@ -907,6 +911,7 @@ def main() -> None:
 
 # Main part
 level = logging.DEBUG if os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv else logging.INFO
-force_sos = '--sos' in sys.argv
-_log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
+force_sos:bool = '--sos' in sys.argv
+force_vcs:bool = '--vcs' in sys.argv
+_log:logging.Logger = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
 if __name__ == '__main__': main()

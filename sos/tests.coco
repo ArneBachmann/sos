@@ -746,6 +746,7 @@ class Tests(unittest.TestCase):
 
   def testUsage(_):
     sos.usage()
+    sos.usage(short = True)
 
   def testOnly(_):
     _.assertEqual((f{"./A", "x/B"}, f{"./C"}), sos.parseOnlyOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--only"]))
@@ -853,6 +854,9 @@ class Tests(unittest.TestCase):
         _.assertIsNotNone(vcs)
         _.assertEqual("git", cmd)
     finally: os.chdir(old)
+
+  # TODO test command line operation --sos vs. --vcs
+  # check exact output instead of expected fail
 
 
 if __name__ == '__main__':
