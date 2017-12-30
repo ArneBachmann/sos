@@ -26,14 +26,16 @@ def determineFilesystemTimeResolution() -> float =
   with open(name, "w") as fd: fd.write("x")  # create temporary file
   mt = os.stat(name).st_mtime  # get current timestamp
   while os.stat(name).st_mtime == mt:  # wait until timestamp modified
+    time.sleep(0.05)  # to avoid 0.00s bugs (came up some time for unknown reasons)
     with open(name, "w") as fd: fd.write("x")
-  mt, start, count = os.stat(name).st_mtime, time.time(), 0
+  mt, start, _count = os.stat(name).st_mtime, time.time(), 0
   while os.stat(name).st_mtime == mt:  # now cound and measure time until modified again
-    count += 1
+    time.sleep(0.05)
+    _count += 1
     with open(name, "w") as fd: fd.write("x")
   os.unlink(name)
   fsprecision = round(time.time() - start, 2)
-  print("File system timestamp precision is %.2fs; wrote to the file %d times during that time" % (fsprecision, count))
+  print("File system timestamp precision is %.2fs; wrote to the file %d times during that time" % (fsprecision, _count))
   fsprecision
 
 
@@ -128,20 +130,21 @@ class Tests(unittest.TestCase):
     m = sos.Metadata(os.getcwd())
     sos.config("set", ["texttype", "*"])
     sos.config("set", ["ignores", "*.cfg;*.cfg.bak"])
-    m = sos.Metadata(os.getcwd())
+    m = sos.Metadata(os.getcwd())  # reload from file system
     m.loadBranches()
     _.createFile(1, "1")
     m.createBranch(0)
     _.assertEqual(1, len(m.paths))
     time.sleep(FS_PRECISION)  # time required by filesystem time resolution issues
-    _.createFile(1, "2")
-    _.createFile(2, "2")
+    _.createFile(1, "2")  # modify existing file
+    _.createFile(2, "2")  # add another file
+    m.loadCommit(0, 0)
     changes = m.findChanges()  # detect time skew
     _.assertEqual(1, len(changes.additions))
     _.assertEqual(0, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
     m.integrateChangeset(changes)
-    _.createFile(2, "12")  # modify file
+    _.createFile(2, "12")  # modify file again
     changes = m.findChanges(0, 1)  # by size, creating new commit
     _.assertEqual(0, len(changes.additions))
     _.assertEqual(0, len(changes.deletions))
