@@ -872,8 +872,10 @@ def parse(root:str, cwd:str):
   except Exception, RuntimeError as E:
     print(str(E))
     import traceback
-    traceback.print_last()
+    traceback.print_exc()
     traceback.print_stack()
+    try: traceback.print_last()
+    except: pass
     print("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
   sys.exit(0)
 

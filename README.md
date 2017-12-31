@@ -56,7 +56,7 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
-- Version 1.1 released on 2017-12-28:
+- Version 1.1 released on 2017-12-30:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
     - [Enhancement 63](https://github.com/ArneBachmann/sos/issues/63) Show more change details in `log` and `status`, and also `ls` (in [#101](https://github.com/ArneBachmann/sos/issues/101))
