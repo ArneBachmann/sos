@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.1.1) #
+# Subversion Offline Solution (SOS 1.1.2) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -6,7 +6,7 @@
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
-- [Documentation](http://sos-vcs.net) [Code Repository](https://github.com/ArneBachmann/sos)
+- [Documentation](http://sos-vcs.net), [Code Repository](https://github.com/ArneBachmann/sos)
 - [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
 
 ### List of Abbreviations and Definitions ###
@@ -76,7 +76,7 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Comparison with Traditional VCSs ##
-When completing SOS 1.0 I incidentally discovered an interesting article by ... that discusses central weaknesses in the design of VCSs, with a focus on Git. Many of these arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
+While completing version 1.0 of SOS, I incidentally discovered an interesting [article by Gregory Szorc](https://gregoryszorc.com/blog/2017/12/11/high-level-problems-with-git-and-how-to-fix-them/) that discusses central weaknesses in the design of popular VCSs, with a focus on Git. Many of his arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
 
 - While Git is basically a large key-value store with a thin access interface on top, SOS keeps a very clear (folder) structure of branches, revisions and files
 - Compared to SVN SOS's file store is much simpler and doesn't require an integrated database
@@ -146,6 +146,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Hints and Tipps ##
+- Too speed up going offline, use the `sos offline --plain` option: It may reduce the time for going offline by a larger factor (in tests on a small laptop with BTRFS it was 30 times faster due to avoiding Python having to compress all versioned file contents)
 - When specifying file patterns including glob markers on the command line, make sure you quote them correctly. On linux (bash, sh, zsh), put your patterns into quote (`"`), otherwise the shell will replace file patterns by any matching filenames instead of forwarding the pattern literally to SOS
 - Many commands can be shortened to three, two or even one initial letters
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames

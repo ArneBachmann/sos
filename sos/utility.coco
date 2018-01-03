@@ -109,7 +109,7 @@ def eoldet(file:bytes) -> bytes? =
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
 
-def Exit(message:str = "") -> None: print("[EXIT] " + message + ".", file = sys.stderr) if str != "" else None; sys.exit(1)
+def Exit(message:str = "") -> None: print("[EXIT]" + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(1)
 
 def user_input(msg:str) -> str = input(msg)  # referenceso __builtin__.raw_input on Python 2
 

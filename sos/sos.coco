@@ -55,26 +55,29 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --picky                                               Setup Git-style mode: users pick files for each operation
     online                                                Finish working offline
 
-    branch  [<name>] [--last] [--stay]                    Create a new branch from current file tree and switch to it
+    branch [<name>]                                       Create a new branch from current file tree and switch to it
       --last                                                Use last revision, not current file tree, but keep file tree unchanged
       --stay                                                Don't switch to new branch, continue on current one
-    switch  [<branch>][/<revision>] [--meta]              Continue work on another branch
+    switch [<branch>][/<revision>]                        Continue work on another branch
       --meta                                                Only switch file tracking patterns for current branch, don't update any files
-    update  [<branch>][/<revision>]                       Integrate work from another branch  TODO add many merge and conflict resolution options
+    update [<branch>][/<revision>]                        Integrate work from another branch  TODO add many merge and conflict resolution options
     destroy [<branch>]                                    Remove (current) branch entirely
 
-    commit  [<message>] [--tag]                           Create a new revision from current state file tree, with an optional commit message
+    commit [<message>]                                    Create a new revision from current state file tree, with an optional commit message
+      --tag                                               Converts commit message into a tag that can be used instead of numeric revisions
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
-    diff    [<branch>][/<revision>] [--from=branch/rev.]  List changes in file tree (or `--from` specified revision) vs. last (or specified) revision
-    add     [<file pattern>]                              Add a tracking pattern to current branch (file pattern)
-    mv      [<oldpattern>] [<newPattern>]                 Rename, move, or move and rename tracked files according to tracked file patterns
-      --soft                                              Don't move or rename files, only the tracking pattern
-    rm      [<file pattern>]                              Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
+    diff [<branch>][/<revision>]                          List changes in file tree (or `--from` specified revision) vs. last (or specified) revision
+      --from=branch/revision                                Take from revision as base to compare against (instead of current file tree)
+    add <file pattern>                                    Add a tracking pattern to current branch (file pattern)
+    mv <oldpattern> <newPattern>                          Rename, move, or move and rename tracked files according to tracked file patterns
+      --soft                                                Don't move or rename files, only the tracking pattern
+    rm <file pattern>                                     Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
 
     ls [<folder path>] [--patterns]                       List file tree and mark changes and tracking status
     status                                                List branches and display repository status
-    log [--changes]                                       List commits of current branch
-    config  [set/unset/show/add/rm] [<param> [<value>]]   Configure user-global defaults.
+    log                                                   List commits of current branch
+      --changes                                             Also list file differences
+    config [set/unset/show/add/rm] [<param> [<value>]]    Configure user-global defaults.
                                                           Flags (1/0, on/off, true/false, yes/no):
                                                             strict, track, picky, compress
                                                           Lists (semicolon-separated when set; single values for add/rm):
@@ -84,13 +87,13 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     help, --help                                          Show this usage information
 
   Arguments:
-    <branch/revision>            Revision string. Branch is optional and may be a label or index
-                                 Revision is an optional integer and may be negative to reference from the latest commits (-1 is most recent revision)
+    <branch>/<revision>          Revision string. Branch is optional (defaulting to current branch) and may be label or number
+                                 Revision is an optional integer and may be negative to reference from the latest commits (-1 is most recent revision), or a tag
 
   Common options:
-    --force                      Executes potentially harmful operations
+    --force                      Executes potentially harmful operations. SOS will tell you, when it needs you to confirm an operation with "--force"
                                    for offline: ignore being already offline, start from scratch (same as 'sos online --force && sos offline')
-                                   for online: ignore uncommitted branches
+                                   for online: ignore uncommitted branches, just go online and remove existing offline repository
                                    for commit, switch, update, add: ignore uncommitted changes before executing command
     --strict                     Always perform full content comparison, don't rely only on file size and timestamp
                                    for offline command: memorize strict mode setting in repository
@@ -395,7 +398,7 @@ class Metadata:
       except: pass
     if pinfo.size == 0:
       with open(target, "wb"): pass
-      try: os.utime(target, (-1, pinfo.mtime / 1000.))  # update access/modification timestamps on file system
+      try: os.utime(target, (pinfo.mtime / 1000., pinfo.mtime / 1000.))  # update access/modification timestamps on file system
       except Exception as E: error("Cannot update file's timestamp after restoration '%r'" % E)
       return None
     revision, source = _.findRevision(branch, revision, pinfo.nameHash)
@@ -405,7 +408,7 @@ class Metadata:
         buffer = fd.read(bufSize)
         to.write(buffer)
         if len(buffer) < bufSize: break
-    try: os.utime(target, (-1, pinfo.mtime / 1000.))  # update access/modification timestamps on file system
+    try: os.utime(target, (pinfo.mtime / 1000., pinfo.mtime / 1000.))  # update access/modification timestamps on file system
     except Exception as E: error("Cannot update file's timestamp after restoration '%r'" % E)
     None
 
@@ -790,8 +793,9 @@ def config(argument:str, options:List[str] = []) -> None:
     if options[0] not in c.keys(): Exit("Unknown key specified: %r" % options[0])
     if options[1] not in c[options[0]]: Exit("Unknown value: %r" % options[1])
     c[options[0]].remove(options[1])
-  else:  # Show
-    for k, v in sorted(c.items()): print("%s => %r" % (k, v))
+  else:  # Show or list
+    for k, v in sorted(c.items()): print("%s: %r" % (k.rjust(20), v))
+    if len(c.keys()) == 0: info("No configuration stored, using only defaults.")  # TODO list defaults instead? Or display [DEFAULT] for each item above if unmodified
     return
   f, g = saveConfig(c)
   if f is None: error("Error saving user configuration: %r" % g)

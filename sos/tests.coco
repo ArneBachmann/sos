@@ -689,7 +689,7 @@ class Tests(unittest.TestCase):
     sos.config("add", ["ignores", "ign2"])  # additional ignore pattern
     sos.config("set", ["ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
     out = wrapChannels(() -> sos.config("show")).replace("\r", "")
-    _.assertIn("ignores => ['ign1', 'ign2']", out)
+    _.assertIn("             ignores: ['ign1', 'ign2']", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('... file1', out)
     _.assertInAny('... ign1', out)
