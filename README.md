@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.1.2) #
+# Subversion Offline Solution (SOS 1.1.3) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -6,7 +6,7 @@
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
-- [Documentation](http://sos-vcs.net), [Code Repository](https://github.com/ArneBachmann/sos)
+- [Documentation](http://sos-vcs.net) (official website), [Code Repository](https://github.com/ArneBachmann/sos) (at Github)
 - [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
 
 ### List of Abbreviations and Definitions ###
@@ -139,14 +139,8 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - `sos update` will **not warn** if local changes are present! This is a noteworthy exception to the failsafe approach taken for most other commands
 
 
-## FAQ ##
-> Q: I don't want to risk data loss in case SOS has some undiscovered bugs. What can I do?
->
-> A: Configure SOS to store all versioned files as plain file copies instead of compressed artifacts: `sos offline --plain` for one repository only, or `sos config set compress off` to define a user-preset before going offline. Plain repositories simply copy files when branching and/or versioning; note, however, that filenames will be hashed and stored in the metadata file instead (which is human-readable, thankfully).
-
-
 ## Hints and Tipps ##
-- Too speed up going offline, use the `sos offline --plain` option: It may reduce the time for going offline by a larger factor (in tests on a small laptop with BTRFS it was 30 times faster due to avoiding Python having to compress all versioned file contents)
+- To save space when going offline, use the option `sos offline --compress`: It may increase the time for going offline by a larger factor (e.g. 10x), but will also reduce the amount of storage needed to version files. To enable this option for all offline repositories, use `sos config set compress on`
 - When specifying file patterns including glob markers on the command line, make sure you quote them correctly. On linux (bash, sh, zsh), put your patterns into quote (`"`), otherwise the shell will replace file patterns by any matching filenames instead of forwarding the pattern literally to SOS
 - Many commands can be shortened to three, two or even one initial letters
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames

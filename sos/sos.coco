@@ -3,7 +3,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Standard modules
-import codecs, collections, fnmatch, json, logging, mimetypes, os, shutil, sys, time
+import time; START_TIME = time.time()
+import codecs, collections, fnmatch, json, logging, mimetypes, os, shutil, sys
 try:
   from typing import Any, Dict, FrozenSet, IO, Iterator, List, Set, Tuple, Type, Union  # only required for mypy
 except: pass  # typing not available (e.g. Python 2)
@@ -23,7 +24,7 @@ except: configr = None  # declare as undefined
 
 # Constants
 APPNAME:str = "Subversion Offline Solution  V%s  (C) Arne Bachmann" % version.__release_version__
-defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": True, "tags": [], "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
+defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "tags": [], "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
 termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
 
 
@@ -50,7 +51,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
 
   Available commands:
     offline [<name>]                                      Start working offline, creating a branch (named <name>), default name depending on VCS
-      --plain                                               Don't compress versioned files (same as `sos config set compress off`)
+      --compress                                            Compress versioned files (same as `sos config set compress on && sos offline`)
       --track                                               Setup SVN-style mode: users add/remove tracking patterns per branch
       --picky                                               Setup Git-style mode: users pick files for each operation
     online                                                Finish working offline
@@ -103,6 +104,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     --{cmd}                      When executing {CMD} not being offline, pass arguments to {CMD} instead (e.g. {cmd} --{cmd} config set key value.)
     --log                        Enable logging details
     --verbose                    Enable verbose output""".format(appname = APPNAME, cmd = "sos", CMD = "SOS"))
+  Exit(code = 0)
 
 # Main data class
 #@runtime_validation
@@ -429,10 +431,10 @@ def offline(argument:str? = None, options:str[] = []) -> None:
         else: os.unlink(resource)
     except: Exit("Cannot reliably remove previous repository contents. Please remove .sos folder manually prior to going offline")
   m:Metadata = Metadata(os.getcwd())
-  if '--plain'   in options or not m.c.compress: m.compress =  False  # plain file copies instead of compressed ones
-  if '--picky'   in options or m.c.picky:        m.picky =     True   # Git-like
-  elif '--track' in options or m.c.track:        m.track =     True   # Svn-like
-  if '--strict'  in options or m.c.strict:       m.strict =    True   # always hash contents
+  if '--compress' in options or m.c.compress: m.compress = True  # plain file copies instead of compressed ones
+  if '--picky'    in options or m.c.picky:    m.picky =    True   # Git-like
+  elif '--track'  in options or m.c.track:    m.track =    True   # Svn-like
+  if '--strict'   in options or m.c.strict:   m.strict =   True   # always hash contents
   debug("Preparing offline repository...")
   m.createBranch(0, argument ?? str(defaults["defaultbranch"]), initialMessage = "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
@@ -873,6 +875,7 @@ def parse(root:str, cwd:str):
     elif command[:1] == "u":   update(argument, options, onlys, excps)
     elif command[:1] == "v":   usage(short = True)
     else: Exit("Unknown command '%s'" % command)
+    Exit(code = 0)
   except Exception, RuntimeError as E:
     print(str(E))
     import traceback
@@ -880,15 +883,14 @@ def parse(root:str, cwd:str):
     traceback.print_stack()
     try: traceback.print_last()
     except: pass
-    print("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
-  sys.exit(0)
+    Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
 
 def main() -> None:
   global debug, info, warn, error
   logging.basicConfig(level = level, stream = sys.stderr, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
   _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
   for option in (o for o in ['--log', '--verbose', '-v', '--sos'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
-  if '--help' in sys.argv or len(sys.argv) < 2: usage(); Exit()
+  if '--help' in sys.argv or len(sys.argv) < 2: usage()
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Found root folders for SOS|VCS: %s|%s" % (root ?? "", vcs ?? ""))
@@ -916,7 +918,9 @@ def main() -> None:
 
 
 # Main part
-level = logging.DEBUG if os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv else logging.INFO
+verbose = lateBinding["verbose"] = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv  # imported from utility, and only modified here
+lateBinding["start"] = START_TIME
+level = logging.DEBUG if verbose else logging.INFO
 force_sos:bool = '--sos' in sys.argv
 force_vcs:bool = '--vcs' in sys.argv
 _log:logging.Logger = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error

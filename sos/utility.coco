@@ -50,6 +50,7 @@ SVN = "svn"
 SLASH = "/"
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None}
+lateBinding:Accessor = Accessor({"verbose": False, "start": 0})
 
 
 # Value types
@@ -109,7 +110,7 @@ def eoldet(file:bytes) -> bytes? =
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
 
-def Exit(message:str = "") -> None: print("[EXIT]" + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(1)
+def Exit(message:str = "", code = 1) -> None: print("[EXIT%s]" % (" %.1fs" % (time.time() - lateBinding.start) if lateBinding.verbose else "") + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(1)
 
 def user_input(msg:str) -> str = input(msg)  # referenceso __builtin__.raw_input on Python 2
 

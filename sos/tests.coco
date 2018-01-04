@@ -220,7 +220,7 @@ class Tests(unittest.TestCase):
     sos.tokenizeGlobPatterns("*xb?c", "*x?bc")  # succeeds, because glob patterns match (differ only in position)
     try: sos.tokenizeGlobPatterns("a???b*", "ab???*"); _.fail()  # succeeds, because glob patterns match (differ only in position)
     except: pass
-  
+
   def testConvertGlobFiles(_):
     _.assertEqual(["xxayb", "aacb"], [r[1] for r in sos.convertGlobFiles(["axxby", "aabc"], *sos.tokenizeGlobPatterns("a*b?", "*a?b"))])
     _.assertEqual(["1qq2ww3", "1abcbx2xbabc3"], [r[1] for r in sos.convertGlobFiles(["qqxbww", "abcbxxbxbabc"], *sos.tokenizeGlobPatterns("*xb*", "1*2*3"))])
@@ -625,7 +625,7 @@ class Tests(unittest.TestCase):
 
   def testCompression(_):
     _.createFile(1)
-    sos.offline("master", options = ["--plain", "--force"])
+    sos.offline("master", options = ["--force"])
     _.assertTrue(_.existsFile(branchFolder(0, 0) + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa", b"x" * 10))
     setRepoFlag("compress", True)  # was plain = uncompressed before
     _.createFile(2)
@@ -745,8 +745,10 @@ class Tests(unittest.TestCase):
     sos.delete("added", "--force")  # should succeed
 
   def testUsage(_):
-    sos.usage()
-    sos.usage(short = True)
+    try: sos.usage(); _.fail()  # TODO expect sys.exit(0)
+    except: pass
+    try: sos.usage(short = True); _.fail()
+    except: pass
 
   def testOnly(_):
     _.assertEqual((f{"./A", "x/B"}, f{"./C"}), sos.parseOnlyOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--only"]))
