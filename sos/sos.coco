@@ -3,8 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Standard modules
-import time; START_TIME = time.time()
-import codecs, collections, fnmatch, json, logging, mimetypes, os, shutil, sys
+import codecs, collections, fnmatch, json, logging, mimetypes, os, shutil, sys, time
 try:
   from typing import Any, Dict, FrozenSet, IO, Iterator, List, Set, Tuple, Type, Union  # only required for mypy
 except: pass  # typing not available (e.g. Python 2)
