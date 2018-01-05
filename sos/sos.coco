@@ -23,7 +23,7 @@ except: configr = None  # declare as undefined
 
 
 # Constants
-APPNAME:str = "Subversion Offline Solution  V%s  (C) Arne Bachmann" % version.__release_version__
+APPNAME:str = "Subversion Offline Solution V%s (C) Arne Bachmann" % version.__release_version__
 defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "tags": [], "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
 termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
 
@@ -41,7 +41,7 @@ def saveConfig(config:configr.Configr) -> Tuple[str?, Exception?] =
   config.saveSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))
 
 def usage(short:bool = False) -> None:
-  print("//|\\\\ {appname} {version} //|\\\\".format(appname = APPNAME, version = "" if not short else "(PyPI: %s)" % version.__version__))
+  print("//|\\\\ {appname}{version} //|\\\\".format(appname = APPNAME, version = "" if not short else " (PyPI: %s)" % version.__version__))
   if not short: print("""
 
 Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in offline mode, or command is one of "help", "offline", "version"
@@ -59,16 +59,16 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     branch [<name>]                                       Create a new branch from current file tree and switch to it
       --last                                                Use last revision, not current file tree, but keep file tree unchanged
       --stay                                                Don't switch to new branch, continue on current one
+    destroy [<branch>]                                    Remove (current or specified) branch entirely
     switch [<branch>][/<revision>]                        Continue work on another branch
       --meta                                                Only switch file tracking patterns for current branch, don't update any files
     update [<branch>][/<revision>]                        Integrate work from another branch  TODO add many merge and conflict resolution options
-    destroy [<branch>]                                    Remove (current) branch entirely
 
     commit [<message>]                                    Create a new revision from current state file tree, with an optional commit message
-      --tag                                               Converts commit message into a tag that can be used instead of numeric revisions
+      --tag                                               Memorizes commit message as a tag that can be used instead of numeric revisions
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
     diff [<branch>][/<revision>]                          List changes in file tree (or `--from` specified revision) vs. last (or specified) revision
-      --from=branch/revision                                Take from revision as base to compare against (instead of current file tree)
+      --to=branch/revision                                Take "to" revision as target to compare against (instead of current file tree state)
     add <file pattern>                                    Add a tracking pattern to current branch (file pattern)
     mv <oldpattern> <newPattern>                          Rename, move, or move and rename tracked files according to tracked file patterns
       --soft                                                Don't move or rename files, only the tracking pattern
@@ -78,6 +78,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     status                                                List branches and display repository status
     log                                                   List commits of current branch
       --changes                                             Also list file differences
+      --diff                                                Also show textual version differences
     config [set/unset/show/add/rm] [<param> [<value>]]    Configure user-global defaults.
                                                           Flags (1/0, on/off, true/false, yes/no):
                                                             strict, track, picky, compress
@@ -86,6 +87,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
                                                           Supported texts:
                                                             defaultbranch (has a dynamic default value, depending on VCS discovered)
     help, --help                                          Show this usage information
+    version                                               Display version and package information
 
   Arguments:
     <branch>/<revision>          Revision string. Branch is optional (defaulting to current branch) and may be label or number
@@ -194,7 +196,7 @@ class Metadata:
     '''
     debug("Duplicating branch '%s' to '%s'..." % (_.branches[_.branch].name ?? ("b%d" % _.branch), (name ?? "b%d" % branch)))
     tracked = [t for t in _.branches[_.branch].tracked]  # copy
-    os.makedirs(os.path.join(_.root, metaFolder, "b%d" % branch, "r0"))
+    os.makedirs(branchFolder(branch, 0, base = _.root))
     _.loadBranch(_.branch)
     revision:int = max(_.commits)
     _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
@@ -220,7 +222,7 @@ class Metadata:
       _.listChanges(changes)
       _.paths.update(changes.additions.items())
     else:  # tracking or picky mode: branch from lastest revision
-      os.makedirs(os.path.join(_.root, metaFolder, "b%d" % branch, "r0"))
+      os.makedirs(branchFolder(branch, 0, base = _.root))
       if _.branch is not None:  # not immediately after "offline" - copy files from current branch
         _.loadBranch(_.branch)
         revision:int = max(_.commits)  # TODO what if last switch was to an earlier revision? no persisting of last checkout
@@ -245,14 +247,14 @@ class Metadata:
 
   def loadCommit(_, branch:int, revision:int) -> None:
     ''' Load all file information from a commit meta data. '''
-    with codecs.open(os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, metaFile), "r", encoding = UTF8) as fd:
+    with codecs.open(branchFolder(branch, revision, base = _.root, file = metaFile), "r", encoding = UTF8) as fd:
       _.paths = json.load(fd)
     _.paths = {path: PathInfo(*item) for path, item in _.paths.items()}  # re-create type info
     _.branch = branch
 
   def saveCommit(_, branch:int, revision:int):
     ''' Save all file information to a commit meta data file. '''
-    target = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision)
+    target = branchFolder(branch, revision, base = _.root)
     try: os.makedirs(target)
     except: pass
     with codecs.open(os.path.join(target, metaFile), "w", encoding = UTF8) as fd:
@@ -269,7 +271,9 @@ class Metadata:
         progress: Show file names during processing
     '''
     write = branch is not None and revision is not None
-    if write: os.makedirs(os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision))
+    if write:
+      try: os.makedirs(branchFolder(branch, revision, base = _.root))
+      except FileExistsError: pass  # HINT "try" only necessary for testing hash collisions
     changes:ChangeSet = ChangeSet({}, {}, {})
     counter:Counter = Counter(-1); timer = time.time()
     hashed:str?; written:longint; compressed:longint = 0; original:longint = 0
@@ -297,16 +301,16 @@ class Metadata:
           sys.stdout.write(outstring + " " * max(0, termWidth - len(outstring))); sys.stdout.flush(); timer = newtime  # TODO could write to new line instead of carriage return (still true?)
         if filename not in _.paths:  # detected file not present (or untracked) in (other) branch
           nameHash = hashStr(filename)
-          hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, nameHash) if write else None) if size > 0 else (None, 0)
+          hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = nameHash) if write else None) if size > 0 else (None, 0)
           changes.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
           compressed += written; original += size
           continue
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
-          hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, last.nameHash) if write else None) if size > 0 else (None, 0)
+          hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = last.nameHash) if write else None) if size > 0 else (None, 0)
           changes.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
         elif size != last.size or mtime != last.mtime or (checkContent and hashFile(filepath, _.compress)[0] != last.hash):  # detected a modification
-          hashed, written = hashFile(filepath, _.compress, saveTo = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, last.nameHash) if write else None) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
+          hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = last.nameHash) if write else None) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
           changes.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
         else: continue
         compressed += written; original += last.size if inverse else size
@@ -364,7 +368,7 @@ class Metadata:
 
   def findRevision(_, branch:int, revision:int, nameHash:str) -> Tuple[int,str] =
     while True:  # find latest revision that contained the file physically
-      source:str = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, nameHash)
+      source:str = branchFolder(branch, revision, base = _.root, file = nameHash)
       if os.path.exists(source) and os.path.isfile(source): break
       revision -= 1
       if revision < 0: Exit("Cannot determine versioned file '%s' from specified branch '%d'" % (nameHash, branch))
@@ -372,13 +376,13 @@ class Metadata:
 
   def copyVersionedFile(_, branch:int, revision:int, toBranch:int, toRevision:int, pinfo:PathInfo) -> None:
     ''' Copy versioned file to other branch/revision. '''
-    target:str = os.path.join(_.root, metaFolder, "b%d" % toBranch, "r%d" % toRevision, pinfo.nameHash)
+    target:str = branchFolder(toBranch, toRevision, base = _.root, file = pinfo.nameHash)
     revision, source = _.findRevision(branch, revision, pinfo.nameHash)
     shutil.copy2(source, target)
 
   def readOrCopyVersionedFile(_, branch:int, revision:int, nameHash:str, toFile:str? = None) -> bytes? =
     ''' Return file contents, or copy contents into file path provided. '''
-    source:str = os.path.join(_.root, metaFolder, "b%d" % branch, "r%d" % revision, nameHash)
+    source:str = branchFolder(branch, revision, base = _.root, file = nameHash)
     try:
       with openIt(source, "r", _.compress) as fd:
         if toFile is None: return fd.read()  # read bytes into memory and return
@@ -760,7 +764,7 @@ def log(options:str[]) -> None:
   m:Metadata = Metadata(os.getcwd())
   m.loadBranches()  # knows current branch
   m.loadBranch(m.branch)  # knows commit history
-  info("//|\\\\ Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain "from branch/revision" on branching?
+  info("//|\\\\ Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain info of "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
   changeset = m.computeSequentialPathSetIterator(m.branch, max(m.commits))
   maxWidth:int = max([wcswidth(commit.message ?? "") for commit in m.commits.values()])
@@ -864,8 +868,8 @@ def parse(root:str, cwd:str):
     elif command[:2] == "di":  diff(argument, options, onlys, excps)
     elif command[:1] == "h":   usage()
     elif command[:2] == "lo":  log(options)
-    elif command[:2] == "li":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO handle absolute paths as well, also for Windows
-    elif command[:2] == "ls":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO avoid root super paths (..)
+    elif command[:2] == "li":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO handle absolute paths as well, also for Windows? think through
+    elif command[:2] == "ls":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO avoid and/or normalize root super paths (..)
     elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:])
     elif command[:2] == "of":  offline(argument, options)
     elif command[:2] == "on":  online(options)
@@ -918,8 +922,7 @@ def main() -> None:
 
 
 # Main part
-verbose = lateBinding["verbose"] = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv  # imported from utility, and only modified here
-lateBinding["start"] = START_TIME
+verbose = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv  # imported from utility, and only modified here
 level = logging.DEBUG if verbose else logging.INFO
 force_sos:bool = '--sos' in sys.argv
 force_vcs:bool = '--vcs' in sys.argv
