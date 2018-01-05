@@ -18,7 +18,8 @@
 - **VCS**: *Version Control System*
 
 - **Filename**: Fixed term for file names used throughout SOS and this documentation
-- **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29)
+- **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29), allowing to place special characters like `*?[!]` into file names to mark ellipses
+- **File tree**: A directory structure on the user's file system at a certain point in time. It's not exactly the same as a *checkout* or *working copy*, but largely comparable
 
 
 ## Introduction ##
@@ -67,20 +68,21 @@ SOS supports three different file handling models that you may use to your likin
     - [QA 79](https://github.com/ArneBachmann/sos/issues/79) Added AppVeyor automated testing
     - [QA 94](https://github.com/ArneBachmann/sos/issues/94) More test coverage
     - Many little fixes and improvements
+    - Downloads until today: 1270
 - Version 1.0 released on 2017-12-14:
     - First release with basic functionality
     - Lots of test cases, good test coverage
     - System integration and packaging
     - Library integration and testing
     - VCS integration
+    - Downloads: 4600
 
 
 ## Comparison with Traditional VCSs ##
 While completing version 1.0 of SOS, I incidentally discovered an interesting [article by Gregory Szorc](https://gregoryszorc.com/blog/2017/12/11/high-level-problems-with-git-and-how-to-fix-them/) that discusses central weaknesses in the design of popular VCSs, with a focus on Git. Many of his arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
 
 - While Git is basically a large key-value store with a thin access interface on top, SOS keeps a very clear (folder) structure of branches, revisions and files
-- Compared to SVN SOS's file store is much simpler and doesn't require an integrated database
-- The term *file tree* is used thoughout this document to refer to the actual state of files and folders on the user's computer at a certain point in time. It's not exactly the same as a *checkout* or *working copy*, but largely comparable.
+- Compared to SVN, SOS's file store is much simpler and doesn't require an integrated database
 
 Here is a comparison between SOS and VCS's commands:
 - `branch` creates a branch from the current file tree (or last commit), but also switches to it immediately (unless told not to). There is no requirement to name branches, removing all barriers

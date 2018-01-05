@@ -13,6 +13,8 @@ except: pass  # optional dependency
 longint:Type = eval("long") if sys.version_info.major < 3 else int  # for Python 2 compatibility
 
 
+verbose = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv  # imported from utility, and only modified here
+
 # Classes
 class Accessor(dict):
   ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
@@ -110,8 +112,6 @@ def eoldet(file:bytes) -> bytes? =
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
 
-def Exit(message:str = "", code = 1) -> None: print("[EXIT%s]" % (" %.1fs" % (time.time() - lateBinding.start) if lateBinding.verbose else "") + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(1)
-
 def user_input(msg:str) -> str = input(msg)  # referenceso __builtin__.raw_input on Python 2
 
 try: Splittable = TypeVar("Splittable", str, bytes)
@@ -133,10 +133,15 @@ def getTermWidth() -> int =
   except: return 80
   termwidth.getTermWidth()[0]
 
+def branchFolder(branch:int, revision:int, base = ".", file = None) -> str = os.path.join(base, metaFolder, "b%d" % branch, "r%d" % revision) + ((os.sep + file) if file else "")
+
+def Exit(message:str = "", code = 1) -> None: print("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(1)
+
 def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,longint] =
   ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''
   _hash = hashlib.sha256()
   wsize:longint = 0
+  if saveTo and os.path.exists(saveTo): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime.")
   to = openIt(saveTo, "w", compress) if saveTo else None
   with open(path, "rb") as fd:
     while True:
