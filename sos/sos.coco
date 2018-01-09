@@ -23,7 +23,7 @@ except: configr = None  # declare as undefined
 
 # Constants
 APPNAME:str = "Subversion Offline Solution V%s (C) Arne Bachmann" % version.__release_version__
-defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "tags": [], "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
+defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout"], "ignoresWhitelist": []})
 termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
 
 
@@ -73,8 +73,8 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --soft                                                Don't move or rename files, only the tracking pattern
     rm <file pattern>                                     Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
 
-    ls [<folder path>] [--patterns]                       List file tree and mark changes and tracking status
-    status                                                List branches and display repository status
+    ls [<folder path>] [--patterns|--tags]                List file tree and mark changes and tracking status
+    status [-v]                                           List branches and display repository status
     log                                                   List commits of current branch
       --changes                                             Also list file differences
       --diff                                                Also show textual version differences
@@ -85,6 +85,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
                                                             texttype, bintype, ignores, ignoreDirs, ignoresWhitelist, ignoreDirsWhitelist
                                                           Supported texts:
                                                             defaultbranch (has a dynamic default value, depending on VCS discovered)
+    config show|list flags|lists|texts                    Enumerates all configurable settings for specified type
     help, --help                                          Show this usage information
     version                                               Display version and package information
 
@@ -316,8 +317,8 @@ class Metadata:
       if relPath in knownPaths: knownPaths[relPath][:] = list(set(knownPaths[relPath]) - set(walk))  # at least one file is tracked
     for path, names in knownPaths.items():  # all paths that weren't walked by
       for file in names: changes.deletions[path + SLASH + file] = _.paths[path + SLASH + file]
-    if progress: print("\rPreparation finished. Compression factor %s" % ("is %.1f" % (original * 100. / compressed) if compressed > 0 else "cannot be computed").ljust(termWidth), file = sys.stdout)  # force new line
-    else: debug("Finished detecting changes. Compression factor %s" % ("is %.1f" % (original * 100. / compressed) if compressed > 0 else "cannot be computed"))
+    if progress: print("\rPreparation finished.%s" % (" Compression advantage %s" % ("is %.1f%%" % (original * 100. / compressed - 100.) if compressed > 0 else "cannot be computed") if _.compress else "").ljust(termWidth), file = sys.stdout)  # force new line
+    else: debug("Finished detecting changes.%s" % (" Compression advantage %s" % ("is %.1f%%" % (original * 100. / compressed - 100.) if compressed > 0 else "cannot be computed") if _.compress else ""))
     changes
 
   def integrateChangeset(_, changes:ChangeSet, clear = False) -> None:
@@ -556,7 +557,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
   else:  # track or simple mode
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # set branch dirty
-  if "--tag" in options and argument is not None: m.tags.append(argument)  # memorize unique tag
+  if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
   m.saveBranches()
   info("Created new revision r%02d%s (+%02d/-%02d/*%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications)))
 
@@ -566,9 +567,10 @@ def status() -> None:
   m.loadBranches()  # knows current branch
   current:int = m.branch
   info("//|\\\\ Offline repository status")
-  print("Content checking %sactivated" % ("" if m.strict else "de"))
-  print("Data compression %sactivated" % ("" if m.compress else "de"))
-  print("Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
+  if verbose:
+    print("Content checking %sactivated" % ("" if m.strict else "de"))
+    print("Data compression %sactivated" % ("" if m.compress else "de"))
+    print("Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
     m.loadBranch(branch.number)  # knows commit history
@@ -643,9 +645,9 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
       User options for conflict resolution: --theirs/--mine/--ask
   '''
   mrg:int = firstOfMap({"--add": MergeOperation.INSERT, "--rm": MergeOperation.REMOVE}, options, MergeOperation.BOTH)  # default operation is replicate remove state for non-conflicting cases (insertions/deletions)
-  res:int = firstOfMap({'--theirs': ConflictResolution.THEIRS, '--mine': ConflictResolution.MINE}, options, ConflictResolution.NEXT)  # NEXT means deeper level
+  res:int = firstOfMap({'--theirs': ConflictResolution.THEIRS, '--mine': ConflictResolution.MINE, '--ask': ConflictResolution.ASK}, options, ConflictResolution.NEXT)  # NEXT means deeper level
   mrgline:int = firstOfMap({'--add-lines': MergeOperation.INSERT, '--rm-lines': MergeOperation.REMOVE}, options, mrg)  # default operation for modified files is same as for files
-  resline:int = firstOfMap({'--theirs-lines': ConflictResolution.THEIRS, '--mine-lines': ConflictResolution.MINE}, options, ConflictResolution.ASK)
+  resline:int = firstOfMap({'--theirs-lines': ConflictResolution.THEIRS, '--mine-lines': ConflictResolution.MINE, '--ask-lines': ConflictResolution.ASK}, options, ConflictResolution.ASK)
   m:Metadata = Metadata(os.getcwd())  # TODO same is called inside stop on changes - could return both current and designated branch instead
   m.loadBranches(); changes:ChangeSet
   currentBranch:int? = m.branch
@@ -670,23 +672,27 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
       if mrg & MergeOperation.REMOVE: os.unlink(m.root + os.sep + path.replace(SLASH, os.sep))
       print("DEL " + path if mrg & MergeOperation.REMOVE else "(D) " + path)  # not contained in other branch, but maybe kept
     for path, pinfo in changes.modifications.items():
-      into:str = os.path.join(m.root, path.replace(SLASH, os.sep))
+      into:str = os.path.join(m.root, path.replace(SLASH, os.sep))  # TODO normalize \.\
       binary = not m.isTextType(path)
-      if res & ConflictResolution.ASK or (binary and res == ConflictResolution.NEXT):  # TODO this may ask user even if no interaction was asked for (check line level for interactivity fist)
+      if res == ConflictResolution.ASK or (binary and res == ConflictResolution.NEXT):  # TODO this may ask user even if no interaction was asked for (check line level for interactivity fist)
         print(("MOD " + path if not binary else "BIN ") + path)
-        reso = {"i": ConflictResolution.MINE, "t": ConflictResolution.THEIRS, "m": ConflictResolution.NEXT}.get(user_input(" Resolve: *M[I]ne, [T]heirs, [M]erge: (I)").strip().lower(), ConflictResolution.MINE)
-        debug("User selected %d" % reso)
-      else: reso = res
-      if reso & ConflictResolution.THEIRS:
+        reso = {"i": ConflictResolution.MINE, "t": ConflictResolution.THEIRS, "m": ConflictResolution.NEXT}.get(user_input(" Resolve: *M[I]ne, [T]heirs, [M]erge: ").strip().lower(), ConflictResolution.MINE)  # TODO add unicode variants?
+        debug("User selected %d" % reso)  # TODO this is a place to have a real enum
+      else: reso = res  # TODO this sets to next even already was next per file?
+      if reso == ConflictResolution.THEIRS:
         m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile = into)  # blockwise copy of contents
         print("THR " + path)
-      elif reso & ConflictResolution.MINE:
+      elif reso == ConflictResolution.MINE:
         print("MNE " + path)  # nothing to do! same as skip
-      else:  # NEXT: line-based merge
+      else:  # NEXT: line-based merge. asks in case of conflict
+        current:bytes? = open(into, "rb").read()
         file:bytes? = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # parse lines
-        if file is not None:  # if None, error message was already logged
+        if current == file: debug("No difference to versioned file")
+        elif file is not None:  # if None, error message was already logged
           contents:bytes = merge(file = file, intoname = into, mergeOperation = mrgline, conflictResolution = resline)
-          with open(path, "wb") as fd: fd.write(contents)  # TODO write to temp file first, in case writing fails
+          if contents != current:
+            with open(path, "wb") as fd: fd.write(contents)  # TODO write to temp file first, in case writing fails
+          else: debug("No change")
   info("Integrated changes from '%s/r%02d' into file tree" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.branches[currentBranch] = dataCopy(BranchInfo, m.branches[currentBranch], inSync = False, tracked = list(trackingUnion))
   m.branch = currentBranch  # need to restore setting before saving TODO operate on different objects instead
@@ -739,6 +745,9 @@ def ls(argument:str? = None, options:str[] = []) -> None:
   info("Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
   relPath:str = os.path.relpath(folder, m.root).replace(os.sep, SLASH)
   trackingPatterns:FrozenSet[str]? = m.getTrackingPatterns() if m.track or m.picky else f{}  # for current branch
+  if '--tags' in options:
+    print(ajoin("TAG ", sorted(m.tags), nl = "\n"))
+    return
   if '--patterns' in options:
     out:str = ajoin("TRK ", [os.path.basename(p) for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath], nl = "\n")
     if out: print(out)
@@ -799,11 +808,16 @@ def config(argument:str, options:List[str] = []) -> None:
     if options[1] not in c[options[0]]: Exit("Unknown value: %r" % options[1])
     c[options[0]].remove(options[1])
   else:  # Show or list
-    for k, v in sorted(c.items()): print("%s: %r" % (k.rjust(20), v))
-    if len(c.keys()) == 0: info("No configuration stored, using only defaults.")  # TODO list defaults instead? Or display [DEFAULT] for each item above if unmodified
+    if "flags" in options:   print(", ".join(CONFIGURABLE_FLAGS))
+    elif "lists" in options: print(", ".join(CONFIGURABLE_LISTS))
+    elif "texts" in options: print(", ".join([_ for _ in defaults.keys() if _ not in (CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS)]))
+    else:  # normal value listing
+      for k, v in sorted(c.items()): print("%s: %r" % (k.rjust(20), v))
+      if len(c.keys()) == 0: info("No configuration stored, using only defaults.")  # TODO list defaults instead? Or display [DEFAULT] for each item above if unmodified
     return
   f, g = saveConfig(c)
   if f is None: error("Error saving user configuration: %r" % g)
+  else: Exit("OK", code = 0)
 
 def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[str] = []) -> None:
   ''' Path differs: Move files, create folder if not existing. Pattern differs: Attempt to rename file, unless exists in target or not unique. '''

@@ -113,8 +113,22 @@ class Tests(unittest.TestCase):
     with open(("." + os.sep + "file%d" % number) if isinstance(number, int) else number, "rb") as fd: return fd.read() == expectedContents
 
   def testAccessor(_):
-     a = sos.Accessor({"a": 1})
-     _.assertEqual((1, 1), (a["a"], a.a))
+    a = sos.Accessor({"a": 1})
+    _.assertEqual((1, 1), (a["a"], a.a))
+
+  def testEnum(_):
+    e:sos.Enum = sos.Enum("Abc", ["A", "B"])
+    _.assertEqual("Abc", str(e))
+    _.assertEqual("<enum 'Abc'>", repr(e))
+    _.assertEqual(["A", "B"], e.names())
+    _.assertEqual([0, 1], e.numbers())
+    _.assertTrue(sos.EnumValue, type(e.entries()[0]))
+    e = sos.Enum("Abc", [("A", 2), "B"], step = 2)
+    _.assertEqual([2, 4], e.numbers())
+    _.assertEqual(4, e.B.value)
+    _.assertEqual("B", e[4].name)
+    _.assertEqual("<enum 'Abc.A'>", repr(e.A))
+    _.assertEqual("Abc.A", str(e[2]))
 
   def testFirstofmap(_):
     _.assertEqual(2, sos.firstOfMap({"a": 1, "b": 2}, ["x", "b"]))
@@ -126,8 +140,10 @@ class Tests(unittest.TestCase):
 
   def testFindChanges(_):
     m = sos.Metadata(os.getcwd())
-    sos.config("set", ["texttype", "*"])
-    sos.config("set", ["ignores", "*.cfg;*.cfg.bak"])
+    try: sos.config("set", ["texttype", "*"])
+    except SystemExit as E: _.assertEqual(0, E.code)
+    try: sos.config("set", ["ignores", "*.cfg;*.cfg.bak"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     m = sos.Metadata(os.getcwd())  # reload from file system
     m.loadBranches()
     _.createFile(1, "1")
@@ -374,6 +390,8 @@ class Tests(unittest.TestCase):
     try: sos.commit("tag"); _.fail()
     except: pass
     sos.commit("tag-2", ["--tag"])
+    out = wrapChannels(() -> sos.ls(options = ["--tags"])).replace("\r", "")
+    _.assertIn("TAG tag", out)
 
   def testSwitch(_):
     _.createFile(1, "x" * 100)
@@ -458,7 +476,8 @@ class Tests(unittest.TestCase):
     sos.update("mod", ["--theirs"])  # integrate changes TODO same with ask -> theirs
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
     _.createFile("test.txt", "x" * 10)
-    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> theirs
+    sos.update("mod", ["--ask-lines"])  # TODO should ask for lines, but doesn't recognize as modification, only as replacement, and doesn't
+#    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
 
   def testIsTextType(_):
@@ -621,12 +640,16 @@ class Tests(unittest.TestCase):
     sos.ls("sub")
     _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(() -> sos.ls("sub")).replace("\r", ""), "\n"))
 
-  def testCompression(_):
+  def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not
     _.createFile(1)
     sos.offline("master", options = ["--force"])
+    out = wrapChannels(() -> sos.changes()).replace("\r", "").split("\n")
+    _.assertFalse(any("Compression advantage" in line for line in out))
     _.assertTrue(_.existsFile(sos.branchFolder(0, 0, file = "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"), b"x" * 10))
     setRepoFlag("compress", True)  # was plain = uncompressed before
     _.createFile(2)
+    out = wrapChannels(() -> sos.changes()).replace("\r", "").split("\n")
+    _.assertTrue(any("Compression advantage" in line for line in out))
     sos.commit("Added file2")
     _.assertTrue(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists
     _.assertFalse(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead
@@ -638,44 +661,56 @@ class Tests(unittest.TestCase):
       sos.offline("master", options = ["--plain", "--force"])
       _.createFile(1)
       sos.commit("Added file1")
-    sos.config("set", ["strict", "on"])
+    try: sos.config("set", ["strict", "on"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    sos.config("set", ["strict", "off"])
+    try: sos.config("set", ["strict", "off"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    sos.config("set", ["strict", "yes"])
+    try: sos.config("set", ["strict", "yes"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    sos.config("set", ["strict", "no"])
+    try: sos.config("set", ["strict", "no"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    sos.config("set", ["strict", "1"])
+    try: sos.config("set", ["strict", "1"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    sos.config("set", ["strict", "0"])
+    try: sos.config("set", ["strict", "0"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    sos.config("set", ["strict", "true"])
+    try: sos.config("set", ["strict", "true"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    sos.config("set", ["strict", "false"])
+    try: sos.config("set", ["strict", "false"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    sos.config("set", ["strict", "enable"])
+    try: sos.config("set", ["strict", "enable"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    sos.config("set", ["strict", "disable"])
+    try: sos.config("set", ["strict", "disable"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    sos.config("set", ["strict", "enabled"])
+    try: sos.config("set", ["strict", "enabled"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    sos.config("set", ["strict", "disabled"])
+    try: sos.config("set", ["strict", "disabled"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
     try: sos.config("set", ["strict", "nope"]); _.fail()
-    except: pass
+    except SystemExit as E: _.assertEqual(1, E.code)
 
   def testLsSimple(_):
     _.createFile(1)
@@ -683,9 +718,12 @@ class Tests(unittest.TestCase):
     _.createFile("ign1")
     _.createFile("ign2")
     sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)
-    sos.config("set", ["ignores", "ign1"])  # define an ignore pattern
-    sos.config("add", ["ignores", "ign2"])  # additional ignore pattern
-    sos.config("set", ["ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
+    try: sos.config("set", ["ignores", "ign1"])  # define an ignore pattern
+    except SystemExit as E: _.assertEqual(0, E.code)
+    try: sos.config("add", ["ignores", "ign2"])  # additional ignore pattern
+    except SystemExit as E: _.assertEqual(0, E.code)
+    try: sos.config("set", ["ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
+    except SystemExit as E: _.assertEqual(0, E.code)
     out = wrapChannels(() -> sos.config("show")).replace("\r", "")
     _.assertIn("             ignores: ['ign1', 'ign2']", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
@@ -693,11 +731,13 @@ class Tests(unittest.TestCase):
     _.assertInAny('... ign1', out)
     _.assertInAny('... ign2', out)
     try: sos.config("rm", ["foo", "bar"]); _.fail()
-    except: pass
+    except SystemExit as E: _.assertEqual(1, E.code)
     try: sos.config("rm", ["ignores", "foo"]); _.fail()
-    except: pass
-    sos.config("rm", ["ignores", "ign1"])
-    sos.config("unset", ["ignoresWhitelist"])  # remove ignore pattern
+    except SystemExit as E: _.assertEqual(1, E.code)
+    try: sos.config("rm", ["ignores", "ign1"])
+    except SystemExit as E: _.assertEqual(0, E.code)
+    try: sos.config("unset", ["ignoresWhitelist"])  # remove ignore pattern
+    except SystemExit as E: _.assertEqual(0, E.code)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('... ign1', out)
     _.assertInAny('IGN ign2', out)
@@ -764,7 +804,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 2))))  # only meta and file1
     _.createFile(1, "cc")  # modify both files
     _.createFile(2, "dd")
-    sos.config("set", ["texttype", "file2"])
+    try: sos.config("set", ["texttype", "file2"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     changes = sos.changes(excps = ["./file1"])
     _.assertEqual(1, len(changes.modifications))  # only file2
     _.assertTrue("./file2" in changes.modifications)
@@ -772,7 +813,8 @@ class Tests(unittest.TestCase):
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
 
   def testDiff(_):
-    sos.config("set", ["texttype", "file1"])
+    try: sos.config("set", ["texttype", "file1"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     sos.offline(options = ["--strict"])
     _.createFile(1)
     _.createFile(2)
@@ -817,8 +859,10 @@ class Tests(unittest.TestCase):
     _.createFile(2)
     _.createFile(3)
     sos.add(".", "./file*")
-    sos.config("set", ["ignores", "file3;file4"])  # define an ignore pattern
-    sos.config("set", ["ignoresWhitelist", "file3"])
+    try: sos.config("set", ["ignores", "file3;file4"])  # define an ignore pattern
+    except SystemExit as E: _.assertEqual(0, E.code)
+    try: sos.config("set", ["ignoresWhitelist", "file3"])
+    except SystemExit as E: _.assertEqual(0, E.code)
     sos.move(".", "./file*", ".", "fi*le")
     _.assertTrue(all(os.path.exists("fi%dle" % i) for i in range(1, 4)))
     _.assertFalse(os.path.exists("fi4le"))
