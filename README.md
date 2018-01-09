@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.0.12) #
+# Subversion Offline Solution (SOS 1.1.4) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -6,7 +6,7 @@
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
-- [Documentation](http://sos-vcs.net) [Code Repository](https://github.com/ArneBachmann/sos)
+- [Documentation](http://sos-vcs.net) (official website), [Code Repository](https://github.com/ArneBachmann/sos) (at Github)
 - [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
 
 ### List of Abbreviations and Definitions ###
@@ -18,7 +18,8 @@
 - **VCS**: *Version Control System*
 
 - **Filename**: Fixed term for file names used throughout SOS and this documentation
-- **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29)
+- **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29), allowing to place special characters like `*?[!]` into file names to mark ellipses
+- **File tree**: A directory structure on the user's file system at a certain point in time. It's not exactly the same as a *checkout* or *working copy*, but largely comparable
 
 
 ## Introduction ##
@@ -56,7 +57,7 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
-- Version 1.1 released on 2017-12-28:
+- Version 1.1 released on 2017-12-30:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
     - [Enhancement 63](https://github.com/ArneBachmann/sos/issues/63) Show more change details in `log` and `status`, and also `ls` (in [#101](https://github.com/ArneBachmann/sos/issues/101))
@@ -67,20 +68,21 @@ SOS supports three different file handling models that you may use to your likin
     - [QA 79](https://github.com/ArneBachmann/sos/issues/79) Added AppVeyor automated testing
     - [QA 94](https://github.com/ArneBachmann/sos/issues/94) More test coverage
     - Many little fixes and improvements
+    - Downloads until today: 1270
 - Version 1.0 released on 2017-12-14:
     - First release with basic functionality
     - Lots of test cases, good test coverage
     - System integration and packaging
     - Library integration and testing
     - VCS integration
+    - Downloads: 4600
 
 
 ## Comparison with Traditional VCSs ##
-When completing SOS 1.0 I incidentally discovered an interesting article by ... that discusses central weaknesses in the design of VCSs, with a focus on Git. Many of these arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
+While completing version 1.0 of SOS, I incidentally discovered an interesting [article by Gregory Szorc](https://gregoryszorc.com/blog/2017/12/11/high-level-problems-with-git-and-how-to-fix-them/) that discusses central weaknesses in the design of popular VCSs, with a focus on Git. Many of his arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
 
 - While Git is basically a large key-value store with a thin access interface on top, SOS keeps a very clear (folder) structure of branches, revisions and files
-- Compared to SVN SOS's file store is much simpler and doesn't require an integrated database
-- The term *file tree* is used thoughout this document to refer to the actual state of files and folders on the user's computer at a certain point in time. It's not exactly the same as a *checkout* or *working copy*, but largely comparable.
+- Compared to SVN, SOS's file store is much simpler and doesn't require an integrated database
 
 Here is a comparison between SOS and VCS's commands:
 - `branch` creates a branch from the current file tree (or last commit), but also switches to it immediately (unless told not to). There is no requirement to name branches, removing all barriers
@@ -139,13 +141,8 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - `sos update` will **not warn** if local changes are present! This is a noteworthy exception to the failsafe approach taken for most other commands
 
 
-## FAQ ##
-> Q: I don't want to risk data loss in case SOS has some undiscovered bugs. What can I do?
->
-> A: Configure SOS to store all versioned files as plain file copies instead of compressed artifacts: `sos offline --plain` for one repository only, or `sos config set compress off` to define a user-preset before going offline. Plain repositories simply copy files when branching and/or versioning; note, however, that filenames will be hashed and stored in the metadata file instead (which is human-readable, thankfully).
-
-
 ## Hints and Tipps ##
+- To save space when going offline, use the option `sos offline --compress`: It may increase the time for going offline by a larger factor (e.g. 10x), but will also reduce the amount of storage needed to version files. To enable this option for all offline repositories, use `sos config set compress on`
 - When specifying file patterns including glob markers on the command line, make sure you quote them correctly. On linux (bash, sh, zsh), put your patterns into quote (`"`), otherwise the shell will replace file patterns by any matching filenames instead of forwarding the pattern literally to SOS
 - Many commands can be shortened to three, two or even one initial letters
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames

@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Utiliy functions
-import bz2, codecs, difflib, hashlib, logging, os, re, sys, time
+import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()
 try:
   from typing import Any, Callable, Dict, FrozenSet, IO, List, Sequence, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = Union[int,float]
@@ -12,6 +12,8 @@ try: import wcwidth
 except: pass  # optional dependency
 longint:Type = eval("long") if sys.version_info.major < 3 else int  # for Python 2 compatibility
 
+
+verbose = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv  # imported from utility, and only modified here
 
 # Classes
 class Accessor(dict):
@@ -25,6 +27,42 @@ class Counter:
   ''' A simple counter. Can be augmented to return the last value instead. '''
   def __init__(_, initial:Number = 0) -> None: _.value:Number = initial
   def inc(_, by = 1) -> Number: _.value += by; return _.value
+
+class EnumValue:
+  def __init__(_, tipe, name, value) -> None: _.tipe, _.name, _.value = tipe, name, value
+  def __str__(_) -> str = "%s.%s" % (_.tipe, _.name)
+  def __repr__(_) -> str = "<enum '%s.%s'>" % (_.tipe, _.name)
+
+class Enum(dict):
+  def __init__(_, name:str, values:Union[List[Union[str,Tuple[str,Number]]],Dict[str,Number]], first:int = 0, step:int = 1):
+    assert name
+    assert values
+    _.name:str = name
+    _.values:Dict[Number,EnumValue] = {}
+    if isinstance(values, list):
+      count:int = first
+      for item in values:  # type: List[Union[str,Tuple[str,Number]]]
+        if isinstance(item, tuple):
+          _.values[item[1]] = EnumValue(name, item[0], item[1])
+          count = item[1] + step
+        else:  # str
+          _.values[count] = EnumValue(name, item, count)
+          count += step
+    elif isinstance(values, dict):
+      _.values.update({k: EnumValue(name, v, k) for v, k in values.items()})
+    else: raise ValueError("Illegal values provided: expecting list(str), list of (str,num) or dict(str,num)")
+  def __str__(_) -> str = _.name
+  def __repr__(_) -> str = "<enum '%s'>" % _.name
+  def entries(_) -> EnumValue[] = list(sorted(_.values.values(), key = (v) -> v.value))
+  def names(_) -> str[] = list(sorted([v.name for v in _.values.values()]))
+  def numbers(_) -> Number[] = list(sorted(_.values.keys()))
+  def __getattribute__(_, name:str) -> EnumValue:
+    try: return [v for v in _.values.values() if v.name == name][0]
+    except: return dict.__getattribute__(_, name)
+  def __getitem__(_, key:Number) -> str =
+    assert isinstance(key, (int, float))  # or decimal
+    _.values[key]
+  # TODO implement equal / is_ comparison
 
 class Logger:
   ''' Logger that supports many items. '''
@@ -50,6 +88,7 @@ SVN = "svn"
 SLASH = "/"
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None}
+lateBinding:Accessor = Accessor({"verbose": False, "start": 0})
 
 
 # Value types
@@ -109,8 +148,6 @@ def eoldet(file:bytes) -> bytes? =
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
 
-def Exit(message:str = "") -> None: print("[EXIT] " + message + ".", file = sys.stderr) if str != "" else None; sys.exit(1)
-
 def user_input(msg:str) -> str = input(msg)  # referenceso __builtin__.raw_input on Python 2
 
 try: Splittable = TypeVar("Splittable", str, bytes)
@@ -132,10 +169,15 @@ def getTermWidth() -> int =
   except: return 80
   termwidth.getTermWidth()[0]
 
+def branchFolder(branch:int, revision:int, base = ".", file = None) -> str = os.path.join(base, metaFolder, "b%d" % branch, "r%d" % revision) + ((os.sep + file) if file else "")
+
+def Exit(message:str = "", code = 1) -> None: print("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(code)
+
 def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,longint] =
   ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''
   _hash = hashlib.sha256()
   wsize:longint = 0
+  if saveTo and os.path.exists(saveTo): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime.")
   to = openIt(saveTo, "w", compress) if saveTo else None
   with open(path, "rb") as fd:
     while True:
@@ -212,7 +254,7 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
     if line[0] == last: tmp.append(line[2:]); continue  # continue filling consecutive block, no matter what type of block
     if line == "X":  # EOF marker - perform action for remaining block
       if len(tmp) == 0: break  # nothing left to do
-    if last == " ":  # block is same in both files
+    if last == " ":  # block is same in both files TODO sometimes adds empty keep block at beginning of file?
       blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line = no - len(tmp)))
     elif last == "-":  # may be a deletion or replacement, store for later
       blocks.append(MergeBlock(MergeBlockType.REMOVE, [line for line in tmp], line = no - len(tmp)))
@@ -256,7 +298,7 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
           print(ajoin("THR ", block.replaces.lines, "\n"))
           print(ajoin("MIN ", block.lines, "\n"))
           reso:int? = {"i": ConflictResolution.MINE, "t": ConflictResolution.THEIRS, "m": ConflictResolution.NEXT, "u": None}.get(user_input(" Resolve: *M[I]ne, [T]heirs, [M]erge, [U]ser defined: ").strip().lower(), ConflictResolution.MINE)
-          debug("User selected %d" % reso)
+          debug("User selected %d" % reso)  # TODO enum output
           match None in reso:
             warn("Manual input not implemented yet")  # TODO allow multi-line input (CTRL+D?)
           match =ConflictResolution.MINE in reso:
@@ -267,7 +309,7 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
             output.extend(block.replaces.lines)
           match =ConflictResolution.NEXT in reso:
             warn("Intra-line merge not implemented yet, skipping line(s)")
-            output.extend(block.replaces.lines)
+            output.extend(block.lines)
       else:  # e.g. contains a deletion, but user was asking for insert only??
         warn("Investigate this case")
         output.extend(block.lines)  # default or not .replaces?

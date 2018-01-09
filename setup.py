@@ -5,7 +5,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.1"
+RELEASE = "1.1.4"
 
 print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
@@ -42,7 +42,7 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
 
   import sos.sos as sos
 
-if 'test' in sys.argv : print("Warning: Won't build distribution after running unit tests")
+if 'test' in sys.argv : print("Warning: Won't create distribution archive after running unit tests")
 
 if 'sdist' in sys.argv:
   print("Cleaning up old archives for twine upload")
