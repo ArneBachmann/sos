@@ -190,7 +190,7 @@ def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,longint] 
       wsize = os.stat(saveTo).st_size
   (_hash.hexdigest(), wsize)
 
-def firstOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
+def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
   ''' Utility. '''
   for k, v in map.items():
     if k in params: return v
@@ -255,7 +255,7 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
     if line == "X":  # EOF marker - perform action for remaining block
       if len(tmp) == 0: break  # nothing left to do
     if last == " ":  # block is same in both files TODO sometimes adds empty keep block at beginning of file?
-      blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line = no - len(tmp)))
+      if len(tmp) > 0: blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line = no - len(tmp)))
     elif last == "-":  # may be a deletion or replacement, store for later
       blocks.append(MergeBlock(MergeBlockType.REMOVE, [line for line in tmp], line = no - len(tmp)))
     elif last == "+":  # may be insertion or replacement
@@ -284,8 +284,8 @@ def merge(file:bytes? = None, into:bytes? = None, filename:str? = None, intoname
       if not (mergeOperation & MergeBlockType.REMOVE): output.extend(block.lines)  # if remove, don't add replaced lines, otherwise do
     elif block.tipe == MergeBlockType.REMOVE and mergeOperation & MergeOperation.INSERT:
       output.extend(block.lines)
-    elif block.tipe == MergeBlockType.MODIFY:
-      if block.changes is not None and block.changes.tipe == MergeBlockType.INSERT:  # cannot be REMOVE, because it's always "-" then "+"
+    elif block.tipe == MergeBlockType.MODIFY:  # changes.tipe marks intra-line changes
+      if block.changes is not None and block.changes.tipe == MergeBlockType.INSERT:  # cannot be REMOVE, because it's always "-" then "+"  character insert
           output.extend(block.lines if mergeOperation & MergeOperation.INSERT else block.replaces.lines)  # TODO logic?
       elif block.replaces.changes is not None and block.replaces.changes.tipe == MergeBlockType.REMOVE:
           output.extend(block.lines if mergeOperation & MergeOperation.REMOVE else block.replaces.lines)
@@ -323,7 +323,7 @@ def getIntraLineMarkers(line:str) -> Range =
   if "^" in line: return Range(MergeBlockType.MODIFY, [i for i, c in enumerate(line) if c == "^"])
   if "+" in line: return Range(MergeBlockType.INSERT, [i for i, c in enumerate(line) if c == "+"])
   if "-" in line: return Range(MergeBlockType.REMOVE, [i for i, c in enumerate(line) if c == "-"])
-  Range(MergeBlockType.KEEP, [])
+  Range(MergeBlockType.KEEP, [])  # TODO detect and mark replacement from -/+
 
 def findSosVcsBase() -> Tuple[str?,str?,str?] =
   ''' Attempts to find sos and legacy VCS base folders. '''

@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.1.4) #
+# Subversion Offline Solution (SOS 1.1.5) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -20,6 +20,7 @@
 - **Filename**: Fixed term for file names used throughout SOS and this documentation
 - **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29), allowing to place special characters like `*?[!]` into file names to mark ellipses
 - **File tree**: A directory structure on the user's file system at a certain point in time. It's not exactly the same as a *checkout* or *working copy*, but largely comparable
+- **Revision**: An archived (or versioned, differential) set of file modifications, also known as changeset or patch
 
 
 ## Introduction ##
@@ -90,6 +91,7 @@ Here is a comparison between SOS and VCS's commands:
 - `commit` creates a numbered revision similar to SVN, but revision numbers are only unique per branch, as they aren't stored in a global namespace. The commit message is optional on purpose (since `sos commit` serves largely as a CTRL+S replacement)
     - The first revision (created during execution of `sos offline` or `sos branch`) always has the number `0`
     - Each `sos commit` increments the revision number by one; revisions are referenced by this numeric index only
+    - You can tag a commit. This way, the commit message serves as a tag name and is assured to be unique. Referring to a revision by its tag name can be used instead of numeric revision index, but works not only for tagged revisions and finds the first matching revision with a matching commit message
 - `delete` destroys and removes a branch. It's a command, not an option flag as in `git branch -d <name>`
 - `move` renames a file tracking pattern and all matching files accordingly; only useful in tracking or picky mode. It supports reordering of literal substrings, but no reordering of glob markers (`*`, `?` etc.), and no adjacent glob markers. Use `--soft` to avoid files actually being renamed in the file tree. Warning: the `--force` option flag will be considered for several consecutive, potentially dangerous operations. TODO allow and consider `--force` several times on the command line
 - `switch` works like `checkout` in Git for a revision of another branch (or of the current), or `update` to latest or a specific revision in SVN. Please note that switching to a different revision will in no way fix or remember that revision. The file tree will always be compared to the branch's latest commit for change detection
@@ -142,11 +144,12 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Hints and Tipps ##
-- To save space when going offline, use the option `sos offline --compress`: It may increase the time for going offline by a larger factor (e.g. 10x), but will also reduce the amount of storage needed to version files. To enable this option for all offline repositories, use `sos config set compress on`
-- When specifying file patterns including glob markers on the command line, make sure you quote them correctly. On linux (bash, sh, zsh), put your patterns into quote (`"`), otherwise the shell will replace file patterns by any matching filenames instead of forwarding the pattern literally to SOS
-- Many commands can be shortened to three, two or even one initial letters
+- To migrate an offline repository, simple move the `.sos` folder into an (empty) target folder, and run `sos switch trunk --force` (or use another branch name). For compressed offline repositories, you may simply `tar` all files, otherwise you may want to create an compressed archive for transferring the `.sos` folder
+- To save space when going offline, use the option `sos offline --compress`: It may increase commit times by a larger factor (e.g. 10x), but will also reduce the amount of storage needed to version files. To enable this option for all offline repositories, use `sos config set compress on`
+- When specifying file patterns including glob markers on the command line, make sure you quote them correctly. On Linux (bash, sh, zsh), but also recommended on Windows, put your patterns into quote (`"`), otherwise the shell will replace file patterns by any matching filenames instead of forwarding the pattern literally to SOS
+- Many commands can be shortened to three, two or even one initial letters, e.g. `sos st` will run `sos status`. Using SOS as a proxy to other VCS requires you to specify the form required by those, e.g. `sos st` works for SVN, but not for Git (`sos status`, however, would work)
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions or renames
-- dirty flag only relevant in track and picky mode (?) TODO investigate - is this true, and if yes, why
+- The dirty flag is only relevant in tracking and picky mode (?) TODO investigate - is this true, and if yes, why
 - Branching larger amounts of binary files may be expensive as all files are copied and/or compressed during `sos offline`. A workaround is to `sos offline` only in the folders that are relevant for a specific task
 
 

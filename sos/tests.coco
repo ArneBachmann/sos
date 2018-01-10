@@ -130,9 +130,9 @@ class Tests(unittest.TestCase):
     _.assertEqual("<enum 'Abc.A'>", repr(e.A))
     _.assertEqual("Abc.A", str(e[2]))
 
-  def testFirstofmap(_):
-    _.assertEqual(2, sos.firstOfMap({"a": 1, "b": 2}, ["x", "b"]))
-    _.assertIsNone(sos.firstOfMap({"a": 1, "b": 2}, []))
+  def testGetAnyOfmap(_):
+    _.assertEqual(2, sos.getAnyOfMap({"a": 1, "b": 2}, ["x", "b"]))
+    _.assertIsNone(sos.getAnyOfMap({"a": 1, "b": 2}, []))
 
   def testAjoin(_):
     _.assertEqual("a1a2", sos.ajoin("a", ["1", "2"]))
@@ -386,6 +386,8 @@ class Tests(unittest.TestCase):
     sos.offline()
     _.createFile(111)
     sos.commit("tag", ["--tag"])
+    out = wrapChannels(() -> sos.log()).replace("\r", "").split("\n")
+    _.assertTrue(any("|tag" in line and line.endswith("|TAG") for line in out))
     _.createFile(2)
     try: sos.commit("tag"); _.fail()
     except: pass
@@ -407,7 +409,10 @@ class Tests(unittest.TestCase):
     sos.changes()
     sos.switch("test")  # file1-2, remove file3 from file tree
     _.assertFalse(_.existsFile(3))  # removed when switching back to test
+    _.createFile("XXX")
     out = wrapChannels(() -> sos.status()).replace("\r", "")
+    _.assertIn("File tree has changes", out)
+    _.assertNotIn("File tree is unchanged", out)
     _.assertIn("  * b00   'test'", out)
     _.assertIn("    b01 'second'", out)
     _.assertIn("(dirty)", out)  # one branch has commits
@@ -476,9 +481,14 @@ class Tests(unittest.TestCase):
     sos.update("mod", ["--theirs"])  # integrate changes TODO same with ask -> theirs
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
     _.createFile("test.txt", "x" * 10)
-    sos.update("mod", ["--ask-lines"])  # TODO should ask for lines, but doesn't recognize as modification, only as replacement, and doesn't
-#    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
+    sos.update("mod", ["--ask-lines"])  # won't ask for lines, as it is recognized as a full line replacement
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
+    # TODO add code with an intra-line replacement when implemented in getIntraLineMarkers, test method also separately
+#    _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
+#    import pdb; pdb.set_trace()
+#    sos.update("mod", ["--ask-lines"])  # won't ask for lines, as it is recognized as a full line replacement
+#    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
+#    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
 
   def testIsTextType(_):
     m = sos.Metadata(".")
@@ -643,12 +653,12 @@ class Tests(unittest.TestCase):
   def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not
     _.createFile(1)
     sos.offline("master", options = ["--force"])
-    out = wrapChannels(() -> sos.changes()).replace("\r", "").split("\n")
-    _.assertFalse(any("Compression advantage" in line for line in out))
+    out = wrapChannels(() -> sos.changes(options = ['--progress'])).replace("\r", "").split("\n")
+    _.assertFalse(any("Compression advantage" in line for line in out))  # simple mode should always print this to stdout
     _.assertTrue(_.existsFile(sos.branchFolder(0, 0, file = "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"), b"x" * 10))
     setRepoFlag("compress", True)  # was plain = uncompressed before
     _.createFile(2)
-    out = wrapChannels(() -> sos.changes()).replace("\r", "").split("\n")
+    out = wrapChannels(() -> sos.changes(options = ['--progress'])).replace("\r", "").split("\n")  # without progress, the output goes to stderr via debug()
     _.assertTrue(any("Compression advantage" in line for line in out))
     sos.commit("Added file2")
     _.assertTrue(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists
@@ -913,7 +923,8 @@ class Tests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or os.getenv("DEBUG", "false").strip().lower() == "true" or os.getenv("CI", "false").strip().lower() == "true" else logging.INFO , stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else "%(message)s")
+  logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or "true" in [os.getenv("DEBUG", "false").strip().lower(), os.getenv("CI", "false").strip().lower()] else logging.INFO,
+    stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else "%(message)s")
   if configr:
     c = configr.Configr("sos"); c.loadSettings()
     if len(c.keys()) > 0: sos.Exit("Cannot run test suite with existing local SOS user configuration (would affect results)")
