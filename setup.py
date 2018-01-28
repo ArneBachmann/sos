@@ -5,7 +5,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.1.5"
+RELEASE = "1.1.6"
 
 print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
@@ -27,7 +27,7 @@ if 'build' in sys.argv:
     except: extra = "svn"
   else: extra = "svn"
   lt = time.localtime()
-  version = (lt.tm_year, (10 + lt.tm_mon) * 100 + lt.tm_mday, (10 + lt.tm_hour) * 100 + lt.tm_min)
+  version = (lt.tm_year, (10 + lt.tm_mon) * 100 + lt.tm_mday, (10 + lt.tm_hour) * 100 + lt.tm_min)  # NO don't generate new version when using --dev option (to allow "pip install -e .") - was actually a mis-installation
   versionString = '.'.join(map(str, version))
   with open("sos%sversion.py" % os.sep, "w") as fd:  # create version string at build time
     fd.write("""\
@@ -72,7 +72,7 @@ print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820", "termwidth >= 2017.2204.2811"],  # all of them are optional dependencies, also coconut-develop>=1.3.1.post0.dev8
+  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820", "termwidth >= 2017.2204.2811"],  # all of them are optional dependencies
   test_suite = "sos.tests",
   description = "Subversion Offline Solution (SOS)",
   long_description = README,
@@ -114,8 +114,7 @@ setup(
   #    'mvcs=sos.sos:main'  # meta version control system
     ]
   },
-#  extras_require = {
-#    'key1':  ["library>=version", "option"],
-#    'key2': ["library>=version"]
-#  }
+  extras_require = {
+    'backport':  ["enum34"]  # , "option"]  # for Python 2 without backported enum
+  }
 )

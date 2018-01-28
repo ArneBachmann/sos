@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.1.5) #
+# Subversion Offline Solution (SOS 1.1.6) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -52,12 +52,14 @@ SOS supports three different file handling models that you may use to your likin
 - Has a small user base as of now, therefore no reliable reports of compatibility and operational capability except for the automatic unit tests run on Travis CI and AppVeyor
 
 ### Compatibility ###
-- SOS runs on any Python 3 distribution, including some versions of PyPy. Python 2 is not fully supported yet due to library issues, although SOS's programming language *Coconut* is generally able to transpile to valid Python 2 source code
+- SOS runs on any Python 3 distribution, including some versions of PyPy. Python 2 is not fully supported yet due to library issues, although SOS's programming language *Coconut* is generally able to transpile to valid Python 2 source code. Use `pip install sos-vcs[backport]` for Python 2 installation
 - SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
 - Filename encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
 
 ## Latest Changes ##
+- Version 1.2 released on 2018-02-xx:
+    - ...
 - Version 1.1 released on 2017-12-30:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
@@ -69,7 +71,7 @@ SOS supports three different file handling models that you may use to your likin
     - [QA 79](https://github.com/ArneBachmann/sos/issues/79) Added AppVeyor automated testing
     - [QA 94](https://github.com/ArneBachmann/sos/issues/94) More test coverage
     - Many little fixes and improvements
-    - Downloads until today: 1270
+    - Downloads until today: 3575
 - Version 1.0 released on 2017-12-14:
     - First release with basic functionality
     - Lots of test cases, good test coverage

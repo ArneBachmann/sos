@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import builtins, json, logging, os, shutil, sys, time, traceback, unittest, uuid
+import builtins, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
 StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
 try: from unittest import mock  # Py3
 except: import mock  # installed via pip
@@ -115,20 +115,6 @@ class Tests(unittest.TestCase):
   def testAccessor(_):
     a = sos.Accessor({"a": 1})
     _.assertEqual((1, 1), (a["a"], a.a))
-
-  def testEnum(_):
-    e:sos.Enum = sos.Enum("Abc", ["A", "B"])
-    _.assertEqual("Abc", str(e))
-    _.assertEqual("<enum 'Abc'>", repr(e))
-    _.assertEqual(["A", "B"], e.names())
-    _.assertEqual([0, 1], e.numbers())
-    _.assertTrue(sos.EnumValue, type(e.entries()[0]))
-    e = sos.Enum("Abc", [("A", 2), "B"], step = 2)
-    _.assertEqual([2, 4], e.numbers())
-    _.assertEqual(4, e.B.value)
-    _.assertEqual("B", e[4].name)
-    _.assertEqual("<enum 'Abc.A'>", repr(e.A))
-    _.assertEqual("Abc.A", str(e[2]))
 
   def testGetAnyOfmap(_):
     _.assertEqual(2, sos.getAnyOfMap({"a": 1, "b": 2}, ["x", "b"]))
@@ -466,8 +452,8 @@ class Tests(unittest.TestCase):
     _.createFile(10, theirs)
     mine = b"a\nc\nd\ne\ng\nf\nx\nh\ny\ny\nj"  # missing "b", inserted g, modified g->x, replace x/x -> y/y, removed k
     _.createFile(11, mine)
-    _.assertEqual(b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk",    sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))  # completely recreated other file
-    _.assertEqual(b"a\nb\nc\nd\ne\ng\nf\ng\nx\nh\nx\nx\ny\ny\nj\nk", sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.INSERT, conflictResolution = sos.ConflictResolution.MINE))
+    _.assertEqual(b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk",    sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.BOTH, lineConflictResolution = sos.ConflictResolution.THEIRS))  # completely recreated other file
+    _.assertEqual(b"a\nb\nc\nd\ne\ng\nf\ng\nx\nh\nx\nx\ny\ny\nj\nk", sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.INSERT, lineConflictResolution = sos.ConflictResolution.MINE))
 
   def testUpdate2(_):
     _.createFile("test.txt", "x" * 10)
@@ -519,19 +505,22 @@ class Tests(unittest.TestCase):
     b = b"a\nb\nee\nd"
     _.assertEqual(b"a\nb\ncc\nee\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT))  # means insert changes from a into b, but don't replace
     _.assertEqual(b"a\nb\nd",         sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE))
-    _.assertEqual(b"a\nb\ncc\nd",     sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH))
+    _.assertEqual(b, sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH))
     # Now test intra-line merging without conflicts
-    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbc d\ne", b"a\nbcd\ne", mergeOperation = sos.MergeOperation.INSERT))  # because it's a deletion ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
-    _.assertEqual(b"a\nbcd\ne",  sos.merge(b"a\nbc d\ne", b"a\nbcd\ne", mergeOperation = sos.MergeOperation.REMOVE))  # ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
-    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.INSERT))  # nothing to insert
-    _.assertEqual(b"a\nbcd\ne",  sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.REMOVE))  # remove space
+    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbc d\ne", b"a\nbcd\ne", mergeOperation = sos.MergeOperation.INSERT, lineConflictResolution = sos.ConflictResolution.MINE))  # because it's a deletion ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
+    _.assertEqual(b"a\nbcd\ne",  sos.merge(b"a\nbc d\ne", b"a\nbcd\ne", mergeOperation = sos.MergeOperation.REMOVE, lineConflictResolution = sos.ConflictResolution.THEIRS))  # ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
+    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.BOTH))  # nothing to insert, don't change
+    _.assertEqual(b"a\nbcd\nbc d\ne", sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.INSERT))  # don't remove replaced TODO invalid?, should recognize no deletion present!
+    import pdb; pdb.set_trace()
+    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.BOTH, charMergeOperation = sos.MergeOperation.REMOVE))  # nothing to remove TODO show be a modified but is treated like replace
+    _.assertEqual(b"a\nbcd\ne",  sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.INSERT))  # insert space
     # Test with change + insert (conflict)
-    _.assertEqual(b"a\nb fdd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.MINE))
-    _.assertEqual(b"a\nb cd d\ne",  sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.THEIRS))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
-    _.assertEqual(b"a\nb fdd d\ne", mockInput(["i"], () -> sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
-    _.assertEqual(b"a\nb cd d\ne",  mockInput(["t"], () -> sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", conflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
-    _.assertEqual(b"abbc", sos.merge(b"abbc", b"addc", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))
-    _.assertEqual(b"a\nbb\nc", sos.merge(b"a\nbb\nc", b"a\ndd\nc", mergeOperation = sos.MergeOperation.BOTH, conflictResolution = sos.ConflictResolution.THEIRS))
+    _.assertEqual(b"a\nb fdd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", lineConflictResolution = sos.ConflictResolution.MINE))
+    _.assertEqual(b"a\nb cd d\ne",  sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", lineConflictResolution = sos.ConflictResolution.THEIRS))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"a\nb fdd d\ne", mockInput(["i"], () -> sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", lineConflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"a\nb cd d\ne",  mockInput(["t"], () -> sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", lineConflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
+    _.assertEqual(b"abbc", sos.merge(b"abbc", b"addc", mergeOperation = sos.MergeOperation.BOTH, lineConflictResolution = sos.ConflictResolution.THEIRS))
+    _.assertEqual(b"a\nbb\nc", sos.merge(b"a\nbb\nc", b"a\ndd\nc", mergeOperation = sos.MergeOperation.BOTH, lineConflictResolution = sos.ConflictResolution.THEIRS))
     _.assertIn("Differing EOL-styles", wrapChannels(() -> sos.merge(b"a\nb", b"a\r\nb")))  # expect warning
     _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb"))  # in doubt, use "mine" CR-LF
 
@@ -613,12 +602,12 @@ class Tests(unittest.TestCase):
 
     sos.commit("Second_2")
     _.assertEqual(2, len(os.listdir(sos.branchFolder(1, 1))))  # "a123a" + meta file
-    _.assertTrue(os.path.exists("." + os.sep + "file1"))
-    _.assertTrue(os.path.exists("." + os.sep + "file2"))
+    _.existsFile(1, b"x" * 10)
+    _.existsFile(2, b"x" * 10)
 
     sos.switch("test")  # go back to first branch - tracks only "file?", but not "a*a"
-    _.assertTrue(os.path.exists("." + os.sep + "file1"))
-    _.assertTrue(os.path.exists("." + os.sep + "a123a"))  # should not have been touched so far
+    _.existsFile(1, b"x" * 10)
+    _.existsFile("a123a", b"x" * 10)
 
     sos.update("Other")  # integrate tracked files and tracking pattern from second branch into working state of master branch
     _.assertTrue(os.path.exists("." + os.sep + "file1"))
@@ -649,6 +638,11 @@ class Tests(unittest.TestCase):
     sos.add("sub", "sub/a")
     sos.ls("sub")
     _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(() -> sos.ls("sub")).replace("\r", ""), "\n"))
+
+  def testLineMerge(_):
+    _.assertEqual("a bd", sos.lineMerge("xabc", "a bd"))
+    _.assertEqual("xa bcd", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.INSERT))
+    _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.REMOVE))
 
   def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not
     _.createFile(1)
@@ -837,7 +831,7 @@ class Tests(unittest.TestCase):
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(() -> sos.diff("/-2", onlys = f{"./file2"})))
 
   def testReorderRenameActions(_):
-    result:Tuple[str,str][] = sos.reorderRenameActions([("123", "312"), ("312", "132"), ("321", "123")], exitOnConflict = False)
+    result:Tuple[str,str] = sos.reorderRenameActions([("123", "312"), ("312", "132"), ("321", "123")], exitOnConflict = False)
     _.assertEqual([("312", "132"), ("123", "312"), ("321", "123")], result)
     try: sos.reorderRenameActions([("123", "312"), ("312", "123")], exitOnConflict = True); _.fail()
     except: pass
@@ -919,7 +913,7 @@ class Tests(unittest.TestCase):
     finally: os.chdir(old)
 
   # TODO test command line operation --sos vs. --vcs
-  # check exact output instead of expected fail
+  # check exact output instead of only expected exception/fail
 
 
 if __name__ == '__main__':
