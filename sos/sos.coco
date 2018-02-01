@@ -1,12 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# Copyright Arne Bachmann
+# This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Standard modules
 import codecs, collections, fnmatch, json, logging, mimetypes, os, shutil, sys, time
 try:
   from typing import Any, Dict, FrozenSet, IO, Iterator, List, Set, Tuple, Type, Union  # only required for mypy
-except: pass  # typing not available (e.g. Python 2)
+except: pass  # typing not available (prior Python 3.5)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
   import sos.version as version
@@ -70,6 +69,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --add | --rm | --ask                                  Only add new files / only remove vanished files / Ask what to do. Default: add and remove
       --add-lines | --rm-lines | --ask-lines                Only add inserted lines / only remove deleted lines / Ask what to do. Default: add and remove
       --add-chars | --rm-chars | --ask-chars                Only add new characters / only remove vanished characters / Ask what to do. Default: add and remove
+      --eol                                                 Use EOL style from the integrated file instead. Default: EOL style of current file
 
   Working with files:
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
@@ -536,8 +536,8 @@ def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, ex
     content:bytes?
     if pinfo.size == 0: content = b""  # empty file contents
     else: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
-    abspath = os.path.join(m.root, path.replace(SLASH, os.sep))  # current file
-    blocks:List[MergeBlock] = merge(file = content, intoname = abspath, diffOnly = True)  # only determine change blocks
+    abspath:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))  # current file
+    blocks:List[MergeBlock] = merge(filename = abspath, into = content, diffOnly = True)  # only determine change blocks
     print("DIF %s%s" % (path, " <timestamp or newline>" if len(blocks) == 1 and blocks[0].tipe == MergeBlockType.KEEP else ""))
     for block in blocks:
       if block.tipe in [MergeBlockType.INSERT, MergeBlockType.REMOVE]:
@@ -548,7 +548,7 @@ def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, ex
       elif block.tipe == MergeBlockType.REMOVE:
         for no, line in enumerate(block.lines):
           print("--- %04d |%s|" % (no + block.line, line))
-      elif block.tipe == MergeBlockType.REPLACE:  # TODO for MODIFY also show intra-line change ranges
+      elif block.tipe == MergeBlockType.REPLACE:  # TODO for MODIFY also show intra-line change ranges (TODO remove if that code was also removed)
         for no, line in enumerate(block.replaces.lines):
           print("- | %04d |%s|" % (no + block.replaces.line, line))
         for no, line in enumerate(block.lines):
@@ -586,12 +586,12 @@ def status(options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str
   m.loadBranches()  # knows current branch
   current:int = m.branch
   strict:bool = '--strict' in options or m.strict
-  trackingPatterns:FrozenSet[str] = m.getTrackingPatterns()
-  changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, trackingPatterns), dontConsider = excps, progress = '--progress' in options)
   info(MARKER + " Offline repository status")
-  info("Content checking %sactivated" % ("" if m.strict else "de"))
-  info("Data compression %sactivated" % ("" if m.compress else "de"))
-  info("Repository mode  %s" % ("track" if m.track else ("picky" if m.picky else "simple")))
+  info("Content checking:  %sactivated" % ("" if m.strict else "de"))
+  info("Data compression:  %sactivated" % ("" if m.compress else "de"))
+  info("Repository mode:   %s" % ("track" if m.track else ("picky" if m.picky else "simple")))
+  trackingPatterns:FrozenSet[str] = m.getTrackingPatterns()
+  changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, trackingPatterns), dontConsider = excps, progress = True)
   print("File tree %s" % ("has changes vs. last revision of current branch" if modified(changes) else "is unchanged"))
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
@@ -665,9 +665,10 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
       In tracking mode, this also updates the set of tracked patterns.
       User options for merge operation: --add/--rm/--ask --add-lines/--rm-lines/--ask-lines (inside each file), --add-chars/--rm-chars/--ask-chars
   '''
-  mrg:MergeOperation = getAnyOfMap({"--add": MergeOperation.INSERT, "--rm": MergeOperation.REMOVE, "--ask": MergeOperation.ASK}, options, MergeOperation.BOTH)  # default operation is replicate remote state
+  mrg:MergeOperation =     getAnyOfMap({"--add":       MergeOperation.INSERT, "--rm":       MergeOperation.REMOVE, "--ask":       MergeOperation.ASK}, options, MergeOperation.BOTH)  # default operation is replicate remote state
   mrgline:MergeOperation = getAnyOfMap({'--add-lines': MergeOperation.INSERT, '--rm-lines': MergeOperation.REMOVE, "--ask-lines": MergeOperation.ASK}, options, mrg)  # default operation for modified files is same as for files
   mrgchar:MergeOperation = getAnyOfMap({'--add-chars': MergeOperation.INSERT, '--rm-chars': MergeOperation.REMOVE, "--ask-chars": MergeOperation.ASK}, options, mrgline)  # default operation for modified files is same as for lines
+  eol:bool = '--eol' in options  # use remote eol style
   m:Metadata = Metadata(os.getcwd())  # TODO same is called inside stop on changes - could return both current and designated branch instead
   m.loadBranches(); changes:ChangeSet
   currentBranch:int? = m.branch
@@ -692,26 +693,29 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
       if mrg.value & MergeOperation.REMOVE.value: os.unlink(m.root + os.sep + path.replace(SLASH, os.sep))
       print("DEL " + path if mrg.value & MergeOperation.REMOVE.value else "(D) " + path)  # not contained in other branch, but maybe kept
     for path, pinfo in changes.modifications.items():
-      into:str = os.path.join(m.root, path.replace(SLASH, os.sep))  # TODO normalize \.\
-      binary = not m.isTextType(path)
-      op:str = "i"  # mine
+      into:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))
+      binary:bool = not m.isTextType(path)
+      op:str = "m"  # merge as default for text files, always asks for binary (TODO unless --theirs or --mine)
       if mrg == MergeOperation.ASK or binary:  # TODO this may ask user even if no interaction was asked for
         print(("MOD " if not binary else "BIN ") + path)
-        op = user_input(" Resolve: *M[I]ne (skip), [T]heirs" + (": " if binary else ", [M]erge: ")).strip().lower()  # TODO set encoding on stdin
+        while True:
+          print(into)  # TODO print mtime, size differences?
+          op = input(" Resolve: *M[I]ne (skip), [T]heirs" + (": " if binary else ", [M]erge: ")).strip().lower()  # TODO set encoding on stdin
+          if op in ("it" if binary else "itm"): break
       if op == "t":
         m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile = into)  # blockwise copy of contents
         print("THR " + path)
-      elif op == "m" and not binary:
+      elif op == "m":
         current:bytes
         with open(into, "rb") as fd: current = fd.read()  # TODO slurps file
         file:bytes? = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # parse lines
         if current == file: debug("No difference to versioned file")
         elif file is not None:  # if None, error message was already logged
-          contents:bytes = merge(file = file, intoname = into, mergeOperation = mrgline, charMergeOperation = mrgchar)
+          contents:bytes = merge(file = file, into = current, mergeOperation = mrgline, charMergeOperation = mrgchar, eol = eol)
           if contents != current:
             with open(path, "wb") as fd: fd.write(contents)  # TODO write to temp file first, in case writing fails
           else: debug("No change")  # TODO but update timestamp?
-      else:
+      else:  # mine or wrong input
         print("MNE " + path)  # nothing to do! same as skip
   info("Integrated changes from '%s/r%02d' into file tree" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.branches[currentBranch] = dataCopy(BranchInfo, m.branches[currentBranch], inSync = False, tracked = list(trackingUnion))
@@ -780,8 +784,8 @@ def ls(argument:str? = None, options:str[] = []) -> None:
     if ig:
       for wl in m.c.ignoresWhitelist:
         if fnmatch.fnmatch(file, wl): ignore = None; break  # found a white list entry for ignored file, undo ignoring it
+    matches:List[str] = []
     if not ignore:
-      matches:List[str] = []
       for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
         if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(os.path.basename(pattern))
     matches.sort(key = (element) -> len(element))

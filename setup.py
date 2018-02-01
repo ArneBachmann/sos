@@ -13,7 +13,7 @@ if 'build' in sys.argv:
   print("Transpiling Coconut files to Python...")
   cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 10000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
 
-  assert 0 == os.system("coconut%s %s -l -t 3 sos %s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--mypy" if "--mypy" in sys.argv else ""))  # TODO remove --target once Python 2 problems have been fixed
+  assert 0 == os.system("coconut%s %s -l -t 3 sos %s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--mypy" if "--mypy" in sys.argv else ""))
   try: sys.argv.remove('--mypy')
   except: pass
 
@@ -21,7 +21,7 @@ if 'build' in sys.argv:
     print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")
     try:
       so, se = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE).communicate()  # use tag or hash
-      extra = (so.strip() if sys.version_info.major < 3 else so.strip().decode(sys.stdout.encoding)).replace("\n", "-")
+      extra = so.strip().decode(sys.stdout.encoding).replace("\n", "-")
       if "\x0d" in extra: extra = extra.split("\x0d")[1]
       print("Found Git hash %s" % extra)
     except: extra = "svn"
@@ -94,7 +94,7 @@ setup(
         Programming Language :: Python :: 3.6
         Programming Language :: Python :: 3 :: Only
         """.split('\n') if c.strip()],  # https://pypi.python.org/pypi?:action=list_classifiers
-#        Programming Language :: Coconut
+  #      Programming Language :: Coconut
   keywords = 'VCS SCM version control system Subversion Git gitless Fossil Bazaar Mercurial CVS SVN gl fsl bzr hg',
   author = 'Arne Bachmann',
   author_email = 'ArneBachmann@users.noreply.github.com',
@@ -109,12 +109,7 @@ setup(
   zip_safe = False,
   entry_points = {
     'console_scripts': [
-      'sos=sos.sos:main',  # Subversion offline solution
-  #    'vcos=sos.sos:main',  # version control offline solution
-  #    'mvcs=sos.sos:main'  # meta version control system
+      'sos=sos.sos:main'  # Subversion offline solution
     ]
-  },
-  extras_require = {
-    'backport':  ["enum34"]  # , "option"]  # for Python 2 without backported enum
   }
 )

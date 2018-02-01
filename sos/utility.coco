@@ -1,6 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# Copyright Arne Bachmann
+# This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Utiliy functions
 import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()
@@ -9,7 +8,7 @@ except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport
 try:
   from typing import Any, Callable, Dict, FrozenSet, IO, List, Sequence, Set, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = Union[int,float]
-except: pass  # typing not available (e.g. Python 2)
+except: pass  # typing not available (prior Python 3.5)
 try: import wcwidth
 except: pass  # optional dependency
 
@@ -113,10 +112,8 @@ def eoldet(file:bytes) -> bytes? =
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
 
-def user_input(msg:str) -> str = input(msg)  # referenceso __builtin__.raw_input on Python 2
-
 try: Splittable = TypeVar("Splittable", str, bytes)
-except: pass  # Python 2
+except: pass
 def safeSplit(s:Splittable, d:Splittable? = None) -> Splittable[]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 
 def ajoin(sep:str, seq:str[], nl = "") -> str = (sep + (nl + sep).join(seq)) if seq else ""
@@ -196,14 +193,14 @@ def diffPathSets(last:Dict[str,PathInfo], diff:Dict[str,PathInfo]) -> ChangeSet 
   changes
 
 try: DataType = TypeVar("DataType", ChangeSet, MergeBlock, BranchInfo)
-except: pass  # Python 2
+except: pass
 
 def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, **_kwargs) -> DataType: r = _old._asdict(); r.update(**_kwargs); return makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))
 
 def user_block_input(output:List[str]) -> None:
-  sep:str = user_input("Enter end-of-text marker (default: <empty line>: "); line:str = sep
+  sep:str = input("Enter end-of-text marker (default: <empty line>: "); line:str = sep
   while True:
-    line = user_input("> ")
+    line = input("> ")
     if line == sep: break
     output.append(line)
 
@@ -212,11 +209,15 @@ def merge(
       filename:str? = None, intoname:str? = None,
       mergeOperation:MergeOperation = MergeOperation.BOTH,
       charMergeOperation:MergeOperation = MergeOperation.BOTH,
-      diffOnly:bool = False
+      diffOnly:bool = False,
+      eol:bool = False
     ) -> Union[bytes,List[MergeBlock]] =
-  ''' Merges other binary text contents 'file' (or reads file 'filename')
-      into current text contents 'into' (or reads file 'intoname'), returning merged result.
+  ''' Merges other binary text contents 'file' (or reads file 'filename') into current text contents 'into' (or reads file 'intoname'), returning merged result.
+      For update, the other version is assumed to be the "new/added" one, while for diff, the current changes are the ones "added".
+      However, change direction markers are insert ("+") for elements only in into, and remove ("-") for elements only in other file (just like the diff marks +/-)
       diffOnly returns detected change blocks only, no text merging
+      eol flag will use the other file's EOL marks
+      in case of replace block and INSERT strategy, the change will be added **behind** the original
   '''
   encoding:str; othr:str[]; othreol:bytes?; curr:str[]; curreol:bytes?
   try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document
@@ -235,19 +236,13 @@ def merge(
       if len(tmp) > 0: blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line = no - len(tmp)))  # avoid adding empty keep block
     elif last == "-":  # may be a pure deletion or part of a replacement (with next block being "+")
       blocks.append(MergeBlock(MergeBlockType.REMOVE, [line for line in tmp], line = no - len(tmp)))
+      if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.INSERT:
+        blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-1].lines, line = no - len(tmp) - 1, replaces = blocks[-2])  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
+        blocks.pop()
     elif last == "+":  # may be insertion or replacement (with previous - block)
       blocks.append(MergeBlock(MergeBlockType.INSERT, [line for line in tmp], line = no - len(tmp)))  # first, assume simple insertion, then check for replacement
-      if len(blocks) >= 2:  #  and len(blocks[-1].lines) == len(blocks[-2].lines):  # requires previous block and same number of lines TODO allow multiple intra-line merge for same-length blocks
-        # if more than one lines: could be swap, replacement, or modification (for some lines) - handle as replacement with conflict resolution option
-        # if one line: can be handled via lineMerge and character modifications
-#        if len(blocks[-1].lines) >= 2 or (blocks[-1].changes is None and blocks[-2].changes is None):  # > 1 lines and no intra-line comment
-#          if len(blocks[-1].lines) == 1:
-#            intraMerge = lineMerge(blocks[-1].lines[0], blocks[-2].lines[0], charMergeOperation = charMergeOperation, charConflictResolution = charConflictResolution, diffOnly = diffOnly)
-#          else:
-#            intraMerge = blocks[-1].lines
-        blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-1].lines, line = no - len(tmp) - 1, replaces = blocks[-2])  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
-#        else:  # either just one line in block or has intra-line changes: may have intra-line modifications (character level of merge) TODO use merge recursively?
-#          blocks[-2] = MergeBlock(MergeBlockType.MODIFY, blocks[-1].lines, line = no - len(tmp), replaces = blocks[-2], changes = blocks[-1].changes)
+      if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.REMOVE:  #  and len(blocks[-1].lines) == len(blocks[-2].lines):  # requires previous block and same number of lines TODO allow multiple intra-line merge for same-length blocks
+        blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-2].lines, line = no - len(tmp) - 1, replaces = blocks[-1])  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
         blocks.pop()  # remove TOS due to merging two blocks into replace or modify
     elif last == "?":  # marker for intra-line change comment -> add to block info
       ilm:Range = getIntraLineMarkers(tmp[0])  # TODO still true? "? " line includes a trailing \n for some reason
@@ -268,37 +263,56 @@ def merge(
       output.extend(block.lines)
     elif block.tipe == MergeBlockType.REPLACE:  # complete block replacement
       if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner
-        output.append(lineMerge(block.replaces.lines[0], block.lines[0], mergeOperation = charMergeOperation))
+        output.append(lineMerge(block.lines[0], block.replaces.lines[0], mergeOperation = charMergeOperation))
       elif mergeOperation == MergeOperation.ASK:  # more than one line: needs user input
-        print(ajoin("- ", block.replaces.lines))  # TODO check +/- in update mode, could be swapped
-        print(ajoin("+ ", block.lines))
+        print(ajoin("- ", block.replaces.lines, nl = "\n"))  # TODO check +/- in update mode, could be swapped
+        print(ajoin("+ ", block.lines, nl = "\n"))
         while True:
-          op:str = user_input(" Line replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()
-          if op in "tb": output.extend(block.replaces.lines); break
-          if op in "ib": output.extend(block.lines); break
+          op:str = input(" Line replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()
+          if op in "tb": output.extend(block.lines); break
+          if op in "ib": output.extend(block.replaces.lines); break
           if op == "m": user_block_input(output); break
       else:  # more than one line and not ask
         if   mergeOperation == MergeOperation.REMOVE: pass
         elif mergeOperation == MergeOperation.BOTH: output.extend(block.lines)
         elif mergeOperation == MergeOperation.INSERT: output.extend(list(block.replaces.lines) + list(block.lines))  # TODO optionally allow insertion BEFORE or AFTER original (order of these both lines)
 #  debug("Merge output: " + "; ".join(output))
-  nl:bytes = curreol ?? othreol ?? b"\n"
+  nl:bytes = othreol if eol else (curreol ?? othreol ?? b"\n")
   nl.join([line.encode(encoding) for line in output])  # returning bytes
   # TODO handle check for more/less lines in found -/+ blocks to find common section and splitting prefix/suffix out
 
 def lineMerge(othr:str, into:str, mergeOperation:MergeOperation = MergeOperation.BOTH, diffOnly:bool = False) -> Union[str,List[MergeBlock]]:
-  ''' Finds character differences. '''
+  ''' Merges string 'othr' into current string 'into'.
+      change direction mark is insert for elements only in into, and remove for elements only in file (according to diff marks +/-)
+  '''
   out:List[str] = list(difflib.Differ().compare(othr, into))
   blocks:List[MergeBlock] = []
   for i, line in enumerate(out):
-    if   line[0] == "+":
-      if i > 0 and blocks[i - 1].tipe == MergeBlockType.REMOVE:
-        blocks.append(MergeBlock(MergeBlockType.REPLACE, [line[2]], i, replaces = blocks[i - 1]))
-      else:
-        blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))
-    elif line[0] == "-": blocks.append(MergeBlock(MergeBlockType.REMOVE, [line[2]], i))
-    elif line[0] == " ": blocks.append(MergeBlock(MergeBlockType.KEEP, [line[2]], i))
+    if line[0] == "+":
+      if i + 1 < len(out) and out[i + 1][0] == "+":  # block will continue
+        if i > 0 and blocks[-1].tipe == MergeBlockType.INSERT:  # middle of + block
+          blocks[-1].lines.append(line[2])  # add one more character to the accumulating list
+        else:  # first + in block
+          blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))
+      else:  # last line of + block
+        if i > 0 and blocks[-1].tipe == MergeBlockType.INSERT:  # end of a block
+          blocks[-1].lines.append(line[2])
+        else:  # single line
+          blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))
+        if i >= 1 and blocks[-2].tipe == MergeBlockType.REMOVE:  # previous - and now last in + block creates a replacement block
+          blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-2].lines, i, replaces = blocks[-1]); blocks.pop()
+    elif line[0] == "-":
+      if i > 0 and blocks[-1].tipe == MergeBlockType.REMOVE:  # part of - block
+        blocks[-1].lines.append(line[2])
+      else:  # first in block
+        blocks.append(MergeBlock(MergeBlockType.REMOVE, [line[2]], i))
+    elif line[0] == " ":
+      if i > 0 and blocks[-1].tipe == MergeBlockType.KEEP:  # part of block
+        blocks[-1].lines.append(line[2])
+      else:  # first in block
+        blocks.append(MergeBlock(MergeBlockType.KEEP, [line[2]], i))
     else: raise Exception("Cannot parse diff line %r" % line)
+  blocks[:] = [dataCopy(MergeBlock, block, lines = ["".join(block.lines)], replaces = dataCopy(MergeBlock, block.replaces, lines = ["".join(block.replaces.lines)]) if block.replaces else None) for block in blocks]
   if diffOnly: return blocks
   out[:] = []
   for i, block in enumerate(blocks):
@@ -310,20 +324,22 @@ def lineMerge(othr:str, into:str, mergeOperation:MergeOperation = MergeOperation
         print("+ " + (" " * i) + block.lines[0])
         print(ajoin("+ ", into))
         while True:
-          op:str = user_input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()
-          if op in "tb": output.extend(block.replaces.lines); break
-          if op in "ib": output.extend(block.lines); break
-          if op == "m": user_block_input(output); break
-    elif block.tipe == MergeBlockType.INSERT:
-      if mergeOperation.value & MergeType.INSERT: out.extend(block.replaces.lines)
-      if not (mergeOperation.value & MergeType.REMOVE): out.extend(block.lines)
-    elif block.tipe == MergeBlockType.REMOVE:
-      if mergeOperation.value & MergeType.INSERT: out.extend(block.lines)
+          op:str = input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()
+          if op in "tb": out.extend(block.lines); break
+          if op in "ib": out.extend(block.replaces.lines); break
+          if op == "m":  user_block_input(out); break
+      else:  # non-interactive
+        if   mergeOperation == MergeOperation.REMOVE: pass
+        elif mergeOperation == MergeOperation.BOTH: out.extend(block.lines)
+        elif mergeOperation == MergeOperation.INSERT: out.extend(list(block.replaces.lines) + list(block.lines))
+    elif block.tipe == MergeBlockType.INSERT and not (mergeOperation.value & MergeOperation.REMOVE.value): out.extend(block.lines)
+    elif block.tipe == MergeBlockType.REMOVE and      mergeOperation.value & MergeOperation.INSERT.value:  out.extend(block.lines)
+    # TODO ask for insert or remove as well
   return "".join(out)
 
 def getIntraLineMarkers(line:str) -> Range =
   ''' Return (type, [affected indices]) of "? "-line diff markers ("? " prefix must be removed). difflib never returns mixed markers per line. '''
-  if "^" in line: return Range(MergeBlockType.MODIFY, [i for i, c in enumerate(line) if c == "^"])
+  if "^" in line: return Range(MergeBlockType.REPLACE, [i for i, c in enumerate(line) if c == "^"])  # TODO wrong, needs removal anyway
   if "+" in line: return Range(MergeBlockType.INSERT, [i for i, c in enumerate(line) if c == "+"])
   if "-" in line: return Range(MergeBlockType.REMOVE, [i for i, c in enumerate(line) if c == "-"])
   Range(MergeBlockType.KEEP, [])

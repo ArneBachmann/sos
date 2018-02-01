@@ -1,10 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# Copyright Arne Bachmann
+# This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import builtins, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
-StringIO = (__import__("StringIO" if sys.version_info.major < 3 else "io")).StringIO  # enables import via ternary expression
-try: from unittest import mock  # Py3
+from io import StringIO
+try: from unittest import mock  # Python 3
 except: import mock  # installed via pip
 try: from typing import Any, List, Union  # only required for mypy
 except: pass
@@ -14,11 +13,11 @@ try:
   import configr  # optional dependency
   os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
 except: configr = None  # declare as undefined
-import sos
+import sos  # import of package, not file
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 
 def sync() -> None:
-  if (sys.version_info.major, sys.version_info.minor) >= (3, 3): os.sync()
+  if sys.version_info[:2] >= (3, 3): os.sync()
 
 
 def determineFilesystemTimeResolution() -> float =
@@ -72,7 +71,7 @@ def wrapChannels(func: -> Any) =
   buf.getvalue()
 
 def mockInput(datas:str[], func) -> Any:
-  with mock.patch("builtins.input" if sys.version_info.major >= 3 else "utility._coconut_raw_input", side_effect = datas): return func()
+  with mock.patch("builtins.input", side_effect = datas): return func()
 
 def setRepoFlag(name:str, value:bool) -> None:
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches = json.loads(fd.read())
@@ -452,8 +451,8 @@ class Tests(unittest.TestCase):
     _.createFile(10, theirs)
     mine = b"a\nc\nd\ne\ng\nf\nx\nh\ny\ny\nj"  # missing "b", inserted g, modified g->x, replace x/x -> y/y, removed k
     _.createFile(11, mine)
-    _.assertEqual(b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk",    sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.BOTH, lineConflictResolution = sos.ConflictResolution.THEIRS))  # completely recreated other file
-    _.assertEqual(b"a\nb\nc\nd\ne\ng\nf\ng\nx\nh\nx\nx\ny\ny\nj\nk", sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.INSERT, lineConflictResolution = sos.ConflictResolution.MINE))
+    _.assertEqual(b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk", sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.BOTH))  # completely recreated other file
+    _.assertEqual(b'a\nb\nc\nd\ne\ng\nf\ng\nh\ny\ny\nx\nx\nj\nk', sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.INSERT))
 
   def testUpdate2(_):
     _.createFile("test.txt", "x" * 10)
@@ -464,17 +463,16 @@ class Tests(unittest.TestCase):
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
-    sos.update("mod", ["--theirs"])  # integrate changes TODO same with ask -> theirs
+    sos.update("mod")  # integrate changes TODO same with ask -> theirs
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
     _.createFile("test.txt", "x" * 10)
-    sos.update("mod", ["--ask-lines"])  # won't ask for lines, as it is recognized as a full line replacement
+    mockInput(["t"], () -> sos.update("mod", ["--ask-lines"]))
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
-    # TODO add code with an intra-line replacement when implemented in getIntraLineMarkers, test method also separately
-#    _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
-#    import pdb; pdb.set_trace()
-#    sos.update("mod", ["--ask-lines"])  # won't ask for lines, as it is recognized as a full line replacement
-#    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
-#    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
+    _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
+    sos.update("mod")  # auto-insert/removes (no intra-line conflict)
+    _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
+    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
+    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
 
   def testIsTextType(_):
     m = sos.Metadata(".")
@@ -500,29 +498,36 @@ class Tests(unittest.TestCase):
     _.assertIsNone(sos.eoldet(b"sdf"))
 
   def testMerge(_):
-    ''' Check merge results depending on conflict solution options. '''
+    ''' Check merge results depending on user options. '''
+    a:bytes = b"a\nb\ncc\nd"
+    b:bytes = b"a\nb\nee\nd"  # replaces cc by ee
+    _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT))  # one-line block replacement using lineMerge
+    _.assertEqual(b"a\nb\neecc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT, charMergeOperation = sos.MergeOperation.INSERT))  # means insert changes from a into b, but don't replace
+    _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT, charMergeOperation = sos.MergeOperation.REMOVE))  # means insert changes from a into b, but don't replace
+    _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE))  # one-line block replacement using lineMerge
+    _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE, charMergeOperation = sos.MergeOperation.REMOVE))
+    _.assertEqual(a, sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH))  # keeps any changes in b
     a = b"a\nb\ncc\nd"
-    b = b"a\nb\nee\nd"
-    _.assertEqual(b"a\nb\ncc\nee\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT))  # means insert changes from a into b, but don't replace
+    b = b"a\nb\nee\nf\nd"  # replaces cc by block of two lines ee, f
+    _.assertEqual(b"a\nb\nee\nf\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT))  # multi-line block replacement
     _.assertEqual(b"a\nb\nd",         sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE))
-    _.assertEqual(b, sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH))
-    # Now test intra-line merging without conflicts
-    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbc d\ne", b"a\nbcd\ne", mergeOperation = sos.MergeOperation.INSERT, lineConflictResolution = sos.ConflictResolution.MINE))  # because it's a deletion ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
-    _.assertEqual(b"a\nbcd\ne",  sos.merge(b"a\nbc d\ne", b"a\nbcd\ne", mergeOperation = sos.MergeOperation.REMOVE, lineConflictResolution = sos.ConflictResolution.THEIRS))  # ['  a', '- bc d', '?   -\n', '+ bcd', '  e']
-    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.BOTH))  # nothing to insert, don't change
-    _.assertEqual(b"a\nbcd\nbc d\ne", sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.INSERT))  # don't remove replaced TODO invalid?, should recognize no deletion present!
-    import pdb; pdb.set_trace()
-    _.assertEqual(b"a\nbc d\ne", sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.BOTH, charMergeOperation = sos.MergeOperation.REMOVE))  # nothing to remove TODO show be a modified but is treated like replace
-    _.assertEqual(b"a\nbcd\ne",  sos.merge(b"a\nbcd\ne", b"a\nbc d\ne", mergeOperation = sos.MergeOperation.INSERT))  # insert space
-    # Test with change + insert (conflict)
-    _.assertEqual(b"a\nb fdd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", lineConflictResolution = sos.ConflictResolution.MINE))
-    _.assertEqual(b"a\nb cd d\ne",  sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", lineConflictResolution = sos.ConflictResolution.THEIRS))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
-    _.assertEqual(b"a\nb fdd d\ne", mockInput(["i"], () -> sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", lineConflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
-    _.assertEqual(b"a\nb cd d\ne",  mockInput(["t"], () -> sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", lineConflictResolution = sos.ConflictResolution.ASK)))  # ['  a', '- b cd d', '?   ^\n', '+ b fdd d', '?   ^^\n', '  e']
-    _.assertEqual(b"abbc", sos.merge(b"abbc", b"addc", mergeOperation = sos.MergeOperation.BOTH, lineConflictResolution = sos.ConflictResolution.THEIRS))
-    _.assertEqual(b"a\nbb\nc", sos.merge(b"a\nbb\nc", b"a\ndd\nc", mergeOperation = sos.MergeOperation.BOTH, lineConflictResolution = sos.ConflictResolution.THEIRS))
-    _.assertIn("Differing EOL-styles", wrapChannels(() -> sos.merge(b"a\nb", b"a\r\nb")))  # expect warning
-    _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb"))  # in doubt, use "mine" CR-LF
+    _.assertEqual(a, sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH))  # keeps any changes in b
+    # Test with change + insert
+    _.assertEqual(b"a\nb fdcd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation = sos.MergeOperation.INSERT))
+    _.assertEqual(b"a\nb d d\ne",  sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation = sos.MergeOperation.REMOVE))
+    # Test interactive merge
+    a = b"a\nb\nb\ne"  # block-wise replacement
+    b = b"a\nc\ne"
+    _.assertEqual(b, mockInput(["i"], () -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)))
+    _.assertEqual(a, mockInput(["t"], () -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)))
+    a = b"a\nb\ne"  # intra-line merge
+    _.assertEqual(b, mockInput(["i"], () -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)))
+    _.assertEqual(a, mockInput(["t"], () -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)))
+
+  def testMergeEol(_):
+    _.assertIn("Differing EOL-styles", wrapChannels(() -> sos.merge(b"a\nb", b"a\r\nb")))  # expects a warning
+    _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb"))  # when in doubt, use "mine" CR-LF
+    _.assertIn(b"a\nb", sos.merge(b"a\nb", b"a\r\nb", eol = True))
 
   def testPickyMode(_):
     ''' Confirm that picky mode reset tracked patterns after commits. '''
@@ -640,8 +645,9 @@ class Tests(unittest.TestCase):
     _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(() -> sos.ls("sub")).replace("\r", ""), "\n"))
 
   def testLineMerge(_):
-    _.assertEqual("a bd", sos.lineMerge("xabc", "a bd"))
-    _.assertEqual("xa bcd", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.INSERT))
+    _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))
+    _.assertEqual("xabxxc", sos.lineMerge("xabxxc", "a bd"))
+    _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.INSERT))
     _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.REMOVE))
 
   def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not
@@ -729,7 +735,7 @@ class Tests(unittest.TestCase):
     try: sos.config("set", ["ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
     except SystemExit as E: _.assertEqual(0, E.code)
     out = wrapChannels(() -> sos.config("show")).replace("\r", "")
-    _.assertIn("             ignores: ['ign1', 'ign2']", out)
+    _.assertIn("             ignores [user]    ['ign1', 'ign2']", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('... file1', out)
     _.assertInAny('... ign1', out)
@@ -817,7 +823,7 @@ class Tests(unittest.TestCase):
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
 
   def testDiff(_):
-    try: sos.config("set", ["texttype", "file1"])
+    try: sos.config("set", ["texttype", "file1"])  # manually mark this file as "textual"
     except SystemExit as E: _.assertEqual(0, E.code)
     sos.offline(options = ["--strict"])
     _.createFile(1)
@@ -827,7 +833,10 @@ class Tests(unittest.TestCase):
     _.createFile(2, "12343")
     sos.commit()
     _.createFile(1, "foobar")
-    _.assertAllIn(["MOD ./file2", "DIF ./file1", "- | 0000 |xxxxxxxxxx|", "+ | 0000 |foobar|"], wrapChannels(() -> sos.diff("/-2")))  # vs. second last
+    _.createFile(3)
+    out = wrapChannels(() -> sos.diff("/-2"))  # compare with r1 (second counting from last which is r2)
+    _.assertIn("ADD ./file3", out)
+    _.assertAllIn(["MOD ./file2", "DIF ./file1", "- | 0001 |xxxxxxxxxx|", "+ | 0000 |foobar|"], out)
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(() -> sos.diff("/-2", onlys = f{"./file2"})))
 
   def testReorderRenameActions(_):
