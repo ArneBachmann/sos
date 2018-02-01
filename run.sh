@@ -1,5 +1,6 @@
 #! /bin/bash
 echo NOMYPY=$NOMYPY
+
 if [ "x$NOMYPY" == "x" ]
 then
 	python setup.py clean build test --mypy

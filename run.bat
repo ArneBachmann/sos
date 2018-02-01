@@ -1,4 +1,5 @@
 echo NOMYPY=%NOMYPY%
+
 if "%NOMYPY%" == "" (
 	python setup.py clean build test --mypy
 ) else (
