@@ -72,7 +72,7 @@ print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820", "termwidth >= 2017.2204.2811", 'enum34;python_version<"3.4"'],  # all of them are optional dependencies
+  install_requires = ["appdirs >= 1.4.3", "chardet >= 3.0.4", "configr >= 2017.2129.2820", "termwidth >= 2017.2204.2811", 'enum34;python_version < "3.4"'],  # all of them are optional dependencies
   test_suite = "sos.tests",
   description = "Subversion Offline Solution (SOS)",
   long_description = README,
