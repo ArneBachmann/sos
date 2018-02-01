@@ -1,5 +1,7 @@
 echo NOMYPY=%NOMYPY%
 
+python -m pip install -U pip
+
 if "%NOMYPY%" == "" (
 	python setup.py clean build test --mypy
 ) else (
