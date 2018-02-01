@@ -4,7 +4,7 @@
 # Utiliy functions
 import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()
 try: import enum
-except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport]' to get enum support")
+except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport]' to get enum support for Python versions prior 3.4")
 try:
   from typing import Any, Callable, Dict, FrozenSet, IO, List, Sequence, Set, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = Union[int,float]

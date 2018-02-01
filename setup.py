@@ -111,5 +111,8 @@ setup(
     'console_scripts': [
       'sos=sos.sos:main'  # Subversion offline solution
     ]
+  },
+  extras_require = {
+      'backport':  ["enum34"]
   }
 )
