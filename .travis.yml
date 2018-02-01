@@ -20,12 +20,14 @@ matrix:
       env:
         - UBUNTU=trusty
         - NOMYPY=true
+        - BACKPORT=true
     - os: linux
       dist: precise
       python: 3.3
       env:
         - UBUNTU=precise
         - NOMYPY=true
+        - BACKPORT=true
     - os: linux
       dist: trusty
       python: 3.4
@@ -74,7 +76,6 @@ matrix:
         - UBUNTU=precise
         - NOMYPY=true
 
-# We don't use mypy here, and cPyparsing fails e.g. in pypy
 install: bash ./install.sh
 # pip collective.checkdocs && setup.py checkdocs
 script: bash ./run.sh
