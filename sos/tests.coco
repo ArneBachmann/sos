@@ -74,12 +74,12 @@ def mockInput(datas:str[], func) -> Any:
   with mock.patch("builtins.input", side_effect = datas): return func()
 
 def setRepoFlag(name:str, value:bool) -> None:
-  with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches = json.loads(fd.read())
+  with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
   flags[name] = value
-  with open(sos.metaFolder + os.sep + sos.metaFile, "w") as fd: fd.write(json.dumps((flags, branches)))
+  with open(sos.metaFolder + os.sep + sos.metaFile, "w") as fd: fd.write(json.dumps((flags, branches, config)))
 
 def checkRepoFlag(name:str, flag:bool) -> bool =
-  with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches = json.loads(fd.read())
+  with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
   name in flags and flags[name] == flag
 
 
@@ -125,9 +125,9 @@ class Tests(unittest.TestCase):
 
   def testFindChanges(_):
     m = sos.Metadata(os.getcwd())
-    try: sos.config("set", ["texttype", "*"])
+    try: sos.config(["set", "texttype", "*"])
     except SystemExit as E: _.assertEqual(0, E.code)
-    try: sos.config("set", ["ignores", "*.cfg;*.cfg.bak"])
+    try: sos.config(["set", "ignores", "*.cfg;*.cfg.bak"])
     except SystemExit as E: _.assertEqual(0, E.code)
     m = sos.Metadata(os.getcwd())  # reload from file system
     m.loadBranches()
@@ -664,6 +664,9 @@ class Tests(unittest.TestCase):
     _.assertTrue(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists
     _.assertFalse(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead
 
+  def testLocalConfig(_):
+    pass
+
   def testConfigVariations(_):
     def makeRepo():
       try: os.unlink("file1")
@@ -671,55 +674,55 @@ class Tests(unittest.TestCase):
       sos.offline("master", options = ["--plain", "--force"])
       _.createFile(1)
       sos.commit("Added file1")
-    try: sos.config("set", ["strict", "on"])
+    try: sos.config(["set", "strict", "on"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    try: sos.config("set", ["strict", "off"])
+    try: sos.config(["set", "strict", "off"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    try: sos.config("set", ["strict", "yes"])
+    try: sos.config(["set", "strict", "yes"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    try: sos.config("set", ["strict", "no"])
+    try: sos.config(["set", "strict", "no"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    try: sos.config("set", ["strict", "1"])
+    try: sos.config(["set", "strict", "1"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    try: sos.config("set", ["strict", "0"])
+    try: sos.config(["set", "strict", "0"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    try: sos.config("set", ["strict", "true"])
+    try: sos.config(["set", "strict", "true"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    try: sos.config("set", ["strict", "false"])
+    try: sos.config(["set", "strict", "false"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    try: sos.config("set", ["strict", "enable"])
+    try: sos.config(["set", "strict", "enable"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    try: sos.config("set", ["strict", "disable"])
+    try: sos.config(["set", "strict", "disable"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    try: sos.config("set", ["strict", "enabled"])
+    try: sos.config(["set", "strict", "enabled"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", True))
-    try: sos.config("set", ["strict", "disabled"])
+    try: sos.config(["set", "strict", "disabled"])
     except SystemExit as E: _.assertEqual(0, E.code)
     makeRepo()
     _.assertTrue(checkRepoFlag("strict", False))
-    try: sos.config("set", ["strict", "nope"]); _.fail()
+    try: sos.config(["set", "strict", "nope"]); _.fail()
     except SystemExit as E: _.assertEqual(1, E.code)
 
   def testLsSimple(_):
@@ -728,25 +731,25 @@ class Tests(unittest.TestCase):
     _.createFile("ign1")
     _.createFile("ign2")
     sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)
-    try: sos.config("set", ["ignores", "ign1"])  # define an ignore pattern
+    try: sos.config(["set", "ignores", "ign1"])  # define an ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
-    try: sos.config("add", ["ignores", "ign2"])  # additional ignore pattern
+    try: sos.config(["add", "ignores", "ign2"])  # additional ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
-    try: sos.config("set", ["ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
+    try: sos.config(["set", "ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
     except SystemExit as E: _.assertEqual(0, E.code)
-    out = wrapChannels(() -> sos.config("show")).replace("\r", "")
+    out = wrapChannels(() -> sos.config(["show"])).replace("\r", "")
     _.assertIn("             ignores [user]    ['ign1', 'ign2']", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('... file1', out)
     _.assertInAny('... ign1', out)
     _.assertInAny('... ign2', out)
-    try: sos.config("rm", ["foo", "bar"]); _.fail()
+    try: sos.config(["rm", "foo", "bar"]); _.fail()
     except SystemExit as E: _.assertEqual(1, E.code)
-    try: sos.config("rm", ["ignores", "foo"]); _.fail()
+    try: sos.config(["rm", "ignores", "foo"]); _.fail()
     except SystemExit as E: _.assertEqual(1, E.code)
-    try: sos.config("rm", ["ignores", "ign1"])
+    try: sos.config(["rm", "ignores", "ign1"])
     except SystemExit as E: _.assertEqual(0, E.code)
-    try: sos.config("unset", ["ignoresWhitelist"])  # remove ignore pattern
+    try: sos.config(["unset", "ignoresWhitelist"])  # remove ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('... ign1', out)
@@ -814,7 +817,7 @@ class Tests(unittest.TestCase):
     _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 2))))  # only meta and file1
     _.createFile(1, "cc")  # modify both files
     _.createFile(2, "dd")
-    try: sos.config("set", ["texttype", "file2"])
+    try: sos.config(["set", "texttype", "file2"])
     except SystemExit as E: _.assertEqual(0, E.code)
     changes = sos.changes(excps = ["./file1"])
     _.assertEqual(1, len(changes.modifications))  # only file2
@@ -823,7 +826,7 @@ class Tests(unittest.TestCase):
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
 
   def testDiff(_):
-    try: sos.config("set", ["texttype", "file1"])  # manually mark this file as "textual"
+    try: sos.config(["set", "texttype", "file1"])  # manually mark this file as "textual"
     except SystemExit as E: _.assertEqual(0, E.code)
     sos.offline(options = ["--strict"])
     _.createFile(1)
@@ -872,9 +875,9 @@ class Tests(unittest.TestCase):
     _.createFile(2)
     _.createFile(3)
     sos.add(".", "./file*")
-    try: sos.config("set", ["ignores", "file3;file4"])  # define an ignore pattern
+    try: sos.config(["set", "ignores", "file3;file4"])  # define an ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
-    try: sos.config("set", ["ignoresWhitelist", "file3"])
+    try: sos.config(["set", "ignoresWhitelist", "file3"])
     except SystemExit as E: _.assertEqual(0, E.code)
     sos.move(".", "./file*", ".", "fi*le")
     _.assertTrue(all(os.path.exists("fi%dle" % i) for i in range(1, 4)))

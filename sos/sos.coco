@@ -29,11 +29,10 @@ termWidth = getTermWidth() - 1  # uses curses or returns conservative default of
 
 # Functions
 def loadConfig() -> Union[configr.Configr,Accessor] =  # Accessor when using defaults only
-  ''' Simplifies loading config from file system or returning the defaults. '''
-  config:Union[configr.Configr,Accessor]
+  ''' Simplifies loading user-global config from file system or returning application defaults. '''
   if not configr: return defaults  # this only applies for the case that configr is not available, thus no settings will be persisted anyway
-  config = configr.Configr("sos", defaults = defaults)  # defaults are used if key is not configured, but won't be saved
-  f, g = config.loadSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))
+  config:Union[configr.Configr,Accessor] = configr.Configr("sos", defaults = defaults)  # defaults are used if key is not configured, but won't be saved
+  f, g = config.loadSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))  # latter for testing only
   if f is None: debug("Encountered a problem while loading the user configuration: %r" % g)
   config
 
@@ -134,19 +133,21 @@ class Metadata:
 
   def __init__(_, path:str) -> None:
     ''' Create empty container object for various repository operations. '''
-    _.c:Union[configr.Configr,Accessor] = loadConfig()
     _.root:str = path
+    _.tags:List[str] = []  # list of known (unique) tags
+    _.branch:int? = None  # current branch number
     _.branches:Dict[int,BranchInfo] = {}  # branch number zero represents the initial state at branching
+    _.repoConf:Dict[str,Any] = {}
+    _.track:bool; _.picky:bool; _.strict:bool; _.compress:bool
+    _.loadBranches()  # loads above values from repository, or uses application defaults
+
     _.commits:Dict[int,CommitInfo] = {}  # consecutive numbers per branch, starting at 0
     _.paths:Dict[str,PathInfo] = {}  # utf-8 encoded relative, normalized file system paths
-    _.tags:List[str] = []
-    _.branch:int? = None  # current branch number
     _.commit:int? = None  # current revision number
-    _.track:bool = _.c.track  # track file name patterns in the repository (per branch)
-    _.picky:bool = _.c.picky  # pick files to commit per operation
-    _.strict:bool = _.c.strict  # be always strict (regarding file contents comparsion)
-    _.compress:bool = _.c.compress  # these flags are stored in the repository
     _.version:str = version.__version__  # store generating version in repository for potential later forensics. will be written only in case of "sos offline", but read every other time
+
+    _.c:Union[configr.Configr,Accessor] = configr.Configr(data = _.repoConf, defaults = loadConfig())
+    _.track, _.picky, _.strict, _.compress = _.c.track, _.c.picky, _.c.strict, _.c.compress
 
   def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
 
@@ -160,15 +161,12 @@ class Metadata:
     try:  # fails if not yet created (on initial branch/commit)
       branches:List[Tuple]
       with codecs.open(os.path.join(_.root, metaFolder, metaFile), "r", encoding = UTF8) as fd:
-        flags, branches = json.load(fd)
-      _.tags = flags["tags"]  # list of commit messages to treat as globally unique tags
-      _.branch = flags["branch"]  # current branch integer
-      _.track = flags["track"]
-      _.picky = flags["picky"]
-      _.strict = flags["strict"]
-      _.compress = flags["compress"]
-      _.version = flags["version"]  # TODO add metadata and configuration dict, and move there
+        repo, branches, config = json.load(fd)
+      _.tags = repo["tags"]  # list of commit messages to treat as globally unique tags
+      _.branch = repo["branch"]  # current branch integer
+      _.track, _.picky, _.strict, _.compress, _.version = [repo[r] for r in ["track", "picky", "strict", "compress", "version"]]
       _.branches = {i.number: i for i in (BranchInfo(*item) for item in branches)}  # re-create type info
+      _.repoConf = config
     except Exception as E:  # if not found, create metadata folder
       _.branches = {}
       warn("Couldn't read branches metadata: %r" % E)
@@ -178,7 +176,7 @@ class Metadata:
     with codecs.open(os.path.join(_.root, metaFolder, metaFile), "w", encoding = UTF8) as fd:
       store:Dict[str,Any] = {"version": _.version, "tags": _.tags, "branch": _.branch, "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress}
       store.update(also)  # allows overriding certain values at certain points in time
-      json.dump((store, list(_.branches.values())), fd, ensure_ascii = False)
+      json.dump((store, list(_.branches.values()), _.repoConf), fd, ensure_ascii = False)
 
   def getRevisionByName(_, name:str) -> int? =
     ''' Convenience accessor for named revisions (using commit message as name as a convention). '''
@@ -465,7 +463,7 @@ def offline(argument:str? = None, options:str[] = []) -> None:
   debug("Preparing offline repository...")
   m.createBranch(0, argument ?? defaults["defaultbranch"], initialMessage = "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
-  m.saveBranches(also = {"version": version.__version__})  # no change immediately after going offline, going back online won't issue a warning
+  m.saveBranches(also = {"version": version.__version__})  # stores version info only once. no change immediately after going offline, going back online won't issue a warning
   info("Offline repository prepared. Use 'sos online' to finish offline work")
 
 def online(options:str[] = []) -> None:
@@ -835,45 +833,51 @@ def dump(argument:str, options:str[] = []) -> None:
         relpath:str = os.path.relpath(abspath, repopath)
         fd.write(abspath, relpath.replace(os.sep, "/"))  # write entry into archive
 
-def config(argument:str, options:List[str] = []) -> None:
-  if argument not in ["set", "unset", "show", "list", "add", "rm"]: Exit("Unknown config command")
-  if not configr: Exit("Cannot execute config command. 'configr' module not installed")
-  c:Union[configr.Configr,Accessor] = loadConfig()
-  if argument == "set":
-    if len(options) < 2: Exit("No key nor value specified")
-    if options[0] not in (["defaultbranch"] + CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS): Exit("Unsupported key %r" % options[0])
-    if options[0] in CONFIGURABLE_FLAGS and options[1].lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % options[1].lower())
-    c[options[0]] = options[1].lower() in TRUTH_VALUES if options[0] in CONFIGURABLE_FLAGS else (options[1].strip() if options[0] not in CONFIGURABLE_LISTS else safeSplit(options[1], ";"))  # TODO sanitize texts?
-  elif argument == "unset":
-    if len(options) < 1: Exit("No key specified")
-    if options[0] not in c.keys(): Exit("Unknown key")
-    del c[options[0]]
-  elif argument == "add":
-    if len(options) < 2: Exit("No key nor value specified")
-    if options[0] not in CONFIGURABLE_LISTS: Exit("Unsupported key for add %r" % options[0])
-    if options[0] not in c.keys(): c[options[0]] = [options[1]]  # add list
-    elif options[1] in c[options[0]]: Exit("Value already contained")
-    c[options[0]].append(options[1])
-  elif argument == "rm":
-    if len(options) < 2: Exit("No key nor value specified")
-    if options[0] not in c.keys(): Exit("Unknown key specified: %r" % options[0])
-    if options[1] not in c[options[0]]: Exit("Unknown value: %r" % options[1])
-    c[options[0]].remove(options[1])
+def config(arguments:List[str], options:List[str] = []) -> None:
+  command, key, value = (arguments + [None] * 2)[:3]
+  if command not in ["set", "unset", "show", "list", "add", "rm"]: Exit("Unknown config command")
+  local:bool = "--local" in options
+  c:Union[configr.Configr,Accessor]
+  if local: m:Metadata = Metadata(os.getcwd()); c = m.repoConfig  # TODO warning if repo not exists
+  else: c = loadConfig()
+  if not local and not configr: Exit("Cannot execute config command. 'configr' module not installed")
+  if command == "set":
+    if None in (key, value): Exit("Key or value not specified")
+    if key not in (["defaultbranch"] + CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS): Exit("Unsupported key %r" % key)
+    if key in CONFIGURABLE_FLAGS and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())
+    c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (value.strip() if key not in CONFIGURABLE_LISTS else safeSplit(value, ";"))  # TODO sanitize texts?
+  elif command == "unset":
+    if key is None: Exit("No key specified")
+    if key not in c.keys(): Exit("Unknown key")
+    del c[key]
+  elif command == "add":
+    if None in (key, value): Exit("Key or value not specified")
+    if key not in CONFIGURABLE_LISTS: Exit("Unsupported key for add %r" % key)
+    if key not in c.keys(): c[key] = [value]  # add list
+    elif value in c[key]: Exit("Value already contained")
+    c[key].append(value)
+  elif command == "rm":
+    if None in (key, value): Exit("Key or value not specified")
+    if key not in c.keys(): Exit("Unknown key specified: %r" % key)
+    if value not in c[key]: Exit("Unknown value: %r" % value)
+    c[key].remove(value)
   else:  # Show or list
-    if "flags" in options:   print(", ".join(CONFIGURABLE_FLAGS))
-    elif "lists" in options: print(", ".join(CONFIGURABLE_LISTS))
-    elif "texts" in options: print(", ".join([_ for _ in defaults.keys() if _ not in (CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS)]))
-    elif len(options) > 0 and (options[0] in c.keys() or options[0] in c.__defaults):  # show a single value
-      print("%s %s %r" % (options[0].rjust(20), "[default]" if options[0] not in c.keys() else "[user]   ", c[options[0]]))
+    if   key == "flags": print(", ".join(CONFIGURABLE_FLAGS))
+    elif key == "lists": print(", ".join(CONFIGURABLE_LISTS))
+    elif key == "texts": print(", ".join([_ for _ in defaults.keys() if _ not in (CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS)]))
+    elif key is not None and (key in c.keys() or key in c.__defaults):  # show a single value
+      print("%s %s %r" % (key.rjust(20), "[default]" if key not in c.keys() else "[user]   ", c[key]))
     else:  # normal value listing
-      vals:Dict[str,Any] = c.__defaults  # TODO uses internal knowledge of the configr project
+      vals:Dict[str,Any] = c.__defaults  # HINT relies on Configr object's internals
       vals.update(c.__map)
       for k, v in sorted(vals.items()): print("%s %s %r" % (k.rjust(20), "[default]" if k not in c.keys() else "[user]   ", v))
-      if len(c.keys()) == 0: info("No configuration stored, using only defaults.")  # TODO list defaults instead? Or display [DEFAULT] for each item above if unmodified
+      if len(c.keys()) == 0: info("No configuration stored, using only defaults.")
     return
-  f, g = saveConfig(c)
-  if f is None: error("Error saving user configuration: %r" % g)
-  else: Exit("OK", code = 0)
+  if local: m.saveBranches(); Exit("OK", code = 0)
+  else:
+    f, g = saveConfig(c)
+    if f is None: error("Error saving user configuration: %r" % g)
+    else: Exit("OK", code = 0)
 
 def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[str] = []) -> None:
   ''' Path differs: Move files, create folder if not existing. Pattern differs: Attempt to rename file, unless exists in target or not unique. '''
@@ -919,34 +923,34 @@ def parse(root:str, cwd:str):
   debug("Parsing command-line arguments...")
   try:
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
-    argument = sys.argv[2].strip() if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else None
-    options = sys.argv[3:] if command == "config" else [c for c in sys.argv[2:] if c.startswith("--")]  # consider second parameter for no-arg command, otherwise from third on
+    arguments = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]
+    options =   [c.strip() for c in sys.argv[2:] if c.startswith("--")]
     onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
-    debug("Processing command %r with argument '%s' and options %r." % (command ?? "", argument ?? "", options))
-    if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, argument ?? "."))
+    debug("Processing command %r with arguments %r and options %r." % (command ?? "", arguments if arguments else "", options))
+    if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "."))
     if command[:1] == "m":
-      if not options: Exit("Need a second file pattern argument as target for move/rename command")
+      if len(arguments) < 2: Exit("Need a second file pattern argument as target for move/rename command")
       newRelPath, newPattern = relativize(root, os.path.join(cwd, options[0]))
     if   command[:1] == "a":   add(relPath, pattern, options)
-    elif command[:1] == "b":   branch(argument, options)
-    elif command[:2] == "ch":  changes(argument, options, onlys, excps)
-    elif command[:3] == "com": commit(argument, options, onlys, excps)
-    elif command[:2] == "ci":  commit(argument, options, onlys, excps)
-    elif command[:3] == 'con': config(argument, options)
-    elif command[:2] == "de":  delete(argument, options)
-    elif command[:2] == "di":  diff(argument, options, onlys, excps)
-    elif command[:2] == "du":  dump(argument, options)
+    elif command[:1] == "b":   branch(arguments[0], options)
+    elif command[:2] == "ch":  changes(arguments[0], options, onlys, excps)
+    elif command[:3] == "com": commit(arguments[0], options, onlys, excps)
+    elif command[:2] == "ci":  commit(arguments[0], options, onlys, excps)
+    elif command[:3] == 'con': config(arguments, options)
+    elif command[:2] == "de":  delete(arguments[0], options)
+    elif command[:2] == "di":  diff(arguments[0], options, onlys, excps)
+    elif command[:2] == "du":  dump(arguments[0], options)
     elif command[:1] == "h":   usage()
     elif command[:2] == "lo":  log(options)
-    elif command[:2] == "li":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO handle absolute paths as well, also for Windows? think through
-    elif command[:2] == "ls":  ls(relativize(root, cwd if argument is None else os.path.join(cwd, argument))[1], options)  # TODO avoid and/or normalize root super paths (..)
+    elif command[:2] == "li":  ls(relativize(root, cwd if not arguments else os.path.join(cwd, arguments[0]))[1], options)  # TODO handle absolute paths as well, also for Windows? think through
+    elif command[:2] == "ls":  ls(relativize(root, cwd if not arguments else os.path.join(cwd, arguments[0]))[1], options)  # TODO avoid and/or normalize root super paths (..)
     elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:])
-    elif command[:2] == "of":  offline(argument, options)
+    elif command[:2] == "of":  offline(arguments[0], options)
     elif command[:2] == "on":  online(options)
     elif command[:1] == "r":   remove(relPath, pattern)
     elif command[:2] == "st":  status(options, onlys, excps)
-    elif command[:2] == "sw":  switch(argument, options, onlys, excps)
-    elif command[:1] == "u":   update(argument, options, onlys, excps)
+    elif command[:2] == "sw":  switch(arguments[0], options, onlys, excps)
+    elif command[:1] == "u":   update(arguments[0], options, onlys, excps)
     elif command[:1] == "v":   usage(short = True)
     else: Exit("Unknown command '%s'" % command)
     Exit(code = 0)
