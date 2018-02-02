@@ -134,7 +134,7 @@ class Metadata:
 
   def __init__(_, path:str) -> None:
     ''' Create empty container object for various repository operations. '''
-    _.c = loadConfig()
+    _.c:Union[configr.Configr,Accessor] = loadConfig()
     _.root:str = path
     _.branches:Dict[int,BranchInfo] = {}  # branch number zero represents the initial state at branching
     _.commits:Dict[int,CommitInfo] = {}  # consecutive numbers per branch, starting at 0
@@ -146,6 +146,7 @@ class Metadata:
     _.picky:bool = _.c.picky  # pick files to commit per operation
     _.strict:bool = _.c.strict  # be always strict (regarding file contents comparsion)
     _.compress:bool = _.c.compress  # these flags are stored in the repository
+    _.version:str = version.__version__  # store generating version in repository for potential later forensics. will be written only in case of "sos offline", but read every other time
 
   def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
 
@@ -166,27 +167,30 @@ class Metadata:
       _.picky = flags["picky"]
       _.strict = flags["strict"]
       _.compress = flags["compress"]
+      _.version = flags["version"]  # TODO add metadata and configuration dict, and move there
       _.branches = {i.number: i for i in (BranchInfo(*item) for item in branches)}  # re-create type info
     except Exception as E:  # if not found, create metadata folder
       _.branches = {}
       warn("Couldn't read branches metadata: %r" % E)
 
-  def saveBranches(_) -> None:
+  def saveBranches(_, also:Dict[str,Any] = {}) -> None:
     ''' Save list of branches and current branch info to metadata file. '''
     with codecs.open(os.path.join(_.root, metaFolder, metaFile), "w", encoding = UTF8) as fd:
-      json.dump(({"tags": _.tags, "branch": _.branch, "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress}, list(_.branches.values())), fd, ensure_ascii = False)
+      store:Dict[str,Any] = {"version": _.version, "tags": _.tags, "branch": _.branch, "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress}
+      store.update(also)  # allows overriding certain values at certain points in time
+      json.dump((store, list(_.branches.values())), fd, ensure_ascii = False)
 
   def getRevisionByName(_, name:str) -> int? =
-    ''' Convenience accessor for named revisions (using commit message as name). '''
+    ''' Convenience accessor for named revisions (using commit message as name as a convention). '''
     if name == "": return -1
     try: return int(name)  # attempt to parse integer string
     except ValueError: pass
-    found = [number for number, commit in _.commits.items() if name == commit.message]  # find any revision by commit message (usually used for tags)  # TODO only allow finding real tags?
+    found = [number for number, commit in _.commits.items() if name == commit.message]  # find any revision by commit message (usually used for tags)  # HINT allows finding any message, not only tagged ones
     found[0] if found else None
 
   def getBranchByName(_, name:str) -> int? =
     ''' Convenience accessor for named branches. '''
-    if name == "": return _.branch
+    if name == "": return _.branch  # current
     try: return int(name)  # attempt to parse integer string
     except ValueError: pass
     found = [number for number, branch in _.branches.items() if name == branch.name]
@@ -237,7 +241,7 @@ class Metadata:
       changes:ChangeSet = _.findChanges(branch, 0, progress = simpleMode)  # creates revision folder and versioned files
       _.listChanges(changes)
       _.paths.update(changes.additions.items())
-    else:  # tracking or picky mode: branch from lastest revision
+    else:  # tracking or picky mode: branch from latest revision
       os.makedirs(branchFolder(branch, 0, base = _.root))
       if _.branch is not None:  # not immediately after "offline" - copy files from current branch
         _.loadBranch(_.branch)
@@ -461,7 +465,7 @@ def offline(argument:str? = None, options:str[] = []) -> None:
   debug("Preparing offline repository...")
   m.createBranch(0, argument ?? defaults["defaultbranch"], initialMessage = "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
-  m.saveBranches()  # no change immediately after going offline, going back online won't issue a warning
+  m.saveBranches(also = {"version": version.__version__})  # no change immediately after going offline, going back online won't issue a warning
   info("Offline repository prepared. Use 'sos online' to finish offline work")
 
 def online(options:str[] = []) -> None:
@@ -587,9 +591,10 @@ def status(options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str
   current:int = m.branch
   strict:bool = '--strict' in options or m.strict
   info(MARKER + " Offline repository status")
-  info("Content checking:  %sactivated" % ("" if m.strict else "de"))
-  info("Data compression:  %sactivated" % ("" if m.compress else "de"))
-  info("Repository mode:   %s" % ("track" if m.track else ("picky" if m.picky else "simple")))
+  info("Repository version:  %s" % m.version)
+  info("Content checking:    %sactivated" % ("" if m.strict else "de"))
+  info("Data compression:    %sactivated" % ("" if m.compress else "de"))
+  info("Repository mode:     %s" % ("track" if m.track else ("picky" if m.picky else "simple")))
   trackingPatterns:FrozenSet[str] = m.getTrackingPatterns()
   changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, trackingPatterns), dontConsider = excps, progress = True)
   print("File tree %s" % ("has changes vs. last revision of current branch" if modified(changes) else "is unchanged"))
@@ -825,7 +830,7 @@ def dump(argument:str, options:str[] = []) -> None:
     for dirpath, dirnames, filenames in os.walk(repopath):  # TODO use index knowledge instead of walking to avoid adding stuff not needed?
       for filename in filenames:
         newtime:float = time.time()  # TODO alternatively count bytes and use a threshold there
-        if progress and newtime - timer > .1: sys.stdout.write("%s\r" % PROGRESS_MARKER[int(counter.inc() % 4)]); sys.stdout.flush(); timer = newtime
+        if progress and newtime - timer > .1: sys.stdout.write("Dumping %s %s\r" % (PROGRESS_MARKER[int(counter.inc() % 4)], filename)); sys.stdout.flush(); timer = newtime
         abspath:str = os.path.join(dirpath, filename)
         relpath:str = os.path.relpath(abspath, repopath)
         fd.write(abspath, relpath.replace(os.sep, "/"))  # write entry into archive
@@ -979,7 +984,7 @@ def main() -> None:
       inp = sys.stdin.read()
     if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")
       if root is None: Exit("Cannot determine VCS root folder: Unable to mark repository as synchronized and will show a warning when leaving offline mode")
-      m = Metadata(root)
+      m:Metadata = Metadata(root)
       m.loadBranches()  # read repo
       m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = True)  # mark as committed
       m.saveBranches()
