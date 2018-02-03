@@ -50,6 +50,7 @@ metaFile:str = ".meta"
 bufSize:int = 1 << 20  # 1 MiB
 SVN = "svn"
 SLASH = "/"
+MEBI = 1 << 20
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None}
 lateBinding:Accessor = Accessor({"verbose": False, "start": 0})

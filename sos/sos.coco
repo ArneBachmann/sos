@@ -810,16 +810,19 @@ def dump(argument:str, options:str[] = []):
   with zipfile.ZipFile(argument, "w", compression) as fd:
     repopath:str = os.path.join(os.getcwd(), metaFolder)
     counter:Counter = Counter(-1); timer:float = time.time()
+    totalsize:int = 0
+    start_time:float = time.time()
     for dirpath, dirnames, filenames in os.walk(repopath):  # TODO use index knowledge instead of walking to avoid adding stuff not needed?
       for filename in filenames:
         newtime:float = time.time()  # TODO alternatively count bytes and use a threshold there
-        if progress and newtime - timer > .1: sys.stdout.write("Dumping %s %s\r" % (PROGRESS_MARKER[int(counter.inc() % 4)], filename)); sys.stdout.flush(); timer = newtime
         abspath:str = os.path.join(dirpath, filename)
         relpath:str = os.path.relpath(abspath, repopath)
+        totalsize += os.stat(abspath).st_size
+        if progress and newtime - timer > .1: sys.stdout.write("Dumping %s@%6.2f MiB/s %s\r" % (PROGRESS_MARKER[int(counter.inc() % 4)], totalsize / (MEBI * (time.time() - start_time)), filename)); sys.stdout.flush(); timer = newtime
         fd.write(abspath, relpath.replace(os.sep, "/"))  # write entry into archive
 
 def config(arguments:List[str], options:List[str] = []):
-  command, key, value = (arguments + [None] * 3)[:3]
+  command, key, value = (arguments + [None] * 2)[:3]
   if command not in ["set", "unset", "show", "list", "add", "rm"]: Exit("Unknown config command")
   local:bool = "--local" in options
   m:Metadata = Metadata(os.getcwd())  # loads layerd configuration as well. TODO warning if repo not exists
@@ -912,7 +915,8 @@ def parse(root:str, cwd:str):
   debug("Parsing command-line arguments...")
   try:
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
-    arguments = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]
+    arguments:Union[List[str],str,None] = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]
+    if len(arguments) == 0: arguments = [None]
     options =   [c.strip() for c in sys.argv[2:] if c.startswith("--")]
     onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
     debug("Processing command %r with arguments %r and options %r." % (command ?? "", arguments if arguments else "", options))
