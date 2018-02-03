@@ -6,8 +6,8 @@ import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = t
 try: import enum
 except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport]' to get enum support for Python versions prior 3.4")
 try:
-  from typing import Any, Callable, Dict, FrozenSet, IO, List, Sequence, Set, Tuple, Type, TypeVar, Union  # only required for mypy
-  Number = Union[int,float]
+  from typing import Any, Callable, Dict, FrozenSet, Generic, IO, List, Sequence, Set, Tuple, Type, TypeVar, Union  # only required for mypy
+  Number = TypeVar("Number", int, float)
 except: pass  # typing not available (prior Python 3.5)
 try: import wcwidth
 except: pass  # optional dependency
@@ -18,14 +18,14 @@ verbose = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in s
 # Classes
 class Accessor(dict):
   ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
-  def __init__(_, mapping:Dict[str,Any]) -> None: dict.__init__(_, mapping)
+  def __init__(_, mapping:Dict[str,Any]): dict.__init__(_, mapping)
   def __getattribute__(_, name:str) -> Any:
     try: return _[name]
     except: return dict.__getattribute__(_, name)
 
-class Counter:
+class Counter(Generic[Number]):
   ''' A simple counter. Can be augmented to return the last value instead. '''
-  def __init__(_, initial:Number = 0) -> None: _.value:Number = initial
+  def __init__(_, initial:Number = 0): _.value:Number = initial
   def inc(_, by:Number = 1) -> Number: _.value += by; return _.value
 
 class Logger:
@@ -66,7 +66,7 @@ data CommitInfo(number:int, ctime:int, message:str? = None)
 data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
 data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
 data Range(tipe:MergeBlockType, indexes:int[])  # MergeBlockType[1,2,4], line number, length  # TODO use enum
-data MergeBlock(tipe:MergeBlockType, lines:str[], line:int, replaces:MergeBlock? = None, changes:Range? = None)
+data MergeBlock(tipe:MergeBlockType, lines:List[str], line:int, replaces:MergeBlock? = None, changes:Range? = None)
 data GlobBlock(isLiteral:bool, content:str, index:int)  # for file pattern rename/move matching
 data GlobBlock2(isLiteral:bool, content:str, matches:str)  # matching file pattern and input filename for translation
 
@@ -97,7 +97,7 @@ def conditionalIntersection(a:FrozenSet[str]?, b:FrozenSet[str]) -> FrozenSet[st
 
 def dictUpdate(dikt:Dict[Any,Any], by:Dict[Any,Any]) -> Dict[Any,Any]: d = {}; d.update(dikt); d.update(by); return d
 
-def openIt(file:str, mode:str, compress:bool = False) -> IO = bz2.BZ2File(file, mode) if compress else open(file, mode + "b")  # Abstraction for opening both compressed and plain files
+def openIt(file:str, mode:str, compress:bool = False) -> IO[bytes] = bz2.BZ2File(file, mode) if compress else open(file, mode + "b")  # Abstraction for opening both compressed and plain files
 
 def eoldet(file:bytes) -> bytes? =
   ''' Determine EOL style from a binary string. '''
@@ -114,9 +114,9 @@ def eoldet(file:bytes) -> bytes? =
 
 try: Splittable = TypeVar("Splittable", str, bytes)
 except: pass
-def safeSplit(s:Splittable, d:Splittable? = None) -> Splittable[]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
+def safeSplit(s:Splittable, d:Splittable? = None) -> List[Splittable]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 
-def ajoin(sep:str, seq:str[], nl = "") -> str = (sep + (nl + sep).join(seq)) if seq else ""
+def ajoin(sep:str, seq:str[], nl:str = "") -> str = (sep + (nl + sep).join(seq)) if seq else ""
 
 def sjoin(*s:Tuple[Any]) -> str = " ".join([str(e) for e in s if e != ''])
 
@@ -133,7 +133,7 @@ def getTermWidth() -> int =
 
 def branchFolder(branch:int, revision:int, base = ".", file = None) -> str = os.path.join(base, metaFolder, "b%d" % branch, "r%d" % revision) + ((os.sep + file) if file else "")
 
-def Exit(message:str = "", code = 1) -> None: print("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(code)
+def Exit(message:str = "", code = 1): print("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(code)
 
 def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,int] =
   ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''
@@ -167,7 +167,7 @@ def detectAndLoad(filename:str? = None, content:bytes? = None) -> Tuple[str,byte
   encoding = detectEncoding(content) ?? sys.getdefaultencoding()
   eol =  eoldet(content)
   if filename is not None:
-    with codecs.open(filename, encoding = encoding) as fd: lines = safeSplit(fd.read(), (eol ?? b"\n").decode(encoding))
+    with codecs.open(filename, encoding = encoding) as fd2: lines = safeSplit(fd2.read(), (eol ?? b"\n").decode(encoding))
   elif content is not None:
     lines = safeSplit(content.decode(encoding), (eol ?? b"\n").decode(encoding))
   else: return (sys.getdefaultencoding(), b"\n", [])
@@ -197,7 +197,7 @@ except: pass
 
 def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, **_kwargs) -> DataType: r = _old._asdict(); r.update(**_kwargs); return makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))
 
-def user_block_input(output:List[str]) -> None:
+def user_block_input(output:List[str]):
   sep:str = input("Enter end-of-text marker (default: <empty line>: "); line:str = sep
   while True:
     line = input("> ")

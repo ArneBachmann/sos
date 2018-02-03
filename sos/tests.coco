@@ -9,14 +9,12 @@ try: from typing import Any, List, Union  # only required for mypy
 except: pass
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
-try:
-  import configr  # optional dependency
-  os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
-except: configr = None  # declare as undefined
+import configr  # optional dependency
+os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
 import sos  # import of package, not file
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 
-def sync() -> None:
+def sync():
   if sys.version_info[:2] >= (3, 3): os.sync()
 
 
@@ -59,7 +57,7 @@ def debugTestRunner(post_mortem = None) =
 def wrapChannels(func: -> Any) =
   ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
   oldv, oldo, olde = sys.argv, sys.stdout, sys.stderr
-  buf = StringIO()
+  buf:StringIO = StringIO()
   sys.stdout = sys.stderr = buf
   handler = logging.StreamHandler(buf)
   logging.getLogger().addHandler(handler)
@@ -73,14 +71,14 @@ def wrapChannels(func: -> Any) =
 def mockInput(datas:str[], func) -> Any:
   with mock.patch("builtins.input", side_effect = datas): return func()
 
-def setRepoFlag(name:str, value:bool) -> None:
+def setRepoFlag(name:str, value:bool):
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
   flags[name] = value
   with open(sos.metaFolder + os.sep + sos.metaFile, "w") as fd: fd.write(json.dumps((flags, branches, config)))
 
-def checkRepoFlag(name:str, flag:bool) -> bool =
+def checkRepoFlag(name:str, flag:bool? = None, value:Any? = None) -> bool =
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
-  name in flags and flags[name] == flag
+  (name in flags and flags[name] == flag) if flag is not None else (name in config and config[name] == value)
 
 
 class Tests(unittest.TestCase):
@@ -92,17 +90,21 @@ class Tests(unittest.TestCase):
       shutil.rmtree(resource) if os.path.isdir(resource) else os.unlink(resource)
     os.chdir(testFolder)
 
-  def assertAllIn(_, what:str[], where:Union[str,List[str]]) -> None: [_.assertIn(w, where) for w in what]
 
-  def assertAllNotIn(_, what:str[], where:Union[str,List[str]]) -> None: [_.assertNotIn(w, where) for w in what]
+  def assertAllIn(_, what:str[], where:Union[str,List[str]]):
+    for w in what: _.assertIn(w, where)
 
-  def assertInAll(_, what:str, where:str[]) -> None: [_.assertIn(what, w) for w in where]
+  def assertAllNotIn(_, what:str[], where:Union[str,List[str]]):
+    for w in what: _.assertNotIn(w, where)
 
-  def assertInAny(_, what:str, where:str[]) -> None: _.assertTrue(any(what in w for w in where))
+  def assertInAll(_, what:str, where:str[]):
+    for w in where: _.assertIn(what, w)
 
-  def assertNotInAny(_, what:str, where:str[]) -> None: _.assertFalse(any(what in w for w in where))
+  def assertInAny(_, what:str, where:str[]): _.assertTrue(any(what in w for w in where))
 
-  def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None) -> None:
+  def assertNotInAny(_, what:str, where:str[]): _.assertFalse(any(what in w for w in where))
+
+  def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None):
     if prefix and not os.path.exists(prefix): os.makedirs(prefix)
     with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "wb") as fd: fd.write(contents if isinstance(contents, bytes) else contents.encode("cp1252"))
 
@@ -665,13 +667,16 @@ class Tests(unittest.TestCase):
     _.assertFalse(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead
 
   def testLocalConfig(_):
-    pass
+    sos.offline("bla", options = [])
+    try: sos.config(["set", "ignores", "one;two"], options = ["--local"])
+    except SystemExit as E: _.assertEqual(0, E.code)
+    _.assertTrue(checkRepoFlag("ignores", value = ["one", "two"]))
 
   def testConfigVariations(_):
     def makeRepo():
       try: os.unlink("file1")
       except: pass
-      sos.offline("master", options = ["--plain", "--force"])
+      sos.offline("master", options = ["--force"])
       _.createFile(1)
       sos.commit("Added file1")
     try: sos.config(["set", "strict", "on"])
@@ -738,7 +743,7 @@ class Tests(unittest.TestCase):
     try: sos.config(["set", "ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
     except SystemExit as E: _.assertEqual(0, E.code)
     out = wrapChannels(() -> sos.config(["show"])).replace("\r", "")
-    _.assertIn("             ignores [user]    ['ign1', 'ign2']", out)
+    _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('... file1', out)
     _.assertInAny('... ign1', out)
@@ -931,7 +936,6 @@ class Tests(unittest.TestCase):
 if __name__ == '__main__':
   logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or "true" in [os.getenv("DEBUG", "false").strip().lower(), os.getenv("CI", "false").strip().lower()] else logging.INFO,
     stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '-v' in sys.argv or os.getenv("DEBUG", "false") == "true" else "%(message)s")
-  if configr:
-    c = configr.Configr("sos"); c.loadSettings()
-    if len(c.keys()) > 0: sos.Exit("Cannot run test suite with existing local SOS user configuration (would affect results)")
+  c = configr.Configr("sos"); c.loadSettings()
+  if len(c.keys()) > 0: sos.Exit("Cannot run test suite with existing local SOS user configuration (would affect results)")
   unittest.main(testRunner = debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")

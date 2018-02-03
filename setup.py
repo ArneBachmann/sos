@@ -13,8 +13,10 @@ if 'build' in sys.argv:
   print("Transpiling Coconut files to Python...")
   cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 10000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
 
-  assert 0 == os.system("coconut%s %s -l -t 3 sos %s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--mypy" if "--mypy" in sys.argv else ""))
+  assert 0 == os.system("coconut%s %s %s -l -t 3.4 sos %s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--force" if "--force" in sys.argv else "", "--mypy --ignore-missing-imports --warn-incomplete-stub --warn-redundant-casts --warn-return-any --warn-unused-ignores" if "--mypy" in sys.argv else ""))
   try: sys.argv.remove('--mypy')
+  except: pass
+  try: sys.argv.remove('--force')
   except: pass
 
   if os.path.exists(".git"):
