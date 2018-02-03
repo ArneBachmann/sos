@@ -22,7 +22,7 @@ import configr  # optional dependency
 # Constants
 MARKER = r"/###/"
 APPNAME:str = "Subversion Offline Solution V%s (C) Arne Bachmann" % version.__release_version__
-defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_"], "ignoresWhitelist": []})
+defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*.sos.zip"], "ignoresWhitelist": []})
 termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
 
 
