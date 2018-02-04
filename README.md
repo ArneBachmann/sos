@@ -63,11 +63,11 @@ SOS supports three different file handling models that you may use to your likin
     - [Bug 147](https://github.com/ArneBachmann/sos/issues/147) Fixes `sos ls` problems
     - [Enhancement 113](https://github.com/ArneBachmann/sos/issues/113) Usability improvements
     - [Enhancement 122](https://github.com/ArneBachmann/sos/issues/122) Complete rework of merge logic and code
-    - [Enhancement 124](https://github.com/ArneBachmann/sos/issues/124) Use enum
-    - [Enhancement 137](https://github.com/ArneBachmann/sos/issues/137) Better usage pages
-    - [Enhancement 142, 143](https://github.com/ArneBachmann/sos/issues/142) Improved `sos config` and added local configurations
-    - [Enhancement 153](https://github.com/ArneBachmann/sos/issues/153) Removed Python 2 leftovers
-    - [Enhancement 159](https://github.com/ArneBachmann/sos/issues/159) Metadata updates
+    - [Enhancement 124](https://github.com/ArneBachmann/sos/issues/124) Uses enum
+    - [Enhancement 137](https://github.com/ArneBachmann/sos/issues/137) Better usage help page
+    - [Enhancement 142, 143](https://github.com/ArneBachmann/sos/issues/142) Extended `sos config` and added local configurations
+    - [Enhancement 153](https://github.com/ArneBachmann/sos/issues/153) Removed Python 2 leftovers, raised minimum Python version to 3.4 (but 3.3 may also work)
+    - [Enhancement 159](https://github.com/ArneBachmann/sos/issues/159) Internal metadata updates. Migration from older repositories: Add `, {}` to `.sos/.meta` right before the closing final `]`, and add `version = "pre-1.2", ` after the initial `[{`
     - [Feature 134, 161](https://github.com/ArneBachmann/sos/issues/134) Added dump option
 - Version 1.1 released on 2017-12-30:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
@@ -80,7 +80,7 @@ SOS supports three different file handling models that you may use to your likin
     - [QA 79](https://github.com/ArneBachmann/sos/issues/79) Added AppVeyor automated testing
     - [QA 94](https://github.com/ArneBachmann/sos/issues/94) More test coverage
     - Many little fixes and improvements
-    - Downloads: 4870
+    - Downloads: 5200
 - Version 1.0 released on 2017-12-14:
     - First release with basic functionality
     - Lots of test cases, good test coverage
@@ -175,7 +175,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for information.
 
 ## Release Management ##
 - Increase version number in `setup.py`
-- Run `python3 setup.py clean build test sdist` to update the PyPI version number, compile and test the code, and package it into an archive. If you need evelated rights to do so, use `sudo -E python...`.
+- Run `python3 setup.py clean build test` to update the PyPI version number, compile and test the code, and package it into an archive. If you need evelated rights to do so, use `sudo -E python...`.
 - Run `git add`, `git commit` and `git push` and let Travis CI and AppVeyor run the tests against different target platforms. If there were no problems, continue:
 - Don't forget to tag releases
+- Run `python3 setup.py sdist`
 - Run `twine upload dist/*.tar.gz` to upload the previously created distribution archive to PyPI.
