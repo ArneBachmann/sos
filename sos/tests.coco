@@ -2,7 +2,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import builtins, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
-from io import StringIO
+from io import BytesIO, BufferedRandom, TextIOWrapper
 try: from unittest import mock  # Python 3
 except: import mock  # installed via pip
 try: from typing import Any, List, Union  # only required for mypy
@@ -44,29 +44,30 @@ def debugTestRunner(post_mortem = None) =
   import pdb
   if post_mortem is None: post_mortem = pdb.post_mortem
   class DebugTestResult(unittest.TextTestResult):
-    def addError(self, test, err):  # called before tearDown()
+    def addError(_, test, err):  # called before tearDown()
       traceback.print_exception(*err)
       post_mortem(err[2])
-      super(DebugTestResult, self).addError(test, err)
-    def addFailure(self, test, err):
+      super(DebugTestResult, _).addError(test, err)
+    def addFailure(_, test, err):
       traceback.print_exception(*err)
       post_mortem(err[2])
-      super(DebugTestResult, self).addFailure(test, err)
+      super(DebugTestResult, _).addFailure(test, err)
   unittest.TextTestRunner(resultclass = DebugTestResult)
 
 def wrapChannels(func: -> Any) =
   ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
-  oldv, oldo, olde = sys.argv, sys.stdout, sys.stderr
-  buf:StringIO = StringIO()
+  oldv = sys.argv
+  buf = TextIOWrapper(BufferedRandom(BytesIO(b"\0" * 1000000)), encoding = "utf-8")
   sys.stdout = sys.stderr = buf
   handler = logging.StreamHandler(buf)
   logging.getLogger().addHandler(handler)
   try: func()  # capture output into buf
-  except Exception as E: buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
+  except Exception as E:  buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
   except SystemExit as F: buf.write("EXIT CODE %s" % F.code + "\n"); traceback.print_exc(file = buf)
   logging.getLogger().removeHandler(handler)
-  sys.argv, sys.stdout, sys.stderr = oldv, oldo, olde
-  buf.getvalue()
+  sys.argv, sys.stdout, sys.stderr = oldv, sys.__stdout__, sys.__stderr__  # TODO when run using pythonw.exe and/or no console, these could be None
+  buf.seek(0)
+  buf.read()
 
 def mockInput(datas:str[], func) -> Any:
   with mock.patch("builtins.input", side_effect = datas): return func()
@@ -129,10 +130,10 @@ class Tests(unittest.TestCase):
     m = sos.Metadata(os.getcwd())
     try: sos.config(["set", "texttype", "*"])
     except SystemExit as E: _.assertEqual(0, E.code)
-    try: sos.config(["set", "ignores", "*.cfg;*.cfg.bak"])
+    try: sos.config(["set", "ignores", "test/*.cfg;D:\\apps\\*.cfg.bak"])  # will be stripped from leading paths anyway
     except SystemExit as E: _.assertEqual(0, E.code)
     m = sos.Metadata(os.getcwd())  # reload from file system
-    m.loadBranches()
+    for file in [f for f in os.listdir() if f.endswith(".bak")]: os.unlink(file)  # remove configuration file
     _.createFile(1, "1")
     m.createBranch(0)
     _.assertEqual(1, len(m.paths))
@@ -660,9 +661,8 @@ class Tests(unittest.TestCase):
     _.assertTrue(_.existsFile(sos.branchFolder(0, 0, file = "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"), b"x" * 10))
     setRepoFlag("compress", True)  # was plain = uncompressed before
     _.createFile(2)
-    out = wrapChannels(() -> sos.changes(options = ['--progress'])).replace("\r", "").split("\n")  # without progress, the output goes to stderr via debug()
+    out = wrapChannels(() -> sos.commit("Added file2", options = ['--progress'])).replace("\r", "").split("\n")
     _.assertTrue(any("Compression advantage" in line for line in out))
-    sos.commit("Added file2")
     _.assertTrue(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists
     _.assertFalse(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead
 

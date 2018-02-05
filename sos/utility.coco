@@ -42,6 +42,7 @@ _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debu
 UTF8 = "utf_8"  # early used constant, not defined in standard library
 CONFIGURABLE_FLAGS = ["strict", "track", "picky", "compress"]
 CONFIGURABLE_LISTS = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
+GLOBAL_LISTS = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
 FALSE_VALUES = ["false", "no", "off", "0", "disable", "disabled"]
 PROGRESS_MARKER = ["|", "/", "-", "\\"]
@@ -73,6 +74,10 @@ data GlobBlock2(isLiteral:bool, content:str, matches:str)  # matching file patte
 
 
 # Functions
+def printo(s:str, nl:str = "\n"): sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')); sys.stdout.flush()  # PEP528 compatibility
+def printe(s:str, nl:str = "\n"): sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')); sys.stderr.flush()
+def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writing filenames  # PEP 529 compatibility
+def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of reading filenames
 try:
   import chardet  # https://github.com/chardet/chardet
   def detectEncoding(binary:bytes) -> str = chardet.detect(binary)["encoding"]
@@ -94,11 +99,15 @@ def wcswidth(string:str) -> int:
     return len(string) if l < 0 else l
   finally: return len(string)
 
+def removePath(key:str, value:str) -> str =
+  ''' Cleanup of user-specified global file patterns. '''
+  value if value in GLOBAL_LISTS or SLASH not in value else value[value.rindex(SLASH)+1:]
+
 def conditionalIntersection(a:FrozenSet[str]?, b:FrozenSet[str]) -> FrozenSet[str] = a & b if a else b
 
 def dictUpdate(dikt:Dict[Any,Any], by:Dict[Any,Any]) -> Dict[Any,Any]: d = {}; d.update(dikt); d.update(by); return d
 
-def openIt(file:str, mode:str, compress:bool = False) -> IO[bytes] = bz2.BZ2File(file, mode) if compress else open(file, mode + "b")  # Abstraction for opening both compressed and plain files
+def openIt(file:str, mode:str, compress:bool = False) -> IO[bytes] = bz2.BZ2File(encode(file), mode) if compress else open(encode(file), mode + "b")  # Abstraction for opening both compressed and plain files
 
 def eoldet(file:bytes) -> bytes? =
   ''' Determine EOL style from a binary string. '''
@@ -134,23 +143,23 @@ def getTermWidth() -> int =
 
 def branchFolder(branch:int, revision:int, base = ".", file = None) -> str = os.path.join(base, metaFolder, "b%d" % branch, "r%d" % revision) + ((os.sep + file) if file else "")
 
-def Exit(message:str = "", code = 1): print("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else ""), file = sys.stderr); sys.exit(code)
+def Exit(message:str = "", code = 1): printe("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else "")); sys.exit(code)
 
 def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,int] =
   ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''
   _hash = hashlib.sha256()
   wsize:int = 0
-  if saveTo and os.path.exists(saveTo): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime.")
+  if saveTo and os.path.exists(encode(saveTo)): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime.")
   to = openIt(saveTo, "w", compress) if saveTo else None
-  with open(path, "rb") as fd:
+  with open(encode(path), "rb") as fd:
     while True:
-      buffer = fd.read(bufSize)
+      buffer:bytes = fd.read(bufSize)
       _hash.update(buffer)
       if to: to.write(buffer)
       if len(buffer) < bufSize: break
     if to:
       to.close()
-      wsize = os.stat(saveTo).st_size
+      wsize = os.stat(encode(saveTo)).st_size
   (_hash.hexdigest(), wsize)
 
 def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
@@ -164,11 +173,11 @@ def strftime(timestamp:int? = None) -> str = time.strftime("%Y-%m-%d %H:%M:%S", 
 def detectAndLoad(filename:str? = None, content:bytes? = None) -> Tuple[str,bytes,str[]] =
   encoding:str; eol:bytes; lines:str[] = []
   if filename is not None:
-    with open(filename, "rb") as fd: content = fd.read()
+    with open(encode(filename), "rb") as fd: content = fd.read()
   encoding = detectEncoding(content) ?? sys.getdefaultencoding()
   eol =  eoldet(content)
   if filename is not None:
-    with codecs.open(filename, encoding = encoding) as fd2: lines = safeSplit(fd2.read(), (eol ?? b"\n").decode(encoding))
+    with codecs.open(encode(filename), encoding = encoding) as fd2: lines = safeSplit(fd2.read(), (eol ?? b"\n").decode(encoding))
   elif content is not None:
     lines = safeSplit(content.decode(encoding), (eol ?? b"\n").decode(encoding))
   else: return (sys.getdefaultencoding(), b"\n", [])
@@ -266,8 +275,8 @@ def merge(
       if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner
         output.append(lineMerge(block.lines[0], block.replaces.lines[0], mergeOperation = charMergeOperation))
       elif mergeOperation == MergeOperation.ASK:  # more than one line: needs user input
-        print(ajoin("- ", block.replaces.lines, nl = "\n"))  # TODO check +/- in update mode, could be swapped
-        print(ajoin("+ ", block.lines, nl = "\n"))
+        printo(ajoin("- ", block.replaces.lines, nl = "\n"))  # TODO check +/- in update mode, could be swapped
+        printo(ajoin("+ ", block.lines, nl = "\n"))
         while True:
           op:str = input(" Line replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()
           if op in "tb": output.extend(block.lines); break
@@ -320,10 +329,10 @@ def lineMerge(othr:str, into:str, mergeOperation:MergeOperation = MergeOperation
     if   block.tipe == MergeBlockType.KEEP: out.extend(block.lines)
     elif block.tipe == MergeBlockType.REPLACE:
       if mergeOperation == MergeOperation.ASK:
-        print(ajoin("- ", othr))
-        print("- " + (" " * i) + block.replaces.lines[0])
-        print("+ " + (" " * i) + block.lines[0])
-        print(ajoin("+ ", into))
+        printo(ajoin("- ", othr))
+        printo("- " + (" " * i) + block.replaces.lines[0])
+        printo("+ " + (" " * i) + block.lines[0])
+        printo(ajoin("+ ", into))
         while True:
           op:str = input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()
           if op in "tb": out.extend(block.lines); break
@@ -350,8 +359,8 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
   debug("Detecting root folders...")
   path:str = os.getcwd()  # start in current folder, check parent until found or stopped
   vcs:Tuple[str?,str?] = (None, None)
-  while not os.path.exists(os.path.join(path, metaFolder)):
-    contents = set(os.listdir(path))
+  while not os.path.exists(encode(os.path.join(path, metaFolder))):
+    contents:Set[str] = set(os.listdir(path))
     vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type from dot folder
     choice:str? = None
     if len(vcss) > 1:
@@ -362,7 +371,7 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
     new = os.path.dirname(path)  # get parent path
     if new == path: break  # avoid infinite loop
     path = new
-  if os.path.exists(os.path.join(path, metaFolder)):  # found something
+  if os.path.exists(encode(os.path.join(path, metaFolder))):  # found something
     if vcs[0]: return (path, vcs[0], vcs[1])  # already detected vcs base and command
     sos = path
     while True:  # continue search for VCS base
