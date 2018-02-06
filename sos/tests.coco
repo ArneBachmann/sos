@@ -57,7 +57,7 @@ def debugTestRunner(post_mortem = None) =
 def wrapChannels(func: -> Any) =
   ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
   oldv = sys.argv
-  buf = TextIOWrapper(BufferedRandom(BytesIO(b"\0" * 1000000)), encoding = "utf-8")
+  buf = TextIOWrapper(BufferedRandom(BytesIO(b"\0" * 10000)), encoding = "utf-8")
   sys.stdout = sys.stderr = buf
   handler = logging.StreamHandler(buf)
   logging.getLogger().addHandler(handler)
@@ -145,7 +145,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(changes.additions))
     _.assertEqual(0, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
-    m.integrateChangeset(changes)
+    m.paths.update(changes.additions)
+    m.paths.update(changes.modifications)
     _.createFile(2, "12")  # modify file again
     changes = m.findChanges(0, 1)  # by size, creating new commit
     _.assertEqual(0, len(changes.additions))
@@ -153,44 +154,6 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(changes.modifications))
     _.assertTrue(os.path.exists(sos.branchFolder(0, 1)))
     _.assertTrue(os.path.exists(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))
-
-  def testDiffFunc(_):
-    a = {"./a": sos.PathInfo("", 0, 0, "")}
-    b = {"./a": sos.PathInfo("", 0, 0, "")}
-    changes = sos.diffPathSets(a, b)
-    _.assertEqual(0, len(changes.additions))
-    _.assertEqual(0, len(changes.deletions))
-    _.assertEqual(0, len(changes.modifications))
-    b = {"./a": sos.PathInfo("", 1, 0, "")}
-    changes = sos.diffPathSets(a, b)
-    _.assertEqual(0, len(changes.additions))
-    _.assertEqual(0, len(changes.deletions))
-    _.assertEqual(1, len(changes.modifications))
-    b = {}  # diff contains no entries -> no change
-    changes = sos.diffPathSets(a, b)
-    _.assertEqual(0, len(changes.additions))
-    _.assertEqual(0, len(changes.deletions))
-    _.assertEqual(0, len(changes.modifications))
-    b = {"./a": sos.PathInfo("", None, 1, "")}  # in diff marked as deleted
-    changes = sos.diffPathSets(a, b)
-    _.assertEqual(0, len(changes.additions))
-    _.assertEqual(1, len(changes.deletions))
-    _.assertEqual(0, len(changes.modifications))
-    b = {"./b": sos.PathInfo("", 1, 1, "")}
-    changes = sos.diffPathSets(a, b)
-    _.assertEqual(1, len(changes.additions))
-    _.assertEqual(0, len(changes.deletions))
-    _.assertEqual(0, len(changes.modifications))
-    a = {"./a": sos.PathInfo("", None, 0, "")}  # mark as deleted
-    b = {"./a": sos.PathInfo("", 1, 0, "")}  # re-added
-    changes = sos.diffPathSets(a, b)
-    _.assertEqual(1, len(changes.additions))
-    _.assertEqual(0, len(changes.deletions))
-    _.assertEqual(0, len(changes.modifications))
-    changes = sos.diffPathSets(b, a)
-    _.assertEqual(0, len(changes.additions))
-    _.assertEqual(1, len(changes.deletions))
-    _.assertEqual(0, len(changes.modifications))
 
   def testPatternPaths(_):
     sos.offline(options = ["--track"])
@@ -235,7 +198,7 @@ class Tests(unittest.TestCase):
     _.createFile(2)
     os.unlink("sub" + os.sep + "a")
     os.rmdir("sub")
-    changes = sos.changes()
+    changes = sos.changes()  # TODO replace by output check
     _.assertEqual(1, len(changes.additions))
     _.assertEqual(0, len(changes.modifications))
     _.assertEqual(1, len(changes.deletions))
@@ -261,7 +224,7 @@ class Tests(unittest.TestCase):
     m.saveCommit(0, 2)  # add
     m.paths["./a"] = sos.PathInfo("", None, 0, "")
     m.saveCommit(0, 3)  # del
-    m.paths["./a"] = sos.PathInfo("", None, 0, "")
+    m.paths["./a"] = sos.PathInfo("", 2, 0, "")
     m.saveCommit(0, 4)  # readd
     m.commits = {i: sos.CommitInfo(i, 0, None) for i in range(5)}
     m.saveBranch(0)

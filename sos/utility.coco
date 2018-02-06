@@ -8,7 +8,8 @@ except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport
 try:
   from typing import Any, Callable, Dict, FrozenSet, Generic, IO, List, Sequence, Set, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = TypeVar("Number", int, float)
-except: pass  # typing not available (prior Python 3.5)
+  DataType = TypeVar("DataType", BranchInfo, ChangeSet, MergeBlock, PathInfo)
+except: pass  # typing not available (prior to Python 3.5)
 try: import wcwidth
 except: pass  # optional dependency
 
@@ -182,28 +183,6 @@ def detectAndLoad(filename:str? = None, content:bytes? = None) -> Tuple[str,byte
     lines = safeSplit(content.decode(encoding), (eol ?? b"\n").decode(encoding))
   else: return (sys.getdefaultencoding(), b"\n", [])
   (encoding, eol, lines)
-
-def diffPathSets(last:Dict[str,PathInfo], diff:Dict[str,PathInfo]) -> ChangeSet =
-  ''' Computes a changeset between in-memory and on-disk file lists.
-      Additions contains PathInfo for entries in diff
-      Deletions contains PathInfo for entries not anymore in diff
-      Modifications contains PathInfo for entries changed from last to diff (new state)
-  '''
-  changes:ChangeSet = ChangeSet({}, {}, {})
-  for path, pinfo in last.items():
-    if path not in diff: continue  # now change  changes.deletions[path] = pinfo; continue
-    vs = diff[path]  # reference to potentially changed path set
-    if vs.size is None: changes.deletions[path] = pinfo; continue  # marked for deletion
-    if pinfo.size == None: changes.additions[path] = pinfo; continue  # re-added
-    if pinfo.size != vs.size or pinfo.mtime != vs.mtime or pinfo.hash != vs.hash: changes.modifications[path] = vs  # not need to make hash comparison optional here
-  for path, pinfo in diff.items():  # added loop
-    if path not in last: changes.additions[path] = pinfo
-  assert not any([path in changes.deletions for path in changes.additions])  # invariant checks
-  assert not any([path in changes.additions for path in changes.deletions])
-  changes
-
-try: DataType = TypeVar("DataType", ChangeSet, MergeBlock, BranchInfo)
-except: pass
 
 def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, **_kwargs) -> DataType: r = _old._asdict(); r.update(**_kwargs); return makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))
 

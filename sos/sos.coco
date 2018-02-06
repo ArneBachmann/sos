@@ -342,29 +342,21 @@ class Metadata:
     else: debug("Finished detecting changes.%s" % ((" Compression advantage is %.1f%%" % (original * 100. / compressed - 100.)) if _.compress and write and compressed > 0 else ""))
     changes
 
-  def integrateChangeset(_, changes:ChangeSet, clear = False):
-    ''' In-memory update from a changeset, marking deleted files with size=None. Use clear = True to start on an empty path set. '''
-    if clear: _.paths.clear()
-    else:
-      rm = [p for p, info in _.paths.items() if info.size is None]  # remove files deleted in earlier change sets (revisions)
-      for old in rm: del _.paths[old]  # remove previously removed entries completely
-    for d, info in changes.deletions.items(): _.paths[d] = PathInfo(info.nameHash, None, info.mtime, None)  # mark now removed entries as deleted
-    _.paths.update(changes.additions)
-    _.paths.update(changes.modifications)
-
   def computeSequentialPathSet(_, branch:int, revision:int):
-    next(_.computeSequentialPathSetIterator(branch, revision, incrementally = False))  # simply invoke the generator once
+    ''' Returns nothing, just updates _.paths in place. '''
+    next(_.computeSequentialPathSetIterator(branch, revision, incrementally = False))  # simply invoke the generator once to get full results
 
-  def computeSequentialPathSetIterator(_, branch:int, revision:int, incrementally:bool = True) -> Iterator[ChangeSet]?:
+  def computeSequentialPathSetIterator(_, branch:int, revision:int, incrementally:bool = True) -> Iterator[Dict[str,PathInfo]]?:
     ''' In-memory computation of current list of valid PathInfo entries for specified branch and until specified revision (inclusively) by traversing revision on the file system. '''
     _.loadCommit(branch, 0)  # load initial paths
-    if incrementally: yield diffPathSets({}, _.paths)
-    n:Metadata = Metadata(_.root)  # next changes
-    for revision in range(1, revision + 1):
-      n.loadCommit(branch, revision)
-      changes:ChangeSet = diffPathSets(_.paths, n.paths)
-      _.integrateChangeset(changes)
-      if incrementally: yield changes
+    if incrementally: yield _.paths
+    m:Metadata = Metadata(_.root); rev:int  # next changes TODO avoid loading all metadata and config
+    for rev in range(1, revision + 1):
+      m.loadCommit(branch, rev)
+      for p, info in m.paths.items():
+        if info.size == None: del _.paths[p]
+        else: _.paths[p] = info
+      if incrementally: yield _.paths
     yield None  # for the default case - not incrementally
 
   def parseRevisionString(_, argument:str) -> Tuple[int?,int?]:
@@ -511,7 +503,7 @@ def changes(argument:str = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes:ChangeSet = m.findChanges(checkContent = strict, considerOnly = onlys if not m.track and not m.picky else conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)), dontConsider = excps, progress = '--progress' in options)
   m.listChanges(changes)
-  changes  # for unit tests only
+  changes  # for unit tests only TODO remove
 
 def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show text file differences of file tree vs. (last or specified) revision on current or specified branch. '''
@@ -564,15 +556,15 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   changes:ChangeSet
   m, branch, revision, changes, strict, force, trackingPatterns = exitOnChanges(None, options, commit = True, onlys = onlys, excps = excps)  # special flag creates new revision for detected changes, but abort if no changes
   info("Committing changes to branch '%s'..." % m.branches[m.branch].name ?? "b%d" % m.branch)
-  m.integrateChangeset(changes, clear = True)  # update pathset to changeset only
+  m.paths = changes.additions
+  m.paths.update(changes.modifications)  # update pathset to changeset only
+  m.paths.update({k: dataCopy(PathInfo, v, size = None, hash = None) for k, v in changes.deletions.items()})
   m.saveCommit(m.branch, revision)  # revision has already been incremented
   m.commits[revision] = CommitInfo(revision, int(time.time() * 1000), argument)  # comment can be None
   m.saveBranch(m.branch)
   m.loadBranches()  # TODO is it necessary to load again?
-  if m.picky:
-    m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
-  else:  # track or simple mode
-    m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # set branch dirty
+  if m.picky: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
+  else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch dirty
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
   m.saveBranches()
   info("Created new revision r%02d%s (+%02d/-%02d/*%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications)))  # TODO show compression factor
@@ -793,15 +785,21 @@ def log(options:str[] = []):
   m.loadBranch(m.branch)  # knows commit history
   info(MARKER + " Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain info of "from branch/revision" on branching?
   nl = len("%d" % max(m.commits))  # determine space needed for revision
-  changeset = m.computeSequentialPathSetIterator(m.branch, max(m.commits))
+  changesetIterator:Iterator[Dict[str,PathInfo]]? = m.computeSequentialPathSetIterator(m.branch, max(m.commits))
   maxWidth:int = max([wcswidth(commit.message ?? "") for commit in m.commits.values()])
+  olds:FrozenSet[str] = f{}  # last revision's entries
   for no in range(max(m.commits) + 1):
     commit:CommitInfo = m.commits[no]
-    changes:ChangeSet = next(changeset)  # side-effect: updates m.paths
-    newTextFiles:int = len([file for file in changes.additions.keys() if m.isTextType(file)])
-    printo("  %s r%s @%s (+%02d/-%02d/*%02d +%02dT) |%s|%s" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(changes.additions), len(changes.deletions), len(changes.modifications), newTextFiles, (commit.message ?? "").ljust(maxWidth), "TAG" if (commit.message ?? "") in m.tags else ""))
-    if '--changes' in options: m.listChanges(changes)
+    nxts:Dict[str,PathInfo] = next(changesetIterator)
+    news:FrozenSet[str] = frozenset(nxts.keys())  # side-effect: updates m.paths
+    _add:FrozenSet[str] = news - olds
+    _del:FrozenSet[str] = olds - news
+    _mod:FrozenSet[str] = frozenset([_ for _, info in nxts.items() if _ in m.paths and m.paths[_].size != info.size and (m.paths[_].hash != info.hash if m.strict else m.paths[_].mtime != info.mtime)])
+    _txt:int = len([a for a in _add if m.isTextType(a)])
+    printo("  %s r%s @%s (+%02d/-%02d/*%02d +%02dT) |%s|%s" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), len(_mod), _txt, (commit.message ?? "").ljust(maxWidth), "TAG" if (commit.message ?? "") in m.tags else ""))
+    if '--changes' in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}))
     if '--diff' in options: pass  # TODO needs to extract code from diff first to be reused here
+    olds = news
 
 def dump(argument:str, options:str[] = []):
   ''' Exported entire repository as archive for easy transfer. '''
@@ -964,8 +962,6 @@ def parse(root:str, cwd:str):
     import traceback
     traceback.print_exc()
     traceback.print_stack()
-    try: traceback.print_last()
-    except: pass
     Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
 
 def main():

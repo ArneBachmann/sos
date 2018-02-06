@@ -29,7 +29,7 @@ If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or
 SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline extension of those VCSs that either don't support offline branching and committing or are too complex, and *c)* as a standalone VCS.
 You may run `sos offline` not only inside a SVN checkout, but in any (and also multiple, even nested) folders of your file system, even outside of VCS repository checkouts/clones.
 
-[SOS](https://arnebachmann.github.io/sos/) thus augments [SVN](http://subversion.apache.org) with offline operation and serves the same need as [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
+[SOS](https://arnebachmann.github.io/sos/) thus augments [SVN](http://subversion.apache.org) with offline operation and serves the same need as [SVK](https://www.perl.com/pub/2004/03/03/svk.html/), [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [monotone](http://www.monotone.ca), [darcs](http://darcs.net), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
 
 As an additional practical benefit, the `sos` command will double as the command line interface of any popular VCS and will execute any `svn`, `git`, etc. command by `sos <command> [<arguments-and-options>]`, e.g. `sos commit -m "Message"` instead of `svn commit -m "Message"` or `git commit -m "Message"`.
 Once you executed `sos offline`, however, all commands are interpreted by the SOS tool instead, until leaving the offline mode via `sos online` (with the exception of `sos config`, cf. details below).
@@ -170,7 +170,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Development and Contribution ##
-See [CONTRIBUTING.md](CONTRIBUTING.md) for information.
+See [CONTRIBUTING.md](https://github.com/ArneBachmann/sos/blob/master/CONTRIBUTING.md) for further information.
 
 
 ## Release Management ##
