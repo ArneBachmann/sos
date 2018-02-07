@@ -206,6 +206,22 @@ class Tests(unittest.TestCase):
     changes = sos.changes()
     _.assertEqual(0, len(changes.deletions))
 
+  def testSwitchConflict(_):
+    sos.offline(options = ["--strict"])  # (r0)
+    _.createFile(1)
+    sos.commit()  # add file (r1)
+    os.unlink("file1")
+    sos.commit()  # remove (r2)
+    _.createFile(1, "something else")
+    sos.commit() # (r3)
+    sos.switch("/1")  # updates file1 - marked as MOD, because mtime was changed
+    _.existsFile(1, "x" * 10)
+    sos.switch("/2", ["--force"])  # remove file1 requires --force, because size/content (or mtime in non-strict mode) is different to head of branch
+    sos.switch("/0")  # do nothing, as file1 is already removed
+    sos.switch("/1")  # add file1 back
+    sos.switch("/", ["--force"])  # requires force because changed vs. head of branch
+    _.existsFile(1, "something else")
+
   def testComputeSequentialPathSet(_):
     os.makedirs(sos.branchFolder(0, 0))
     os.makedirs(sos.branchFolder(0, 1))
@@ -369,11 +385,11 @@ class Tests(unittest.TestCase):
     _.assertIn("(dirty)", out)  # one branch has commits
     _.assertIn("(in sync)", out)  # the other doesn't
     _.createFile(4, "xy")  # generate a file
-    sos.switch("second", "--force")  # avoids warning on uncommited changes, but keeps file4
+    sos.switch("second", ["--force"])  # avoids warning on uncommited changes, but keeps file4
     _.assertFalse(_.existsFile(4))  # removed when forcedly switching back to test
     _.assertTrue(_.existsFile(3))  # was restored from branch's revision r1
     os.unlink("." + os.sep + "file1")  # remove old file1
-    sos.switch("test", "--force")  # should restore file1 and remove file3
+    sos.switch("test", ["--force"])  # should restore file1 and remove file3
     _.assertTrue(_.existsFile(1))  # was restored from branch's revision r1
     _.assertFalse(_.existsFile(3))  # was restored from branch's revision r1
 
