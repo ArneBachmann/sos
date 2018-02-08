@@ -93,6 +93,10 @@ except:
     except UnicodeError: pass
     "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
 
+def tryOrDefault(func:() -> Any, default:Any) -> Any:
+  try: return func()
+  except: return default
+
 def wcswidth(string:str) -> int:
   l:int = 0
   try:
@@ -145,6 +149,13 @@ def getTermWidth() -> int =
 def branchFolder(branch:int, revision:int, base = ".", file = None) -> str = os.path.join(base, metaFolder, "b%d" % branch, "r%d" % revision) + ((os.sep + file) if file else "")
 
 def Exit(message:str = "", code = 1): printe("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else "")); sys.exit(code)
+
+def exception(E):
+  ''' Report an exception. '''
+  printo(str(E))
+  import traceback
+  traceback.print_exc()
+  traceback.print_stack()
 
 def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,int] =
   ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''

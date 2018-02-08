@@ -1,3 +1,5 @@
+import sys
+
 MARKER:str = r"/###/"
 
 
@@ -83,4 +85,4 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     --{cmd}                      When executing {CMD} not being offline, pass arguments to {CMD} instead (e.g. {cmd} --{cmd} config set key value.)
     --log                        Enable logging details
     --verbose                    Enable verbose output, including show compression ratios""".format(appname = appname, cmd = "sos", CMD = "SOS"))
-  Exit(code = 0)
+  sys.exit(0)

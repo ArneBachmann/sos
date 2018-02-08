@@ -8,14 +8,6 @@ deploy: false
 environment:
   PYTHONDONTWRITEBYTECODE: true
   matrix:
-    - PYTHON_VERSION: 3.3
-      platform: x86
-      NOMYPY: true
-      BACKPORT: true
-    - PYTHON_VERSION: 3.3
-      platform: x64
-      NOMYPY: true
-      BACKPORT: true
     - PYTHON_VERSION: 3.4
       platform: x86
     - PYTHON_VERSION: 3.4
@@ -32,6 +24,14 @@ environment:
 #      platform: x86
 #    - PYTHON_VERSION: 2.7
 #      platform: x64
+    - PYTHON_VERSION: 3.3
+      platform: x86
+      NOMYPY: true
+      BACKPORT: true
+    - PYTHON_VERSION: 3.3
+      platform: x64
+      NOMYPY: true
+      BACKPORT: true
 matrix:
   allow_failures:
     - PYTHON_VERSION: 3.3

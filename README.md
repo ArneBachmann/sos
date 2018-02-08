@@ -58,6 +58,15 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
+- Version 1.3:
+    - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on status
+    - [Enhancement 152, 162](https://github.com/ArneBachmann/sos/issues/152) PEP528/529 compatibility: Now working with any console encoding and file system encoding on Windows (at least with Python 3.6+)
+    - [Enhancement 163](https://github.com/ArneBachmann/sos/issues/163) Rewrite of changeset handling to avoid problems when re-adding files deleted in previous revision
+    - [Enhancement 164](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config`
+    - [Enhancement 165](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config add`
+    - [Enhancement 168](https://github.com/ArneBachmann/sos/issues/168) Don't stop switching if changes are same as live modifications
+    - [Feature 64](https://github.com/ArneBachmann/sos/issues/64) Added blacklisting for tracking patterns (e.g. to except single files or reduce scope of globs)
+    - Downloads so far:
 - Version 1.2 released on 2018-02-04:
     - [Bug 135, 145](https://github.com/ArneBachmann/sos/issues/135) Fixes a bug showing ignored files as deleted
     - [Bug 147](https://github.com/ArneBachmann/sos/issues/147) Fixes `sos ls` problems
@@ -69,6 +78,7 @@ SOS supports three different file handling models that you may use to your likin
     - [Enhancement 153](https://github.com/ArneBachmann/sos/issues/153) Removed Python 2 leftovers, raised minimum Python version to 3.4 (but 3.3 may also work)
     - [Enhancement 159](https://github.com/ArneBachmann/sos/issues/159) Internal metadata updates. Migration from older repositories: Add `, {}` to `.sos/.meta` right before the closing final `]`, and add `version = "pre-1.2", ` after the initial `[{`
     - [Feature 134, 161](https://github.com/ArneBachmann/sos/issues/134) Added dump option
+    - Downloads so far: 1030
 - Version 1.1 released on 2017-12-30:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added

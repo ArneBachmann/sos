@@ -47,7 +47,7 @@ class Metadata:
       using only parts of its attributes at any point in time. Use with care.
   '''
 
-  def __init__(_, path:str? = None):
+  def __init__(_, path:str? = None, offline:bool = False):
     ''' Create empty container object for various repository operations, and import configuration. '''
     _.root:str = path ?? os.getcwd()
     _.tags:List[str] = []  # list of known (unique) tags
@@ -55,7 +55,7 @@ class Metadata:
     _.branches:Dict[int,BranchInfo] = {}  # branch number zero represents the initial state at branching
     _.repoConf:Dict[str,Any] = {}
     _.track:bool; _.picky:bool; _.strict:bool; _.compress:bool  # TODO set defaults here?
-    _.loadBranches()  # loads above values from repository, or uses application defaults
+    _.loadBranches(offline = offline)  # loads above values from repository, or uses application defaults
 
     _.commits:Dict[int,CommitInfo] = {}  # consecutive numbers per branch, starting at 0
     _.paths:Dict[str,PathInfo] = {}  # utf-8 encoded relative, normalized file system paths
@@ -70,7 +70,7 @@ class Metadata:
     if len(changes.deletions) > 0:     printo(ajoin("DEL ", sorted(changes.deletions.keys()), "\n"))
     if len(changes.modifications) > 0: printo(ajoin("MOD ", sorted(changes.modifications.keys()), "\n"))
 
-  def loadBranches(_):
+  def loadBranches(_, offline:bool = False):
     ''' Load list of branches and current branch info from metadata file. '''
     try:  # fails if not yet created (on initial branch/commit)
       branches:List[Tuple]
@@ -84,7 +84,7 @@ class Metadata:
     except Exception as E:  # if not found, create metadata folder
       _.branches = {}
       _.track, _.picky, _.strict, _.compress, _.version = [defaults[k] for k in ["track", "picky", "strict", "compress"]] + [version.__version__]
-      warn("Couldn't read branches metadata: %r" % E)  # TODO when going offline, this message is not needed
+      (debug if offline else warn)("Couldn't read branches metadata: %r" % E)
 
   def saveBranches(_, also:Dict[str,Any] = {}):
     ''' Save list of branches and current branch info to metadata file. '''
@@ -230,24 +230,31 @@ class Metadata:
       for file in walk:  # if m.track or m.picky: only files that match any path-relevant tracking patterns
         filename = relPath + SLASH + file
         filepath = os.path.join(path, file)
-        stat = os.stat(encode(filepath))
+        try: stat = os.stat(encode(filepath))
+        except Exception as E: exception(E); continue
         size, mtime, newtime = stat.st_size, int(stat.st_mtime * 1000), time.time()
         if progress and newtime - timer > .1:
           outstring = "\r%s %s  %s" % ("Preparing" if write else "Checking", PROGRESS_MARKER[int(counter.inc() % 4)], filename)
           printo(outstring + " " * max(0, termWidth - len(outstring)), nl = ""); timer = newtime
         if filename not in _.paths:  # detected file not present (or untracked) in (other) branch
           nameHash = hashStr(filename)
-          hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = nameHash) if write else None) if size > 0 else (None, 0)
-          changes.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
-          compressed += written; original += size
+          try:
+            hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = nameHash) if write else None) if size > 0 else (None, 0)
+            changes.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
+            compressed += written; original += size
+          except Exception as E: exception(E)
           continue  # with next file
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
-          hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = last.nameHash) if write else None) if size > 0 else (None, 0)
-          changes.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
-        elif size != last.size or (not checkContent and mtime != last.mtime) or (checkContent and hashFile(filepath, _.compress)[0] != last.hash):  # detected a modification
-          hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = last.nameHash) if write else None) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
-          changes.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
+          try:
+            hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = last.nameHash) if write else None) if size > 0 else (None, 0)
+            changes.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
+          except Exception as E: exception(E)
+        elif size != last.size or (not checkContent and mtime != last.mtime) or (checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress)[0] != last.hash), default = False)):  # detected a modification TODO wrap hashFile exception
+          try:
+            hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = last.nameHash) if write else None) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
+            changes.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
+          except Exception as E: exception(E)
         else: continue  # with next file
         compressed += written; original += last.size if inverse else size
       if relPath in knownPaths: knownPaths[relPath][:] = list(set(knownPaths[relPath]) - set(walk))  # at least one file is tracked TODO may leave empty lists in dict
@@ -365,7 +372,7 @@ def offline(argument:str? = None, options:str[] = []):
         if os.path.isdir(resource): shutil.rmtree(encode(resource))
         else: os.unlink(encode(resource))
     except: Exit("Cannot reliably remove previous repository contents. Please remove .sos folder manually prior to going offline")
-  m:Metadata = Metadata()
+  m:Metadata = Metadata(offline = True)
   if '--compress' in options or m.c.compress: m.compress = True  # plain file copies instead of compressed ones
   if '--picky'    in options or m.c.picky:    m.picky =    True   # Git-like
   elif '--track'  in options or m.c.track:    m.track =    True   # Svn-like
@@ -882,10 +889,7 @@ def parse(root:str, cwd:str):
     else: Exit("Unknown command '%s'" % command)
     Exit(code = 0)
   except Exception, RuntimeError as E:
-    printo(str(E))
-    import traceback
-    traceback.print_exc()
-    traceback.print_stack()
+    exception(E)
     Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
 
 def main():
