@@ -43,9 +43,9 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     ls [<folder path>] [--patterns|--tags]                List file tree and mark changes and tracking status
 
   Defining file patterns:
-    add <file pattern>                                    Add a tracking pattern to current branch (file pattern)
-    rm <file pattern>                                     Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
-    mv <oldpattern> <newPattern>                          Rename, move, or move and rename tracked files according to tracked file patterns
+    add[not] <file pattern>                               Add a tracking pattern to current branch (file pattern). Using addnot adds to tracking blacklist
+    rm[not] <file pattern>                                Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
+    mv[not] <oldpattern> <newPattern>                     Rename, move, or move and rename tracked files according to tracked file patterns
       --soft                                                Don't move or rename files, only the tracking pattern
 
   More commands:

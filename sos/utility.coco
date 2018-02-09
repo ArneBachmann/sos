@@ -453,10 +453,10 @@ def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -
       if sources[i] in targets[:i]: Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))
   list(zip(sources, targets))
 
-def relativize(root:str, path:str) -> Tuple[str,str] =
+def relativize(root:str, filepath:str) -> Tuple[str,str] =
   ''' Determine OS-independent relative folder path, and relative pattern path. '''
-  relpath = os.path.relpath(os.path.dirname(os.path.abspath(path)), root).replace(os.sep, SLASH)
-  relpath, os.path.join(relpath, os.path.basename(path)).replace(os.sep, SLASH)
+  relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)
+  relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)
 
 def parseOnlyOptions(root:str, options:str[]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?] =
   ''' Returns set of --only arguments, and set or --except arguments. '''
