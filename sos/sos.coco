@@ -708,7 +708,7 @@ def ls(argument:str? = None, options:str[] = []):
       for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
         if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(os.path.basename(pattern))
     matches.sort(key = (element) -> len(element))
-    printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "..."), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
+    printo("%s %s/%s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "..."), folder, file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
 
 def log(options:str[] = []):
   ''' List previous commits on current branch. '''
@@ -864,7 +864,7 @@ def parse(root:str, cwd:str):
     onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
     debug("Processing command %r with arguments %r and options %r." % (command ?? "", arguments if arguments else "", options))
     if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "."))
-    if command[:1] == "m":
+    if command[:1] == "m" or command[:3] == "con":
       if len(arguments) < 2: Exit("Need a second file pattern argument as target for move/rename command")
       newRelPath, newPattern = relativize(root, os.path.join(cwd, options[0]))
     if   command[:1] == "a":   add(relPath, pattern, options)
@@ -878,8 +878,8 @@ def parse(root:str, cwd:str):
     elif command[:2] == "du":  dump(arguments[0], options)
     elif command[:1] == "h":   usage(APPNAME, version.__version__)
     elif command[:2] == "lo":  log(options)
-    elif command[:2] == "li":  ls(relativize(root, cwd if not arguments else os.path.join(cwd, arguments[0]))[1], options)  # TODO handle absolute paths as well, also for Windows? think through
-    elif command[:2] == "ls":  ls(relativize(root, cwd if not arguments else os.path.join(cwd, arguments[0]))[1], options)  # TODO avoid and/or normalize root super paths (..)
+    elif command[:2] == "li":  ls(relativize(root, os.path.normpath(os.path.join(cwd, arguments[0] ?? ".")))[1], options)  # TODO handle absolute paths as well, also for Windows? think through
+    elif command[:2] == "ls":  ls(relativize(root, os.path.normpath(os.path.join(cwd, arguments[0] ?? ".")))[1], options)  # TODO avoid and/or normalize root super paths (..)
     elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:])
     elif command[:2] == "of":  offline(arguments[0], options)
     elif command[:2] == "on":  online(options)
