@@ -1,10 +1,10 @@
 import sys
 
-MARKER:str = r"/###/"
+MARKER:str = r"/SOS/ "
 
 
 def usage(appname, version:str, short:bool = False):
-  print("{marker} {appname}{version}".format(marker = MARKER, appname = appname, version = "" if not short else " (PyPI: %s)" % version))
+  print("{marker}{appname}{version}".format(marker = MARKER, appname = appname, version = "" if not short else " (PyPI: %s)" % version))
   if not short: print("""
 
 Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in offline mode, or command is one of "help", "offline", "version"
