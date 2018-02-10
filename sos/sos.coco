@@ -465,8 +465,9 @@ def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, ex
     if pinfo.size == 0: content = b""  # empty file contents
     else: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
     abspath:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))  # current file
-    blocks:List[MergeBlock] = merge(filename = abspath, into = content, diffOnly = True)  # only determine change blocks
-    printo("DIF %s%s" % (path, " <timestamp or newline>" if len(blocks) == 1 and blocks[0].tipe == MergeBlockType.KEEP else ""))
+    blocks:List[MergeBlock]; nl:bytes
+    blocks, nl = merge(filename = abspath, into = content, diffOnly = True)  # only determine change blocks
+    printo("DIF %s%s %s" % (path, " <timestamp or newline>" if len(blocks) == 1 and blocks[0].tipe == MergeBlockType.KEEP else "", NL_NAMES[nl]))
     for block in blocks:
       if block.tipe in [MergeBlockType.INSERT, MergeBlockType.REMOVE]:
         pass  # TODO print some previous and following lines - which aren't accessible here anymore
@@ -669,7 +670,8 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
         file:bytes? = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # parse lines
         if current == file: debug("No difference to versioned file")
         elif file is not None:  # if None, error message was already logged
-          contents:bytes = merge(file = file, into = current, mergeOperation = mrgline, charMergeOperation = mrgchar, eol = eol)
+          contents:bytes; nl:bytes
+          contents, nl = merge(file = file, into = current, mergeOperation = mrgline, charMergeOperation = mrgchar, eol = eol)
           if contents != current:
             with open(encode(path), "wb") as fd: fd.write(contents)  # TODO write to temp file first, in case writing fails
           else: debug("No change")  # TODO but update timestamp?

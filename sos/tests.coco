@@ -433,8 +433,8 @@ class Tests(unittest.TestCase):
     _.createFile(10, theirs)
     mine = b"a\nc\nd\ne\ng\nf\nx\nh\ny\ny\nj"  # missing "b", inserted g, modified g->x, replace x/x -> y/y, removed k
     _.createFile(11, mine)
-    _.assertEqual(b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk", sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.BOTH))  # completely recreated other file
-    _.assertEqual(b'a\nb\nc\nd\ne\ng\nf\ng\nh\ny\ny\nx\nx\nj\nk', sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.INSERT))
+    _.assertEqual((b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk", b"\n"), sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.BOTH))  # completely recreated other file
+    _.assertEqual((b'a\nb\nc\nd\ne\ng\nf\ng\nh\ny\ny\nx\nx\nj\nk', b"\n"), sos.merge(filename = "." + os.sep + "file10", intoname = "." + os.sep + "file11", mergeOperation = sos.MergeOperation.INSERT))
 
   def testUpdate2(_):
     _.createFile("test.txt", "x" * 10)
@@ -483,33 +483,35 @@ class Tests(unittest.TestCase):
     ''' Check merge results depending on user options. '''
     a:bytes = b"a\nb\ncc\nd"
     b:bytes = b"a\nb\nee\nd"  # replaces cc by ee
-    _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT))  # one-line block replacement using lineMerge
-    _.assertEqual(b"a\nb\neecc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT, charMergeOperation = sos.MergeOperation.INSERT))  # means insert changes from a into b, but don't replace
-    _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT, charMergeOperation = sos.MergeOperation.REMOVE))  # means insert changes from a into b, but don't replace
-    _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE))  # one-line block replacement using lineMerge
-    _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE, charMergeOperation = sos.MergeOperation.REMOVE))
-    _.assertEqual(a, sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH))  # keeps any changes in b
+    _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT)[0])  # one-line block replacement using lineMerge
+    _.assertEqual(b"a\nb\neecc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT, charMergeOperation = sos.MergeOperation.INSERT)[0])  # means insert changes from a into b, but don't replace
+    _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT, charMergeOperation = sos.MergeOperation.REMOVE)[0])  # means insert changes from a into b, but don't replace
+    _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE)[0])  # one-line block replacement using lineMerge
+    _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE, charMergeOperation = sos.MergeOperation.REMOVE)[0])
+    _.assertEqual(a, sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH)[0])  # keeps any changes in b
     a = b"a\nb\ncc\nd"
     b = b"a\nb\nee\nf\nd"  # replaces cc by block of two lines ee, f
-    _.assertEqual(b"a\nb\nee\nf\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT))  # multi-line block replacement
-    _.assertEqual(b"a\nb\nd",         sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE))
-    _.assertEqual(a, sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH))  # keeps any changes in b
+    _.assertEqual(b"a\nb\nee\nf\ncc\nd", sos.merge(a, b, mergeOperation = sos.MergeOperation.INSERT)[0])  # multi-line block replacement
+    _.assertEqual(b"a\nb\nd",         sos.merge(a, b, mergeOperation = sos.MergeOperation.REMOVE)[0])
+    _.assertEqual(a, sos.merge(a, b, mergeOperation = sos.MergeOperation.BOTH)[0])  # keeps any changes in b
     # Test with change + insert
-    _.assertEqual(b"a\nb fdcd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation = sos.MergeOperation.INSERT))
-    _.assertEqual(b"a\nb d d\ne",  sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation = sos.MergeOperation.REMOVE))
+    _.assertEqual(b"a\nb fdcd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation = sos.MergeOperation.INSERT)[0])
+    _.assertEqual(b"a\nb d d\ne",  sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation = sos.MergeOperation.REMOVE)[0])
     # Test interactive merge
     a = b"a\nb\nb\ne"  # block-wise replacement
     b = b"a\nc\ne"
-    _.assertEqual(b, mockInput(["i"], () -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)))
-    _.assertEqual(a, mockInput(["t"], () -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)))
+    _.assertEqual(b, mockInput(["i"], () -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)[0]))
+    _.assertEqual(a, mockInput(["t"], () -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)[0]))
     a = b"a\nb\ne"  # intra-line merge
-    _.assertEqual(b, mockInput(["i"], () -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)))
-    _.assertEqual(a, mockInput(["t"], () -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)))
+    _.assertEqual(b, mockInput(["i"], () -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)[0]))
+    _.assertEqual(a, mockInput(["t"], () -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)[0]))
 
   def testMergeEol(_):
+    _.assertEqual(b"\r\n", sos.merge(b"a\nb", b"a\r\nb")[1])
     _.assertIn("Differing EOL-styles", wrapChannels(() -> sos.merge(b"a\nb", b"a\r\nb")))  # expects a warning
-    _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb"))  # when in doubt, use "mine" CR-LF
-    _.assertIn(b"a\nb", sos.merge(b"a\nb", b"a\r\nb", eol = True))
+    _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb")[0])  # when in doubt, use "mine" CR-LF
+    _.assertIn(b"a\nb", sos.merge(b"a\nb", b"a\r\nb", eol = True)[0])
+    _.assertEqual(b"\n", sos.merge(b"a\nb", b"a\r\nb", eol = True)[1])
 
   def testPickyMode(_):
     ''' Confirm that picky mode reset tracked patterns after commits. '''
@@ -821,7 +823,7 @@ class Tests(unittest.TestCase):
     changes = sos.changes(excps = f{"./file1"})
     _.assertEqual(1, len(changes.modifications))  # only file2
     _.assertTrue("./file2" in changes.modifications)
-    _.assertIn("DIF ./file2", wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
+    _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
 
   def testDiff(_):
