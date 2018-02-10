@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.2.3) #
+# Subversion Offline Solution (SOS 1.3) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -65,7 +65,7 @@ SOS supports three different file handling models that you may use to your likin
     - [Enhancement 164](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config`
     - [Enhancement 165](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config add`
     - [Enhancement 168](https://github.com/ArneBachmann/sos/issues/168) Don't stop switching if changes are same as live modifications
-    - [Feature 64](https://github.com/ArneBachmann/sos/issues/64) Added blacklisting for tracking patterns (e.g. to except single files or reduce scope of globs)
+    - [Feature 64](https://github.com/ArneBachmann/sos/issues/64) Added blacklisting for tracking patterns (e.g. to except single files or reduce scope of globs). Migration from older repositories: Add a `, []` at the end of each branch info inside `.sos/.meta`, e.g. modify `[0, 1518275599353, "trunk", true, []]` to `[0, 1518275599353, "trunk", true, [], []]` (not the additional trailing `, []`)
     - Downloads so far:
 - Version 1.2 released on 2018-02-04:
     - [Bug 135, 145](https://github.com/ArneBachmann/sos/issues/135) Fixes a bug showing ignored files as deleted

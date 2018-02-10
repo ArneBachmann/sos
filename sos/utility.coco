@@ -64,7 +64,7 @@ MergeBlockType = enum.Enum("MergeBlockType", "KEEP INSERT REMOVE REPLACE MOVE") 
 
 
 # Value types
-data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [])  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
+data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [], untracked:List[str] = [])  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
 data CommitInfo(number:int, ctime:int, message:str? = None)
 data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
 data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
@@ -108,7 +108,7 @@ def removePath(key:str, value:str) -> str =
   ''' Cleanup of user-specified global file patterns. '''
   value if value in GLOBAL_LISTS or SLASH not in value else value[value.rindex(SLASH)+1:]
 
-def conditionalIntersection(a:FrozenSet[str]?, b:FrozenSet[str]) -> FrozenSet[str] = a & b if a else b
+def conditionalIntersection(a:FrozenSet[str]?, b:FrozenSet[str]) -> FrozenSet[str] = a & b if a else b  # Used to match only arguments, or use only stored patterns
 
 def dictUpdate(dikt:Dict[Any,Any], by:Dict[Any,Any]) -> Dict[Any,Any]: d = {}; d.update(dikt); d.update(by); return d
 

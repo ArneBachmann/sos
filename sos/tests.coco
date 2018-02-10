@@ -785,12 +785,27 @@ class Tests(unittest.TestCase):
     try: sos.usage(short = True); _.fail()
     except: pass
 
+  def testOnlyExcept(_):
+    ''' Test blacklist glob rules. '''
+    sos.offline(options = ["--track"])
+    _.createFile("a.1")
+    _.createFile("a.2")
+    _.createFile("b.1")
+    _.createFile("b.2")
+    sos.add(".", "./a.?")
+    sos.add(".", "./?.1", negative = True)
+    out = wrapChannels(() -> sos.commit())
+    _.assertIn("ADD ./a.2", out)
+    _.assertNotIn("ADD ./a.1", out)
+    _.assertNotIn("ADD ./b.1", out)
+    _.assertNotIn("ADD ./b.2", out)
+
   def testOnly(_):
     _.assertEqual((f{"./A", "x/B"}, f{"./C"}), sos.parseOnlyOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--only"]))
     _.assertEqual(f{"B"}, sos.conditionalIntersection(f{"A", "B", "C"}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(f{}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(None, f{"B", "D"}))
-    sos.offline(os.getcwd(), ["--track", "--strict"])
+    sos.offline(options = ["--track", "--strict"])
     _.createFile(1)
     _.createFile(2)
     sos.add(".", "./file1")
@@ -803,7 +818,7 @@ class Tests(unittest.TestCase):
     _.createFile(2, "dd")
     try: sos.config(["set", "texttype", "file2"])
     except SystemExit as E: _.assertEqual(0, E.code)
-    changes = sos.changes(excps = ["./file1"])
+    changes = sos.changes(excps = f{"./file1"})
     _.assertEqual(1, len(changes.modifications))  # only file2
     _.assertTrue("./file2" in changes.modifications)
     _.assertIn("DIF ./file2", wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
