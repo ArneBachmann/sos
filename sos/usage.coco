@@ -29,7 +29,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     switch [<branch>][/<revision>]                        Continue work on another branch
       --meta                                                Only switch file tracking patterns for current branch, don't update any files
     update [<branch>][/<revision>]                        Integrate work from another branch
-      --add | --rm | --ask                                  Only add new files / only remove vanished files / Ask what to do. Default: add and remove
+      --add       | --rm       | --ask                      Only add new files / only remove vanished files / Ask what to do. Default: add and remove
       --add-lines | --rm-lines | --ask-lines                Only add inserted lines / only remove deleted lines / Ask what to do. Default: add and remove
       --add-chars | --rm-chars | --ask-chars                Only add new characters / only remove vanished characters / Ask what to do. Default: add and remove
       --eol                                                 Use EOL style from the integrated file instead. Default: EOL style of current file
@@ -37,15 +37,15 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
   Working with files:
     changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
     commit [<message>]                                    Create a new revision from current state file tree, with an optional commit message
-      --tag                                               Memorizes commit message as a tag that can be used instead of numeric revisions
+      --tag                                                 Memorizes commit message as a tag that can be used instead of numeric revisions
     diff [<branch>][/<revision>]                          List changes in file tree (or `--from` specified revision) vs. last (or specified) revision
-      --to=branch/revision                                Take "to" revision as target to compare against (instead of current file tree state)
+      --to=branch/revision                                  Take "to" revision as target to compare against (instead of current file tree state)
     ls [<folder path>] [--patterns|--tags]                List file tree and mark changes and tracking status
 
   Defining file patterns:
     add[not] <file pattern>                               Add a tracking pattern to current branch (file pattern). Using addnot adds to tracking blacklist
-    rm[not] <file pattern>                                Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
-    mv[not] <oldpattern> <newPattern>                     Rename, move, or move and rename tracked files according to tracked file patterns
+    rm[not]  <file pattern>                               Remove a tracking pattern. Only useful after "offline --track" or "offline --picky"
+    mv[not]  <oldpattern> <newPattern>                    Rename, move, or move and rename tracked files according to tracked file patterns
       --soft                                                Don't move or rename files, only the tracking pattern
 
   More commands:

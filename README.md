@@ -58,14 +58,20 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
-- Version 1.3:
+- Version 1.3 release on 2018-02-10:
     - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on status
     - [Enhancement 152, 162](https://github.com/ArneBachmann/sos/issues/152) PEP528/529 compatibility: Now working with any console encoding and file system encoding on Windows (at least with Python 3.6+)
     - [Enhancement 163](https://github.com/ArneBachmann/sos/issues/163) Rewrite of changeset handling to avoid problems when re-adding files deleted in previous revision
     - [Enhancement 164](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config`
     - [Enhancement 165](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config add`
     - [Enhancement 168](https://github.com/ArneBachmann/sos/issues/168) Don't stop switching if changes are same as live modifications
-    - [Feature 64](https://github.com/ArneBachmann/sos/issues/64) Added blacklisting for tracking patterns (e.g. to except single files or reduce scope of globs). Migration from older repositories: Add a `, []` at the end of each branch info inside `.sos/.meta`, e.g. modify `[0, 1518275599353, "trunk", true, []]` to `[0, 1518275599353, "trunk", true, [], []]` (not the additional trailing `, []`)
+    - [Feature 64](https://github.com/ArneBachmann/sos/issues/64) Added blacklisting for tracking patterns (e.g. to except single files or reduce scope of globs). Migration from older repositories: Add a `, []` at the end of each branch info inside `.sos/.meta`, e.g. modify
+
+        `[0, 1518275599353, "trunk", true, []]`
+
+        to
+
+        `[0, 1518275599353, "trunk", true, [], []]` (not the additional trailing `, []`)
     - Downloads so far:
 - Version 1.2 released on 2018-02-04:
     - [Bug 135, 145](https://github.com/ArneBachmann/sos/issues/135) Fixes a bug showing ignored files as deleted
@@ -78,7 +84,7 @@ SOS supports three different file handling models that you may use to your likin
     - [Enhancement 153](https://github.com/ArneBachmann/sos/issues/153) Removed Python 2 leftovers, raised minimum Python version to 3.4 (but 3.3 may also work)
     - [Enhancement 159](https://github.com/ArneBachmann/sos/issues/159) Internal metadata updates. Migration from older repositories: Add `, {}` to `.sos/.meta` right before the closing final `]`, and add `version = "pre-1.2", ` after the initial `[{`
     - [Feature 134, 161](https://github.com/ArneBachmann/sos/issues/134) Added dump option
-    - Downloads so far: 1030
+    - Downloads: 1760
 - Version 1.1 released on 2017-12-30:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
@@ -101,7 +107,7 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Comparison with Traditional VCSs ##
-While completing version 1.0 of SOS, I incidentally discovered an interesting [article by Gregory Szorc](https://gregoryszorc.com/blog/2017/12/11/high-level-problems-with-git-and-how-to-fix-them/) that discusses central weaknesses in the design of popular VCSs, with a focus on Git. Many of his arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
+While completing version 1.0 of SOS after almost two months of development, I incidentally discovered an interesting [article by Gregory Szorc](https://gregoryszorc.com/blog/2017/12/11/high-level-problems-with-git-and-how-to-fix-them/) that discusses central weaknesses in the design of popular VCSs, with a focus on Git. Many of his arguments I have intuitively felt to be true as well and were the reason for the development of SOS: mainly the reduction of barriers between the developer's typical workflow and the VCS, which is most often used as a structured tool for "type and save in increments", while advanced features of Git are just very difficult to remember and get done right.
 
 - While Git is basically a large key-value store with a thin access interface on top, SOS keeps a very clear (folder) structure of branches, revisions and files
 - Compared to SVN, SOS's file store is much simpler and doesn't require an integrated database, and recovery is manually possible with little effort
