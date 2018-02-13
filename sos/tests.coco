@@ -772,9 +772,9 @@ class Tests(unittest.TestCase):
     try: sos.delete("trunk"); _fail()
     except: pass
     _.createFile(2, "y" * 10)
-    sos.branch("added")
+    sos.branch("added")  # creates new branch, writes repo metadata, and therefore creates backup copy
     sos.delete("trunk")
-    _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # meta data file and "b1"
+    _.assertEqual(3, len(os.listdir("." + os.sep + sos.metaFolder)))  # meta data file, backup and "b1"
     _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b1"))
     _.assertFalse(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0"))
     sos.branch("next")

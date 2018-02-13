@@ -29,6 +29,17 @@ class Counter(Generic[Number]):
   def __init__(_, initial:Number = 0): _.value:Number = initial
   def inc(_, by:Number = 1) -> Number: _.value += by; return _.value
 
+class ProgressIndicator(Counter):
+  ''' Manages a rotating progress indicator. '''
+  def __init__(_, callback:Optional[(str) -> None] = None): super(ProgressIndicator, _).__init__(-1); _.timer:float = time.time(); _.callback:Optional[(str) -> None] = callback
+  def getIndicator(_) -> str? =
+    newtime = time.time()
+    if newtime - _.timer < .1: return None
+    _.timer = newtime
+    sign:str = PROGRESS_MARKER[int(_.inc() % 4)]
+    if _.callback: _.callback(sign)
+    sign
+
 class Logger:
   ''' Logger that supports many items. '''
   def __init__(_, log): _._log = log
@@ -47,8 +58,10 @@ GLOBAL_LISTS = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelis
 TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
 FALSE_VALUES = ["false", "no", "off", "0", "disable", "disabled"]
 PROGRESS_MARKER = ["|", "/", "-", "\\"]
+BACKUP_SUFFIX = "_last"
 metaFolder:str = ".sos"
 metaFile:str = ".meta"
+metaBack:str = metaFile + BACKUP_SUFFIX
 bufSize:int = 1 << 20  # 1 MiB
 SVN = "svn"
 SLASH = "/"
@@ -97,6 +110,10 @@ except:
 def tryOrDefault(func:() -> Any, default:Any) -> Any:
   try: return func()
   except: return default
+
+def tryOrIgnore(func:() -> Any) -> None:  # handle with care!
+  try: func()
+  except: pass
 
 def wcswidth(string:str) -> int:
   l:int = 0
@@ -158,8 +175,9 @@ def exception(E):
   traceback.print_exc()
   traceback.print_stack()
 
-def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,int] =
+def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str) -> None] = None) -> Tuple[str,int] =
   ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''
+  if callback: indicator:ProgressIndicator = ProgressIndicator(callback)
   _hash = hashlib.sha256()
   wsize:int = 0
   if saveTo and os.path.exists(encode(saveTo)): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime.")
@@ -170,6 +188,7 @@ def hashFile(path:str, compress:bool, saveTo:str? = None) -> Tuple[str,int] =
       _hash.update(buffer)
       if to: to.write(buffer)
       if len(buffer) < bufSize: break
+      if indicator: indicator.getIndicator()
     if to:
       to.close()
       wsize = os.stat(encode(saveTo)).st_size

@@ -35,7 +35,6 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --eol                                                 Use EOL style from the integrated file instead. Default: EOL style of current file
 
   Working with files:
-    changes [<branch>][/<revision>]                       List changed paths vs. last or specified revision
     commit [<message>]                                    Create a new revision from current state file tree, with an optional commit message
       --tag                                                 Memorizes commit message as a tag that can be used instead of numeric revisions
     diff [<branch>][/<revision>]                          List changes in file tree (or `--from` specified revision) vs. last (or specified) revision
@@ -53,7 +52,8 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     log                                                   List commits of current branch
       --changes                                             Also list file differences
       --diff                                                Also show textual version differences
-    status [-v]                                           List branches and display repository status
+    status [<branch>][/<revision>]                        Display changed paths vs. last or specified revision on current or specified branch
+    status --repo                                         List branches and display repository status
     version                                               Display version and package information
 
   User configuration:
