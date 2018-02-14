@@ -57,7 +57,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     version                                               Display version and package information
 
   User configuration:
-    config [set/unset/show/add/rm] [<param> [<value>]] [--local]  Configure user-global defaults.
+    config [set/unset/show/add/rm] [<param> [<value>]] [--local]  Configure user-global or repo-local defaults.
                                                                   Flags (1/0, on/off, true/false, yes/no):
                                                                     strict, track, picky, compress
                                                                   Removing the last entry from a local list will not remove the empty list.

@@ -22,7 +22,7 @@ import configr  # optional dependency
 
 
 # Constants
-defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "texttype": [], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*.sos.zip"], "ignoresWhitelist": []})
+defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "texttype": ["*.md"], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*.sos.zip"], "ignoresWhitelist": []})
 termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
 APPNAME:str = "Subversion Offline Solution V%s (C) Arne Bachmann" % version.__release_version__
 
@@ -83,8 +83,20 @@ class Metadata:
       _.tags = repo["tags"]  # list of commit messages to treat as globally unique tags
       _.branch = repo["branch"]  # current branch integer
       _.track, _.picky, _.strict, _.compress, _.version = [repo[r] for r in ["track", "picky", "strict", "compress", "version"]]
+      upgraded:List[str] = []
+      if repo["version"] < "2018.1210.3028":  # For older versions, see https://pypi.python.org/simple/sos-vcs/
+        branches[:] = [branch + ([[]] if len(branch) < 6 else []) for branch in branches]  # add untracking information
+        upgraded.append("2018.1210.3028")
+      if "format" not in repo:  # must be pre-1.4
+        repo["format"] = 1  # 1.4+
+        branches[:] = [branch + [None] for branch in branches]  # adds empty branching point information
+        upgraded.append("1.4")
       _.branches = {i.number: i for i in (BranchInfo(*item) for item in branches)}  # re-create type info
       _.repoConf = config
+      if upgraded:
+        for upgrade in upgraded: warn("!!! Upgraded repository metadata to match SOS version %r" % upgrade)
+        warn("To undo upgrade%s, restore metadata *now* from '%s/%s'" % ("s" if len(upgraded) > 1 else "", metaFolder, metaBack))
+        _.saveBranches()
     except Exception as E:  # if not found, create metadata folder
       _.branches = {}
       _.track, _.picky, _.strict, _.compress, _.version = [defaults[k] for k in ["track", "picky", "strict", "compress"]] + [version.__version__]
@@ -94,7 +106,7 @@ class Metadata:
     ''' Save list of branches and current branch info to metadata file. '''
     tryOrIgnore(() -> shutil.copy2(encode(os.path.join(_.root, metaFolder, metaFile)), encode(os.path.join(_.root, metaFolder, metaBack))))
     with codecs.open(encode(os.path.join(_.root, metaFolder, metaFile)), "w", encoding = UTF8) as fd:
-      store:Dict[str,Any] = {"version": _.version, "tags": _.tags, "branch": _.branch, "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress}
+      store:Dict[str,Any] = {"format": 1, "version": _.version, "tags": _.tags, "branch": _.branch, "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress}
       store.update(also)  # allows overriding certain values at certain points in time
       json.dump((store, list(_.branches.values()), _.repoConf), fd, ensure_ascii = False)  # stores using unicode codepoints, fd knows how to encode them
 

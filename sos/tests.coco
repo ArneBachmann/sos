@@ -1,7 +1,7 @@
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import builtins, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
+import builtins, codecs, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
 from io import BytesIO, BufferedRandom, TextIOWrapper
 try: from unittest import mock  # Python 3
 except: import mock  # installed via pip
@@ -57,7 +57,7 @@ def debugTestRunner(post_mortem = None) =
 def wrapChannels(func: -> Any) =
   ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
   oldv = sys.argv
-  buf = TextIOWrapper(BufferedRandom(BytesIO(b"")), encoding = "utf-8")
+  buf = TextIOWrapper(BufferedRandom(BytesIO(b"")), encoding = sos.UTF8)
   sys.stdout = sys.stderr = buf
   handler = logging.StreamHandler(buf)
   logging.getLogger().addHandler(handler)
@@ -168,6 +168,16 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     try: sos.commit("nothing"); _.fail()  # should not commit anything, as the file in base folder doesn't match the tracked pattern
     except: pass
+
+  def testAutoUpgrade(_):
+    sos.offline()
+    with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "r", encoding = sos.UTF8) as fd: repo, branches, config = json.load(fd)
+    del repo["format"]  # simulate pre-1.4
+    repo["version"] = "0"
+    branches[:] = [branch[:-1] for branch in branches]
+    with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "w", encoding = sos.UTF8) as fd: json.dump((repo, branches, config), fd, ensure_ascii = False)
+    out = wrapChannels(() -> sos.status(options = ["--repo"]))
+    _.assertAllIn(["Upgraded repository metadata to match SOS version '2018.1210.3028'", "Upgraded repository metadata to match SOS version '1.4'"], out)
 
   def testTokenizeGlobPattern(_):
     _.assertEqual([], sos.tokenizeGlobPattern(""))

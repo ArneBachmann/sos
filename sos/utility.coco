@@ -78,7 +78,7 @@ MergeBlockType = enum.Enum("MergeBlockType", "KEEP INSERT REMOVE REPLACE MOVE") 
 
 
 # Value types
-data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [], untracked:List[str] = [])  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
+data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [], untracked:List[str] = [], parent:int? = None)  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
 data CommitInfo(number:int, ctime:int, message:str? = None)
 data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
 data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo], moves:Dict[str,Tuple[str,PathInfo]])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)

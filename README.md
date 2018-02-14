@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.3.3) #
+# Subversion Offline Solution (SOS 1.3.4) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -72,7 +72,7 @@ SOS supports three different file handling models that you may use to your likin
         to
 
         `[0, 1518275599353, "trunk", true, [], []]` (not the additional trailing `, []`)
-    - Downloads so far:
+    - Downloads so far: 1800
 - Version 1.2 released on 2018-02-04:
     - [Bug 135, 145](https://github.com/ArneBachmann/sos/issues/135) Fixes a bug showing ignored files as deleted
     - [Bug 147](https://github.com/ArneBachmann/sos/issues/147) Fixes `sos ls` problems
