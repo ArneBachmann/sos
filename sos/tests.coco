@@ -141,19 +141,22 @@ class Tests(unittest.TestCase):
     _.createFile(1, "2")  # modify existing file
     _.createFile(2, "2")  # add another file
     m.loadCommit(0, 0)
-    changes = m.findChanges()  # detect time skew
+    changes, msg = m.findChanges()  # detect time skew
     _.assertEqual(1, len(changes.additions))
     _.assertEqual(0, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
+    _.assertEqual(0, len(changes.moves))
     m.paths.update(changes.additions)
     m.paths.update(changes.modifications)
     _.createFile(2, "12")  # modify file again
-    changes = m.findChanges(0, 1)  # by size, creating new commit
+    changes, msg = m.findChanges(0, 1)  # by size, creating new commit
     _.assertEqual(0, len(changes.additions))
     _.assertEqual(0, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
+    _.assertEqual(0, len(changes.moves))
     _.assertTrue(os.path.exists(sos.branchFolder(0, 1)))
     _.assertTrue(os.path.exists(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))
+    # TODO test moves
 
   def testPatternPaths(_):
     sos.offline(options = ["--track"])
@@ -840,7 +843,7 @@ class Tests(unittest.TestCase):
     _.createFile(3)
     out = wrapChannels(() -> sos.diff("/-2"))  # compare with r1 (second counting from last which is r2)
     _.assertIn("ADD ./file3", out)
-    _.assertAllIn(["MOD ./file2", "DIF ./file1", "- | 0001 |xxxxxxxxxx|", "+ | 0000 |foobar|"], out)
+    _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "- | 0001 |xxxxxxxxxx|", "+ | 0000 |foobar|"], out)
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(() -> sos.diff("/-2", onlys = f{"./file2"})))
 
   def testReorderRenameActions(_):
@@ -928,6 +931,8 @@ class Tests(unittest.TestCase):
   # TODO test command line operation --sos vs. --vcs
   # check exact output instead of only expected exception/fail
 
+  # TODO test +++ --- in diff
+  # TODO test +01/-02/*..
 
 if __name__ == '__main__':
   logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or "true" in [os.getenv("DEBUG", "false").strip().lower(), os.getenv("CI", "false").strip().lower()] else logging.INFO,

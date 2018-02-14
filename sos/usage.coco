@@ -57,13 +57,15 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     version                                               Display version and package information
 
   User configuration:
-    config [set/unset/show/add/rm] [<param> [<value>]]    Configure user-global defaults.
-                                                          Flags (1/0, on/off, true/false, yes/no):
-                                                            strict, track, picky, compress
-                                                          Lists (semicolon-separated when set; single values for add/rm):
-                                                            texttype, bintype, ignores, ignoreDirs, ignoresWhitelist, ignoreDirsWhitelist
-                                                          Supported texts:
-                                                            defaultbranch (has a dynamic default value, depending on VCS discovered)
+    config [set/unset/show/add/rm] [<param> [<value>]] [--local]  Configure user-global defaults.
+                                                                  Flags (1/0, on/off, true/false, yes/no):
+                                                                    strict, track, picky, compress
+                                                                  Removing the last entry from a local list will not remove the empty list.
+                                                                  Combine with sos config rm <key> <value> --local --prune or sos unset <key> --local
+                                                                  Lists (semicolon-separated when set; single values for add/rm):
+                                                                    texttype, bintype, ignores, ignoreDirs, ignoresWhitelist, ignoreDirsWhitelist
+                                                                  Supported texts:
+                                                                    defaultbranch (has a dynamic default value, depending on VCS discovered)
     config show|list flags|lists|texts                    Enumerates all configurable settings for specified type
     config show <key>                                     Displays only single value
 

@@ -5,7 +5,7 @@
 import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()
 try: import enum
 except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport]' to get enum support for Python versions prior 3.4")
-try:
+try:  # TODO remove as soon as Coconut supports it
   from typing import Any, Callable, Dict, FrozenSet, Generic, IO, List, Sequence, Set, Tuple, Type, TypeVar, Union  # only required for mypy
   Number = TypeVar("Number", int, float)
   DataType = TypeVar("DataType", BranchInfo, ChangeSet, MergeBlock, PathInfo)
@@ -81,7 +81,7 @@ MergeBlockType = enum.Enum("MergeBlockType", "KEEP INSERT REMOVE REPLACE MOVE") 
 data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [], untracked:List[str] = [])  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
 data CommitInfo(number:int, ctime:int, message:str? = None)
 data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
-data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
+data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo], moves:Dict[str,Tuple[str,PathInfo]])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
 data Range(tipe:MergeBlockType, indexes:int[])  # MergeBlockType[1,2,4], line number, length  # TODO use enum
 data MergeBlock(tipe:MergeBlockType, lines:List[str], line:int, replaces:MergeBlock? = None, changes:Range? = None)
 data GlobBlock(isLiteral:bool, content:str, index:int)  # for file pattern rename/move matching
@@ -155,7 +155,7 @@ def sjoin(*s:Tuple[Any]) -> str = " ".join([str(e) for e in s if e != ''])
 
 def hashStr(datas:str) -> str = hashlib.sha256(datas.encode(UTF8)).hexdigest()
 
-def modified(changes:ChangeSet, onlyBinary:bool = False) -> bool = len(changes.additions) > 0 or len(changes.deletions) > 0 or len(changes.modifications) > 0
+def modified(changes:ChangeSet, onlyBinary:bool = False) -> bool = len(changes.additions) > 0 or len(changes.deletions) > 0 or len(changes.modifications) > 0 or len(changes.moves) > 0
 
 def listindex(lizt:Sequence[Any], what:Any, index:int = 0) -> int = lizt[index:].index(what) + index
 
@@ -177,7 +177,7 @@ def exception(E):
 
 def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str) -> None] = None) -> Tuple[str,int] =
   ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''
-  if callback: indicator:ProgressIndicator = ProgressIndicator(callback)
+  indicator:ProgressIndicator? = ProgressIndicator(callback) if callback else None
   _hash = hashlib.sha256()
   wsize:int = 0
   if saveTo and os.path.exists(encode(saveTo)): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime.")
