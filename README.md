@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.3.4) #
+# Subversion Offline Solution (SOS 1.3.6) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -8,6 +8,9 @@
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
 - [Documentation](http://sos-vcs.net) (official website), [Code Repository](https://github.com/ArneBachmann/sos) (at Github)
 - [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
+
+### Important notice from the author ###
+> I have been developing this software over the course of the last 4 months in my spare time, and I put probably around 200 concentrated and sometimes painful hours into it, a rough equivalent of at 10.000€ of development costs that I have granted to the open source community. This project has taken a lot of time away from my family and important duties in my life. I have decided that I cannot continue at the current pace, unless getting support in form of a lifely SOS community, or by getting funding for for the time i put into SOS. I will continue to contribute bug fixes and add features according to my own priorities, unless someone else comes with feature requests and means to support them. I hope you understand and support SOS, which is really meant as a personal productivity tool.
 
 ### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
@@ -58,6 +61,11 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
+- Version 1.4 release on 2018-02-xx:
+    - [Feature]() Introduces automatic upgrade for metadata format, making manual migration of previous and future releases obsolete
+    - [Feature]() Introduces experimental code for very fast branching. Use `sos branch [<name> [<message>]] --last --fast` for instant branching using only a reference to the parent on the new branch. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to the point in time when the parent branch is destroyed, assuming that destroying a branch is much less often used than branching
+    - [Enhancement]() Reduced lines of code by relying on latest enhancements in Coconut (e.g. `typing` imports), plus removing obsolete code
+    - [Enhancement]() Allow to make the behavior of the `status` command configurable via `useChangesCommand=yes` to either show file tree status (the new default, mimicking SVN and Git) or the repository and branches status (sticking to use `changes` for file tree status instead, for people coming from Fossil)
 - Version 1.3 release on 2018-02-10:
     - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on status
     - [Enhancement 152, 162](https://github.com/ArneBachmann/sos/issues/152) PEP528/529 compatibility: Now working with any console encoding and file system encoding on Windows (at least with Python 3.6+)
@@ -158,10 +166,10 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 ### Available Configuration Settings ###
 - `strict`: Flag for always performing full file comparsion, not relying on modification timestamp only; file size is always checked in both modes. Default: False
 - `track`: Flag for always going offline in tracking mode (SVN-style). Default: False
-- `picky`: Flag for always going offline in picky mode (Git-styly). Default: False
+- `picky`: Flag for always going offline in picky mode (Git-style). Default: False
 - `compress`: Flag for compressing versioned artifacts. Default: False
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN, no name for Fossil)
-- `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. *Default*: Empty list
+- `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. Example: `*.bak` could be a text file on your system, so add it to the `texttype` configuration, either globally (default) or locally (using `--local`). *Default*: Empty list
 - `bintype`: List of file patterns that should be recognized as binary files which cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list
 - `ignores`: List of filename patterns (without folder path) to ignore during repository operations. Any match from the corresponding white list will negate any hit for `ignores`. Default: See source code, e.g. `["*.bak", "*.py[cdo]]"`
 - `ignoresWhitelist`: List of filename patterns to be consider even if matched by an entry in the `ignores` list. Default: Empty list
@@ -173,6 +181,11 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - SOS doesn't store branching point information (or references); each branch stands alone and has no relation whatsoever to other branches or certain revisions thereof, except incidentally its initial file contents
 - File tracking patterns are stored per branch, but **not** versioned with commits (!). This means that the "what to track" metadata is not part of the changesets. This is a simplification stemming from the main idea that revisions form a linear order of safepoints, and users rarely go back to older revisions
 - `sos update` will **not warn** if local changes are present! This is a noteworthy exception to the failsafe approach taken for most other commands
+
+
+## Recipes ##
+- Diff between any two revisions: Switch to the revision you want to compare against, then perform a diff with the other revision as argument
+- Ignore whitespaces during diff: Add the option `--nows` or `--ignore-whitespace`
 
 
 ## Hints and Tipps ##

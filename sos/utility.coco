@@ -5,11 +5,8 @@
 import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()
 try: import enum
 except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport]' to get enum support for Python versions prior 3.4")
-try:  # TODO remove as soon as Coconut supports it
-  from typing import Any, Callable, Dict, FrozenSet, Generic, IO, List, Sequence, Set, Tuple, Type, TypeVar, Union  # only required for mypy
-  Number = TypeVar("Number", int, float)
-  DataType = TypeVar("DataType", BranchInfo, ChangeSet, MergeBlock, PathInfo)
-except: pass  # typing not available (prior to Python 3.5)
+from typing import Generic, TypeVar
+Number = TypeVar("Number", int, float)
 try: import wcwidth
 except: pass  # optional dependency
 
@@ -33,6 +30,7 @@ class ProgressIndicator(Counter):
   ''' Manages a rotating progress indicator. '''
   def __init__(_, callback:Optional[(str) -> None] = None): super(ProgressIndicator, _).__init__(-1); _.timer:float = time.time(); _.callback:Optional[(str) -> None] = callback
   def getIndicator(_) -> str? =
+    ''' Returns a value only if a certain time has passed. '''
     newtime = time.time()
     if newtime - _.timer < .1: return None
     _.timer = newtime
@@ -51,25 +49,35 @@ class Logger:
 
 # Constants
 _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
-UTF8 = "utf_8"  # early used constant, not defined in standard library
-CONFIGURABLE_FLAGS = ["strict", "track", "picky", "compress"]
-CONFIGURABLE_LISTS = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
-GLOBAL_LISTS = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
-TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
-FALSE_VALUES = ["false", "no", "off", "0", "disable", "disabled"]
-PROGRESS_MARKER = ["|", "/", "-", "\\"]
-BACKUP_SUFFIX = "_last"
+CONFIGURABLE_FLAGS:List[str] = ["strict", "track", "picky", "compress", "useChangesCommand"]
+CONFIGURABLE_LISTS:List[str] = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
+GLOBAL_LISTS:List[str] = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
+TRUTH_VALUES:List[str] = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
+FALSE_VALUES:List[str] = ["false", "no", "off", "0", "disable", "disabled"]
+PROGRESS_MARKER:List[str] = ["|", "/", "-", "\\"]
+BACKUP_SUFFIX:str = "_last"
 metaFolder:str = ".sos"
+DUMP_FILE:str = metaFolder + ".zip"
 metaFile:str = ".meta"
 metaBack:str = metaFile + BACKUP_SUFFIX
-bufSize:int = 1 << 20  # 1 MiB
-SVN = "svn"
-SLASH = "/"
-MEBI = 1 << 20
+MEBI:int = 1 << 20
+bufSize:int = MEBI
+UTF8:str = "utf_8"  # early used constant, not defined in standard library
+SVN:str = "svn"
+SLASH:str = "/"
+METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None}
 NL_NAMES:Dict[bytes,str] = {None: "<No newline>", b"\r\n": "<CR+LF>", b"\n\r": "<LF+CR>", b"\n": "<LF>", b"\r": "<CR>"}
-lateBinding:Accessor = Accessor({"verbose": False, "start": 0})
+defaults:Accessor = Accessor({
+    "strict": False, "track": False, "picky": False, "compress": False, "useChangesCommand": False,
+    "texttype": ["*.md", "*.coco", "*.py", "*.pyi", "*.pth"],
+    "bintype": [],
+    "ignoreDirs": [".*", "__pycache__", ".mypy_cache"],
+    "ignoreDirsWhitelist": [],
+    "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*%s" % DUMP_FILE],
+    "ignoresWhitelist": []
+  })
 
 
 # Enums
@@ -78,7 +86,7 @@ MergeBlockType = enum.Enum("MergeBlockType", "KEEP INSERT REMOVE REPLACE MOVE") 
 
 
 # Value types
-data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [], untracked:List[str] = [], parent:int? = None)  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
+data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [], untracked:List[str] = [], parent:int? = None, revision:int? = None)  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
 data CommitInfo(number:int, ctime:int, message:str? = None)
 data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
 data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo], moves:Dict[str,Tuple[str,PathInfo]])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
@@ -86,11 +94,12 @@ data Range(tipe:MergeBlockType, indexes:int[])  # MergeBlockType[1,2,4], line nu
 data MergeBlock(tipe:MergeBlockType, lines:List[str], line:int, replaces:MergeBlock? = None, changes:Range? = None)
 data GlobBlock(isLiteral:bool, content:str, index:int)  # for file pattern rename/move matching
 data GlobBlock2(isLiteral:bool, content:str, matches:str)  # matching file pattern and input filename for translation
+DataType = TypeVar("DataType", BranchInfo, ChangeSet, MergeBlock, PathInfo)
 
 
 # Functions
-def printo(s:str, nl:str = "\n"): sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')); sys.stdout.flush()  # PEP528 compatibility
-def printe(s:str, nl:str = "\n"): sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')); sys.stderr.flush()
+def printo(s:str = "", nl:str = "\n"): sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')); sys.stdout.flush()  # PEP528 compatibility
+def printe(s:str = "", nl:str = "\n"): sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')); sys.stderr.flush()
 def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writing filenames  # PEP 529 compatibility
 def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of reading filenames
 try:
@@ -164,7 +173,9 @@ def getTermWidth() -> int =
   except: return 80
   termwidth.getTermWidth()[0]
 
-def branchFolder(branch:int, revision:int, base = ".", file = None) -> str = os.path.join(base, metaFolder, "b%d" % branch, "r%d" % revision) + ((os.sep + file) if file else "")
+def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.path.join(base ?? os.getcwd(), metaFolder, "b%d" % branch) + ((os.sep + file) if file else "")
+
+def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None) -> str = os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")
 
 def Exit(message:str = "", code = 1): printe("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else "")); sys.exit(code)
 
@@ -195,34 +206,39 @@ def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str
   (_hash.hexdigest(), wsize)
 
 def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
-  ''' Utility. '''
+  ''' Utility to find any entries of a dictionary in a list to return the dictionaries value. '''
   for k, v in map.items():
     if k in params: return v
   default
 
 def strftime(timestamp:int? = None) -> str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp / 1000. if timestamp is not None else None))
 
-def detectAndLoad(filename:str? = None, content:bytes? = None) -> Tuple[str,bytes,str[]] =
-  encoding:str; eol:bytes?; lines:str[] = []
+def detectAndLoad(filename:str? = None, content:bytes? = None, ignoreWhitespace:bool = False) -> Tuple[str,bytes,str[]] =
+  lines:str[] = []
   if filename is not None:
     with open(encode(filename), "rb") as fd: content = fd.read()
-  encoding = detectEncoding(content) ?? sys.getdefaultencoding()
-  eol =  eoldet(content)
+  encoding:str = detectEncoding(content) ?? sys.getdefaultencoding()
+  eol:bytes? = eoldet(content)
   if filename is not None:
     with codecs.open(encode(filename), encoding = encoding) as fd2: lines = safeSplit(fd2.read(), (eol ?? b"\n").decode(encoding))
   elif content is not None:
     lines = safeSplit(content.decode(encoding), (eol ?? b"\n").decode(encoding))
   else: return (sys.getdefaultencoding(), b"\n", [])
+  if ignoreWhitespace: lines[:] = [line.replace("\t", "  ").strip() for line in lines]
   (encoding, eol, lines)
 
-def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, **_kwargs) -> DataType: r = _old._asdict(); r.update(**_kwargs); return makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))
+def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, byValue:bool = False, **_kwargs) -> DataType =
+  ''' A better makedata() version. '''
+  r:Dict[str,Any] = _old._asdict()
+  r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required
+  makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here
 
 def user_block_input(output:List[str]):
   sep:str = input("Enter end-of-text marker (default: <empty line>: "); line:str = sep
   while True:
     line = input("> ")
     if line == sep: break
-    output.append(line)
+    output.append(line)  # writes to caller-provided list reference
 
 def merge(
       file:bytes? = None, into:bytes? = None,
@@ -230,7 +246,8 @@ def merge(
       mergeOperation:MergeOperation = MergeOperation.BOTH,
       charMergeOperation:MergeOperation = MergeOperation.BOTH,
       diffOnly:bool = False,
-      eol:bool = False
+      eol:bool = False,
+      ignoreWhitespace:bool = False
     ) -> Tuple[Union[bytes,List[MergeBlock]],bytes?] =
   ''' Merges other binary text contents 'file' (or reads file 'filename') into current text contents 'into' (or reads file 'intoname'), returning merged result.
       For update, the other version is assumed to be the "new/added" one, while for diff, the current changes are the ones "added".
@@ -241,8 +258,8 @@ def merge(
   '''
   encoding:str; othr:str[]; othreol:bytes?; curr:str[]; curreol:bytes?
   try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document
-    encoding, othreol, othr = detectAndLoad(filename = filename, content = file)
-    encoding, curreol, curr = detectAndLoad(filename = intoname, content = into)
+    encoding, othreol, othr = detectAndLoad(filename = filename, content = file, ignoreWhitespace = ignoreWhitespace)
+    encoding, curreol, curr = detectAndLoad(filename = intoname, content = into, ignoreWhitespace = ignoreWhitespace)
   except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename, intoname, E))
   if None not in [othreol, curreol] and othreol != curreol: warn("Differing EOL-styles detected during merge. Using current file's style for merged output")
   output:List[str] = list(difflib.Differ().compare(othr, curr))  # from generator expression
@@ -264,9 +281,7 @@ def merge(
       if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.REMOVE:  #  and len(blocks[-1].lines) == len(blocks[-2].lines):  # requires previous block and same number of lines TODO allow multiple intra-line merge for same-length blocks
         blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-2].lines, line = no - len(tmp) - 1, replaces = blocks[-1])  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
         blocks.pop()  # remove TOS due to merging two blocks into replace or modify
-    elif last == "?":  # marker for intra-line change comment -> add to block info
-      ilm:Range = getIntraLineMarkers(tmp[0])  # TODO still true? "? " line includes a trailing \n for some reason
-      blocks[-1] = dataCopy(MergeBlock, blocks[-1], changes = ilm)
+#    elif last == "?": pass # marker for intra-line change comment -> add to block info
     last = line[0]
     tmp[:] = [line[2:]]  # only keep current line for next block
   # TODO add code to detect block moves here
@@ -357,15 +372,10 @@ def lineMerge(othr:str, into:str, mergeOperation:MergeOperation = MergeOperation
     # TODO ask for insert or remove as well
   return "".join(out)
 
-def getIntraLineMarkers(line:str) -> Range =
-  ''' Return (type, [affected indices]) of "? "-line diff markers ("? " prefix must be removed). difflib never returns mixed markers per line. '''
-  if "^" in line: return Range(MergeBlockType.REPLACE, [i for i, c in enumerate(line) if c == "^"])  # TODO wrong, needs removal anyway
-  if "+" in line: return Range(MergeBlockType.INSERT, [i for i, c in enumerate(line) if c == "+"])
-  if "-" in line: return Range(MergeBlockType.REMOVE, [i for i, c in enumerate(line) if c == "-"])
-  Range(MergeBlockType.KEEP, [])
-
 def findSosVcsBase() -> Tuple[str?,str?,str?] =
-  ''' Attempts to find sos and legacy VCS base folders. '''
+  ''' Attempts to find sos and legacy VCS base folders.
+      Returns (SOS-repo root, VCS-repo root, VCS command)
+  '''
   debug("Detecting root folders...")
   path:str = os.getcwd()  # start in current folder, check parent until found or stopped
   vcs:Tuple[str?,str?] = (None, None)
@@ -471,7 +481,7 @@ def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -
   if exitOnConflict:
     for i in range(1, len(actions)):
       if sources[i] in targets[:i]: Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))
-  list(zip(sources, targets))
+  list(zip(sources, targets))  # convert to list to avoid generators
 
 def relativize(root:str, filepath:str) -> Tuple[str,str] =
   ''' Determine OS-independent relative folder path, and relative pattern path. '''

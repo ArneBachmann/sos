@@ -5,8 +5,6 @@ import builtins, codecs, enum, json, logging, os, shutil, sys, time, traceback, 
 from io import BytesIO, BufferedRandom, TextIOWrapper
 try: from unittest import mock  # Python 3
 except: import mock  # installed via pip
-try: from typing import Any, List, Union  # only required for mypy
-except: pass
 
 testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
 import configr  # optional dependency
@@ -92,8 +90,9 @@ class Tests(unittest.TestCase):
     os.chdir(testFolder)
 
 
-  def assertAllIn(_, what:str[], where:Union[str,List[str]]):
+  def assertAllIn(_, what:str[], where:Union[str,List[str]], only:bool = False):
     for w in what: _.assertIn(w, where)
+    if only: _.assertEqual(len(what), len(where))
 
   def assertAllNotIn(_, what:str[], where:Union[str,List[str]]):
     for w in what: _.assertNotIn(w, where)
@@ -154,8 +153,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(0, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
     _.assertEqual(0, len(changes.moves))
-    _.assertTrue(os.path.exists(sos.branchFolder(0, 1)))
-    _.assertTrue(os.path.exists(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))
+    _.assertTrue(os.path.exists(sos.revisionFolder(0, 1)))
+    _.assertTrue(os.path.exists(sos.revisionFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))
     # TODO test moves
 
   def testPatternPaths(_):
@@ -164,20 +163,48 @@ class Tests(unittest.TestCase):
     _.createFile("sub" + os.sep + "file1", "sdfsdf")
     sos.add("sub", "sub/file?")
     sos.commit("test")  # should pick up sub/file1 pattern
-    _.assertEqual(2, len(os.listdir(os.path.join(sos.metaFolder, "b0", "r1"))))  # sub/file1 was added
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # sub/file1 was added
     _.createFile(1)
     try: sos.commit("nothing"); _.fail()  # should not commit anything, as the file in base folder doesn't match the tracked pattern
     except: pass
 
+  def testNoArgs(_):
+    pass   # call "sos" without arguments should simply show help or info about missing arguments
+
   def testAutoUpgrade(_):
     sos.offline()
     with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "r", encoding = sos.UTF8) as fd: repo, branches, config = json.load(fd)
-    del repo["format"]  # simulate pre-1.4
-    repo["version"] = "0"
-    branches[:] = [branch[:-1] for branch in branches]
+    repo["version"] = "0"  # lower than any pip version
+    branches[:] = [branch[:5] for branch in branches]  # simulate some older state
+    del repo["format"]  # simulate pre-1.3.5
     with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "w", encoding = sos.UTF8) as fd: json.dump((repo, branches, config), fd, ensure_ascii = False)
     out = wrapChannels(() -> sos.status(options = ["--repo"]))
-    _.assertAllIn(["Upgraded repository metadata to match SOS version '2018.1210.3028'", "Upgraded repository metadata to match SOS version '1.4'"], out)
+    _.assertAllIn(["Upgraded repository metadata to match SOS version '2018.1210.3028'", "Upgraded repository metadata to match SOS version '1.3.5'"], out)
+
+  def testFastBranching(_):
+    _.createFile(1)
+    sos.offline(options = ["--strict"])  # b0/r0 = ./file1
+    _.createFile(2)
+    os.unlink("file1")
+    sos.commit()  # b0/r1 = ./file2
+    sos.branch(options = ["--fast", "--last"])  # branch b1 from b0/1 TODO modify once --fast becomes the new normal
+    _.assertAllIn([sos.metaFile, sos.metaBack, "b0", "b1"], os.listdir(sos.metaFolder), only = True)
+    _.createFile(3)
+    sos.commit()  # b1/r2 = ./file2, ./file3
+    _.assertAllIn([sos.metaFile, "r2"], os.listdir(sos.branchFolder(1)), only = True)
+    sos.branch(options = ["--fast", "--last"])  # branch b2 from b1/2
+    sos.destroy("0")  # remove parent of b1 and transitive parent of b2
+    _.assertAllIn([sos.metaFile, sos.metaBack, "b0_last", "b1", "b2"], os.listdir(sos.metaFolder), only = True)  # branch 0 was removed
+    _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(1)), only = True)  # revisions were copied to branch 1
+    _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(2)), only = True)  # revisions were copied to branch 1
+    # TODO test also other functions like status --repo, log
+
+  def testGetParentBranch(_):
+    m = sos.Accessor({"branches": {0: sos.Accessor({"parent": None, "revision": None}), 1: sos.Accessor({"parent": 0, "revision": 1})}})
+    _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 0))
+    _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 1))
+    _.assertEqual(1, sos.Metadata.getParentBranch(m, 1, 2))
+    _.assertEqual(0, sos.Metadata.getParentBranch(m, 0, 10))
 
   def testTokenizeGlobPattern(_):
     _.assertEqual([], sos.tokenizeGlobPattern(""))
@@ -236,11 +263,11 @@ class Tests(unittest.TestCase):
     _.existsFile(1, "something else")
 
   def testComputeSequentialPathSet(_):
-    os.makedirs(sos.branchFolder(0, 0))
-    os.makedirs(sos.branchFolder(0, 1))
-    os.makedirs(sos.branchFolder(0, 2))
-    os.makedirs(sos.branchFolder(0, 3))
-    os.makedirs(sos.branchFolder(0, 4))
+    os.makedirs(sos.revisionFolder(0, 0))
+    os.makedirs(sos.revisionFolder(0, 1))
+    os.makedirs(sos.revisionFolder(0, 2))
+    os.makedirs(sos.revisionFolder(0, 3))
+    os.makedirs(sos.revisionFolder(0, 4))
     m = sos.Metadata(os.getcwd())
     m.branch = 0
     m.commit = 2
@@ -257,6 +284,8 @@ class Tests(unittest.TestCase):
     m.saveCommit(0, 4)  # readd
     m.commits = {i: sos.CommitInfo(i, 0, None) for i in range(5)}
     m.saveBranch(0)
+    m.branches = {0: sos.BranchInfo(0, 0), 1: sos.BranchInfo(1, 0)}
+    m.saveBranches()
     m.computeSequentialPathSet(0, 4)
     _.assertEqual(2, len(m.paths))
 
@@ -283,7 +312,7 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["r0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))
     _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # only branch folder and meta data file
     _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0")))  # only commit folder and meta data file
-    _.assertEqual(1, len(os.listdir(sos.branchFolder(0, 0))))  # only meta data file
+    _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 0))))  # only meta data file
 
   def testOfflineWithFiles(_):
     _.createFile(1, "x" * 100)
@@ -295,7 +324,7 @@ class Tests(unittest.TestCase):
     _.assertAllIn([sos.metaFile, "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2", "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r0"))
     _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # only branch folder and meta data file
     _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0")))  # only commit folder and meta data file
-    _.assertEqual(3, len(os.listdir(sos.branchFolder(0, 0))))  # only meta data file plus branch base file copies
+    _.assertEqual(3, len(os.listdir(sos.revisionFolder(0, 0))))  # only meta data file plus branch base file copies
 
   def testBranch(_):
     _.createFile(1, "x" * 100)
@@ -305,14 +334,14 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["b0", "b1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder))
     _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))),
                   list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b1"))))
-    _.assertEqual(list(sorted(os.listdir(sos.branchFolder(0, 0)))),
-                  list(sorted(os.listdir(sos.branchFolder(1, 0)))))
+    _.assertEqual(list(sorted(os.listdir(sos.revisionFolder(0, 0)))),
+                  list(sorted(os.listdir(sos.revisionFolder(1, 0)))))
     _.createFile(1, "z")  # modify file
     sos.branch()  # b2/r0  branch to unnamed branch with modified file tree contents
     _.assertNotEqual(os.stat("." + os.sep + sos.metaFolder + os.sep + "b1" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa").st_size,
                      os.stat("." + os.sep + sos.metaFolder + os.sep + "b2" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa").st_size)
     _.createFile(3, "z")
-    sos.branch("from_last_revision", ["--last", "--stay"])  # b3/r0 create copy of other file1,file2 and don't switch
+    sos.branch("from_last_revision", options = ["--last", "--stay"])  # b3/r0 create copy of other file1,file2 and don't switch
     _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b3" + os.sep + "r0"))),
                   list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b2" + os.sep + "r0"))))
     # Check sos.status output which branch is marked
@@ -333,8 +362,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(changes.modifications))
     sos.commit("message")
     _.assertAllIn(["r0", "r1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))
-    _.assertAllIn([sos.metaFile, "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir(sos.branchFolder(0, 1)))
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 1))))  # no further files, only the modified one
+    _.assertAllIn([sos.metaFile, "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir(sos.revisionFolder(0, 1)))
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # no further files, only the modified one
     _.assertEqual(1, len(sos.changes("/0").modifications))  # vs. explicit revision on current branch
     _.assertEqual(1, len(sos.changes("0/0").modifications))  # vs. explicit branch/revision
     _.createFile(1, "")  # modify to empty file, mentioned in meta data, but not stored as own file
@@ -344,7 +373,7 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(changes.deletions))
     _.assertEqual(1, len(changes.modifications))
     sos.commit("modified")
-    _.assertEqual(1, len(os.listdir(sos.branchFolder(0, 2))))  # no additional files, only mentions in metadata
+    _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 2))))  # no additional files, only mentions in metadata
     try: sos.commit("nothing"); _.fail()  # expecting Exit due to no changes
     except: pass
 
@@ -425,9 +454,9 @@ class Tests(unittest.TestCase):
     _.assertTrue(_.existsFile(1))
 
     sos.commit("third", ["--force"])  # force because nothing to commit. should create r2 with same contents as r1, but as differential from r1, not from r0 (= no changes in meta folder)
-    _.assertTrue(os.path.exists(sos.branchFolder(0, 2)))
-    _.assertTrue(os.path.exists(sos.branchFolder(0, 2, file = sos.metaFile)))
-    _.assertEqual(1, len(os.listdir(sos.branchFolder(0, 2))))  # only meta data file, no differential files
+    _.assertTrue(os.path.exists(sos.revisionFolder(0, 2)))
+    _.assertTrue(os.path.exists(sos.revisionFolder(0, 2, file = sos.metaFile)))
+    _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 2))))  # only meta data file, no differential files
 
     sos.update("/1")  # do nothing, as nothing has changed
     _.assertTrue(_.existsFile(1))
@@ -435,7 +464,7 @@ class Tests(unittest.TestCase):
     _.createFile(2, "y" * 100)
 #    out = wrapChannels(() -> sos.branch("other"))  # won't comply as there are changes
 #    _.assertIn("--force", out)
-    sos.branch("other", ["--force"])  # automatically including file 2 (as we are in simple mode)
+    sos.branch("other", options = ["--force"])  # automatically including file 2 (as we are in simple mode)
     _.assertTrue(_.existsFile(2))
     sos.update("trunk", ["--add"])  # only add stuff
     _.assertTrue(_.existsFile(2))
@@ -528,19 +557,19 @@ class Tests(unittest.TestCase):
 
   def testPickyMode(_):
     ''' Confirm that picky mode reset tracked patterns after commits. '''
-    sos.offline("trunk", ["--picky"])
+    sos.offline("trunk", None, ["--picky"])
     changes = sos.changes()
     _.assertEqual(0, len(changes.additions))  # do not list any existing file as an addition
     sos.add(".", "./file?", ["--force"])
     _.createFile(1, "aa")
     sos.commit("First")  # add one file
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 1))))
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))
     _.createFile(2, "b")
     try: sos.commit("Second")  # add nothing, because picky
     except: pass
     sos.add(".", "./file?")
     sos.commit("Third")
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 2))))
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))
     out = wrapChannels(() -> sos.log([])).replace("\r", "")
     _.assertIn("  * r2", out)
     _.createFile(3, prefix = "sub")
@@ -552,22 +581,22 @@ class Tests(unittest.TestCase):
   def testTrackedSubfolder(_):
     ''' See if patterns for files in sub folders are picked up correctly. '''
     os.mkdir("." + os.sep + "sub")
-    sos.offline("trunk", ["--track"])
+    sos.offline("trunk", None, ["--track"])
     _.createFile(1, "x")
     _.createFile(1, "x", prefix = "sub")
     sos.add(".", "./file?")  # add glob pattern to track
     sos.commit("First")
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 1))))  # one new file + meta file
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file
     sos.add(".", "sub/file?")  # add glob pattern to track
     sos.commit("Second")  # one new file + meta
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 1))))  # one new file + meta file
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file
     os.unlink("file1")  # remove from basefolder
     _.createFile(2, "y")
     sos.remove(".", "sub/file?")
     try: sos.remove(".", "sub/bla"); _.fail()  # raises Exit. TODO test the "suggest a pattern" case
     except: pass
     sos.commit("Third")
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 2))))  # one new file + meta
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # one new file + meta
     # TODO also check if /file1 and sub/file1 were removed from index
 
   def testTrackedMode(_):
@@ -581,18 +610,18 @@ class Tests(unittest.TestCase):
     _.createFile("a123a")  # untracked file "a123a"
     sos.add(".", "./file?")  # add glob tracking pattern
     sos.commit("second")  # versions "file1"
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 1))))  # one new file + meta file
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file
     out = wrapChannels(() -> sos.status()).replace("\r", "")
     _.assertIn("  | ./file?", out)
 
     _.createFile(2)  # untracked file "file2"
     sos.commit("third")  # versions "file2"
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 2))))  # one new file + meta file
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # one new file + meta file
 
     os.mkdir("." + os.sep + "sub")
     _.createFile(3, prefix = "sub")  # untracked file "sub/file3"
     sos.commit("fourth", ["--force"])  # no tracking pattern matches the subfolder
-    _.assertEqual(1, len(os.listdir(sos.branchFolder(0, 3))))  # meta file only, no other tracked path/file
+    _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 3))))  # meta file only, no other tracked path/file
 
     sos.branch("Other")  # second branch containing file1 and file2 tracked by "./file?"
     sos.remove(".", "./file?")  # remove tracking pattern, but don't touch previously created and versioned files
@@ -603,7 +632,7 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(changes.additions))  # detected one addition "a123a", but won't recognize untracking files as deletion
 
     sos.commit("Second_2")
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(1, 1))))  # "a123a" + meta file
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(1, 1))))  # "a123a" + meta file
     _.existsFile(1, b"x" * 10)
     _.existsFile(2, b"x" * 10)
 
@@ -617,7 +646,7 @@ class Tests(unittest.TestCase):
 
     _.createFile("axxxa")  # new file that should be tracked on "test" now that we integrated "Other"
     sos.commit("fifth")  # create new revision after integrating updates from second branch
-    _.assertEqual(3, len(os.listdir(sos.branchFolder(0, 4))))  # one new file from other branch + one new in current folder + meta file
+    _.assertEqual(3, len(os.listdir(sos.revisionFolder(0, 4))))  # one new file from other branch + one new in current folder + meta file
     sos.switch("Other")  # switch back to just integrated branch that tracks only "a*a" - shouldn't do anything
     _.assertTrue(os.path.exists("." + os.sep + "file1"))
     _.assertTrue(os.path.exists("." + os.sep + "a123a"))
@@ -652,13 +681,13 @@ class Tests(unittest.TestCase):
     sos.offline("master", options = ["--force"])
     out = wrapChannels(() -> sos.changes(options = ['--progress'])).replace("\r", "").split("\n")
     _.assertFalse(any("Compression advantage" in line for line in out))  # simple mode should always print this to stdout
-    _.assertTrue(_.existsFile(sos.branchFolder(0, 0, file = "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"), b"x" * 10))
+    _.assertTrue(_.existsFile(sos.revisionFolder(0, 0, file = "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"), b"x" * 10))
     setRepoFlag("compress", True)  # was plain = uncompressed before
     _.createFile(2)
     out = wrapChannels(() -> sos.commit("Added file2", options = ['--progress'])).replace("\r", "").split("\n")
     _.assertTrue(any("Compression advantage" in line for line in out))
-    _.assertTrue(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists
-    _.assertFalse(_.existsFile(sos.branchFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead
+    _.assertTrue(_.existsFile(sos.revisionFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists
+    _.assertFalse(_.existsFile(sos.revisionFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead
 
   def testLocalConfig(_):
     sos.offline("bla", options = [])
@@ -759,10 +788,10 @@ class Tests(unittest.TestCase):
     # TODO test same for simple mode
     _.createFile(1)
     sos.defaults.ignores[:] = ["file*"]  # replace in-place
-    sos.offline("xx", ["--track", "--strict"])  # because nothing to commit due to ignore pattern
+    sos.offline("xx", options = ["--track", "--strict"])  # because nothing to commit due to ignore pattern
     sos.add(".", "./file*")  # add tracking pattern for "file1"
     sos.commit(options = ["--force"])  # attempt to commit the file
-    _.assertEqual(1, len(os.listdir(sos.branchFolder(0, 1))))  # only meta data, file1 was ignored
+    _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 1))))  # only meta data, file1 was ignored
     try: sos.online(); _.fail()  # Exit because dirty
     except: pass  # exception expected
     _.createFile("x2")  # add another change
@@ -774,25 +803,25 @@ class Tests(unittest.TestCase):
 
     _.createFile(1)
     sos.defaults.ignoresWhitelist[:] = ["file*"]
-    sos.offline("xx", ["--track"])
+    sos.offline("xx", None, ["--track"])
     sos.add(".", "./file*")
     sos.commit()  # should NOT ask for force here
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 1))))  # meta data and "file1", file1 was whitelisted
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # meta data and "file1", file1 was whitelisted
 
   def testRemove(_):
     _.createFile(1, "x" * 100)
     sos.offline("trunk")
-    try: sos.delete("trunk"); _fail()
+    try: sos.destroy("trunk"); _fail()
     except: pass
     _.createFile(2, "y" * 10)
     sos.branch("added")  # creates new branch, writes repo metadata, and therefore creates backup copy
-    sos.delete("trunk")
-    _.assertEqual(3, len(os.listdir("." + os.sep + sos.metaFolder)))  # meta data file, backup and "b1"
+    sos.destroy("trunk")
+    _.assertAllIn([sos.metaFile, sos.metaBack, "b0_last", "b1"], os.listdir("." + os.sep + sos.metaFolder))
     _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b1"))
     _.assertFalse(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0"))
     sos.branch("next")
     _.createFile(3, "y" * 10)  # make a change
-    sos.delete("added", "--force")  # should succeed
+    sos.destroy("added", "--force")  # should succeed
 
   def testUsage(_):
     try: sos.usage(); _.fail()  # TODO expect sys.exit(0)
@@ -826,9 +855,9 @@ class Tests(unittest.TestCase):
     sos.add(".", "./file1")
     sos.add(".", "./file2")
     sos.commit(onlys = f{"./file1"})
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 1))))  # only meta and file1
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # only meta and file1
     sos.commit()  # adds also file2
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 2))))  # only meta and file1
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # only meta and file1
     _.createFile(1, "cc")  # modify both files
     _.createFile(2, "dd")
     try: sos.config(["set", "texttype", "file2"])
@@ -907,8 +936,8 @@ class Tests(unittest.TestCase):
     _.createFile("1a2b")  # should not be tracked
     _.createFile("a1b2")  # should be tracked
     sos.commit()
-    _.assertEqual(2, len(os.listdir(sos.branchFolder(0, 1))))
-    _.assertTrue(os.path.exists(sos.branchFolder(0, 1, file = "93b38f90892eb5c57779ca9c0b6fbdf6774daeee3342f56f3e78eb2fe5336c50")))  # a1b2
+    _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))
+    _.assertTrue(os.path.exists(sos.revisionFolder(0, 1, file = "93b38f90892eb5c57779ca9c0b6fbdf6774daeee3342f56f3e78eb2fe5336c50")))  # a1b2
     _.createFile("1a1b1")
     _.createFile("1a1b2")
     sos.add(".", "?a?b*")
@@ -919,8 +948,8 @@ class Tests(unittest.TestCase):
   def testHashCollision(_):
     sos.offline()
     _.createFile(1)
-    os.mkdir(sos.branchFolder(0, 1))
-    _.createFile("b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa", prefix = sos.branchFolder(0, 1))
+    os.mkdir(sos.revisionFolder(0, 1))
+    _.createFile("b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa", prefix = sos.revisionFolder(0, 1))
     _.createFile(1)
     try: sos.commit(); _.fail()  # should exit with error due to collision detection
     except SystemExit as E: _.assertEqual(1, E.code)  # TODO will capture exit(0) which is wrong, change to check code in all places
@@ -943,6 +972,8 @@ class Tests(unittest.TestCase):
 
   # TODO test +++ --- in diff
   # TODO test +01/-02/*..
+  # TODO tests for loadcommit redirection
+  # TODO test wrong branch/revision after fast branching, would raise exception for -1 otherwise
 
 if __name__ == '__main__':
   logging.basicConfig(level = logging.DEBUG if '-v' in sys.argv or "true" in [os.getenv("DEBUG", "false").strip().lower(), os.getenv("CI", "false").strip().lower()] else logging.INFO,

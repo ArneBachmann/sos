@@ -3,11 +3,8 @@
 
 # Standard modules
 import codecs, collections, fnmatch, json, logging, mimetypes, os, shutil, sys, time
-try:
-  from typing import Any, Dict, FrozenSet, IO, Iterator, List, Set, Tuple, Type, Union  # only required for mypy
-except: pass  # typing not available (prior Python 3.5)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-try:
+try:  # try needed as paths differ when installed via pip TODO investigate further
   import sos.version as version
   from sos.utility import *
   from sos.usage import *
@@ -17,12 +14,10 @@ except:
   from usage import *
 
 # External dependencies
-import configr  # optional dependency
-#from enforce import runtime_validation  # https://github.com/RussBaz/enforce  TODO doesn't work for "data" types
+import configr
 
 
 # Constants
-defaults = Accessor({"strict": False, "track": False, "picky": False, "compress": False, "texttype": ["*.md"], "bintype": [], "ignoreDirs": [".*", "__pycache__"], "ignoreDirsWhitelist": [], "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*.sos.zip"], "ignoresWhitelist": []})
 termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
 APPNAME:str = "Subversion Offline Solution V%s (C) Arne Bachmann" % version.__release_version__
 
@@ -30,7 +25,7 @@ APPNAME:str = "Subversion Offline Solution V%s (C) Arne Bachmann" % version.__re
 # Functions
 def loadConfig() -> configr.Configr =  # Accessor when using defaults only
   ''' Simplifies loading user-global config from file system or returning application defaults. '''
-  config:configr.Configr = configr.Configr("sos", defaults = defaults)  # defaults are used if key is not configured, but won't be saved
+  config:configr.Configr = configr.Configr(COMMAND, defaults = defaults)  # defaults are used if key is not configured, but won't be saved
   f, g = config.loadSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))  # latter for testing only
   if f is None: debug("Encountered a problem while loading the user configuration: %r" % g)
   config
@@ -40,7 +35,6 @@ def saveConfig(config:configr.Configr) -> Tuple[str?, Exception?] =
 
 
 # Main data class
-#@runtime_validation
 class Metadata:
   ''' This class doesn't represent the entire repository state in memory,
       but serves as a container for different repo operations,
@@ -54,7 +48,7 @@ class Metadata:
     _.branch:int? = None  # current branch number
     _.branches:Dict[int,BranchInfo] = {}  # branch number zero represents the initial state at branching
     _.repoConf:Dict[str,Any] = {}
-    _.track:bool; _.picky:bool; _.strict:bool; _.compress:bool
+    _.track:bool; _.picky:bool; _.strict:bool; _.compress:bool; _.version:str?; _.format:int?
     _.loadBranches(offline = offline)  # loads above values from repository, or uses application defaults
 
     _.commits:Dict[int,CommitInfo] = {}  # consecutive numbers per branch, starting at 0
@@ -75,38 +69,44 @@ class Metadata:
     if len(changes.modifications) > 0: printo(ajoin("MOD ", sorted(changes.modifications.keys()), "\n"))
 
   def loadBranches(_, offline:bool = False):
-    ''' Load list of branches and current branch info from metadata file. '''
+    ''' Load list of branches and current branch info from metadata file. offline = offline command avoids message. '''
     try:  # fails if not yet created (on initial branch/commit)
-      branches:List[Tuple]
+      branches:List[List]  # deserialized JSON is only list, while the real type of _.branches is a dict number -> BranchInfo (Coconut data type/named tuple)
       with codecs.open(encode(os.path.join(_.root, metaFolder, metaFile)), "r", encoding = UTF8) as fd:
         repo, branches, config = json.load(fd)
       _.tags = repo["tags"]  # list of commit messages to treat as globally unique tags
       _.branch = repo["branch"]  # current branch integer
-      _.track, _.picky, _.strict, _.compress, _.version = [repo[r] for r in ["track", "picky", "strict", "compress", "version"]]
+      _.track, _.picky, _.strict, _.compress, _.version, _.format = [repo.get(r, None) for r in ["track", "picky", "strict", "compress", "version", "format"]]
       upgraded:List[str] = []
-      if repo["version"] < "2018.1210.3028":  # For older versions, see https://pypi.python.org/simple/sos-vcs/
-        branches[:] = [branch + ([[]] if len(branch) < 6 else []) for branch in branches]  # add untracking information
+      if _.version is None:
+        _.version = "0 - pre-1.2"
+        upgraded.append("pre-1.2")
+      if len(branches[0]) < 6:  # For older versions, see https://pypi.python.org/simple/sos-vcs/
+        branches[:] = [branch + [[]] * (6 - len(branch)) for branch in branches]  # add untracking information, if missing
         upgraded.append("2018.1210.3028")
-      if "format" not in repo:  # must be pre-1.4
-        repo["format"] = 1  # 1.4+
-        branches[:] = [branch + [None] for branch in branches]  # adds empty branching point information
-        upgraded.append("1.4")
+      if _.format is None:  # must be before 1.3.5+
+        _.format = METADATA_FORMAT  # marker for first metadata file format
+        branches[:] = [branch + [None] * (8 - len(branch)) for branch in branches]  # adds empty branching point information (branch/revision)
+        upgraded.append("1.3.5")
       _.branches = {i.number: i for i in (BranchInfo(*item) for item in branches)}  # re-create type info
       _.repoConf = config
       if upgraded:
         for upgrade in upgraded: warn("!!! Upgraded repository metadata to match SOS version %r" % upgrade)
-        warn("To undo upgrade%s, restore metadata *now* from '%s/%s'" % ("s" if len(upgraded) > 1 else "", metaFolder, metaBack))
+        warn("To revert the metadata upgrade%s, restore %s/%s from %s/%s NOW" % ("s" if len(upgraded) > 1 else "", metaFolder, metaFile, metaFolder, metaBack))
         _.saveBranches()
-    except Exception as E:  # if not found, create metadata folder
+    except Exception as E:  # if not found, create metadata folder with default values
       _.branches = {}
-      _.track, _.picky, _.strict, _.compress, _.version = [defaults[k] for k in ["track", "picky", "strict", "compress"]] + [version.__version__]
+      _.track, _.picky, _.strict, _.compress, _.version, _.format = [defaults[k] for k in ["track", "picky", "strict", "compress"]] + [version.__version__, METADATA_FORMAT]
       (debug if offline else warn)("Couldn't read branches metadata: %r" % E)
 
   def saveBranches(_, also:Dict[str,Any] = {}):
     ''' Save list of branches and current branch info to metadata file. '''
-    tryOrIgnore(() -> shutil.copy2(encode(os.path.join(_.root, metaFolder, metaFile)), encode(os.path.join(_.root, metaFolder, metaBack))))
+    tryOrIgnore(() -> shutil.copy2(encode(os.path.join(_.root, metaFolder, metaFile)), encode(os.path.join(_.root, metaFolder, metaBack))))  # backup
     with codecs.open(encode(os.path.join(_.root, metaFolder, metaFile)), "w", encoding = UTF8) as fd:
-      store:Dict[str,Any] = {"format": 1, "version": _.version, "tags": _.tags, "branch": _.branch, "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress}
+      store:Dict[str,Any] = {
+          "tags": _.tags, "branch": _.branch,
+          "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress, "version": _.version, "format": METADATA_FORMAT  # HINT uses _.version instead of constant to allow the upgrade procedure to write a specific version
+        }
       store.update(also)  # allows overriding certain values at certain points in time
       json.dump((store, list(_.branches.values()), _.repoConf), fd, ensure_ascii = False)  # stores using unicode codepoints, fd knows how to encode them
 
@@ -128,43 +128,53 @@ class Metadata:
 
   def loadBranch(_, branch:int):
     ''' Load all commit information from a branch meta data file. '''
-    with codecs.open(encode(os.path.join(_.root, metaFolder, "b%d" % branch, metaFile)), "r", encoding = UTF8) as fd:
+    with codecs.open(encode(branchFolder(branch, file = metaFile)), "r", encoding = UTF8) as fd:
       commits:List[List[Any]] = json.load(fd)  # list of CommitInfo that needs to be unmarshalled into value types
     _.commits = {i.number: i for i in (CommitInfo(*item) for item in commits)}  # re-create type info
     _.branch = branch
 
   def saveBranch(_, branch:int):
-    ''' Save all commit information to a branch meta data file. '''
-    tryOrIgnore(() -> shutil.copy2(encode(os.path.join(_.root, metaFolder, "b%d" % branch, metaFile)), encode(os.path.join(_.root, metaFolder, metaBack))))
-    with codecs.open(encode(os.path.join(_.root, metaFolder, "b%d" % branch, metaFile)), "w", encoding = UTF8) as fd:
+    ''' Save all commits to a branch meta data file. '''
+    tryOrIgnore(() -> shutil.copy2(encode(branchFolder(branch, file = metaFile)), encode(branchFolder(branch, metaBack))))  # backup
+    with codecs.open(encode(branchFolder(branch, file = metaFile)), "w", encoding = UTF8) as fd:
       json.dump(list(_.commits.values()), fd, ensure_ascii = False)
 
-  def duplicateBranch(_, branch:int, name:str?):
-    ''' Create branch from an existing branch/revision. WARN: Caller must have loaded branches information.
-        branch: target branch (should not exist yet)
-        name: optional name of new branch
+  def duplicateBranch(_, branch:int, name:str? = None, initialMessage:str? = None, full:bool = True):
+    ''' Create branch from an existing branch/revision.
+        In case of full branching, copy all revisions, otherwise create only reference to originating branch/revision.
+        branch: new target branch number (must not exist yet)
+        name: optional name of new branch (currently always set by caller)
+        initialMessage: message for commit if not last and file tree modified
+        full: always create full branch copy, don't use a parent reference
         _.branch: current branch
     '''
     debug("Duplicating branch '%s' to '%s'..." % (_.branches[_.branch].name ?? ("b%d" % _.branch), (name ?? "b%d" % branch)))
-    tracked:List[str] =   [t for t in _.branches[_.branch].tracked]  # copy
-    untracked:List[str] = [u for u in _.branches[_.branch].untracked]
-    os.makedirs(encode(branchFolder(branch, 0, base = _.root)))
-    _.loadBranch(_.branch)
+    now:int = int(time.time() * 1000)
+    _.loadBranch(_.branch)  # load commits for current (originating) branch
     revision:int = max(_.commits)
-    _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
-    for path, pinfo in _.paths.items():
-      _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
-    _.commits = {0: CommitInfo(0, int(time.time() * 1000), "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))}  # store initial commit
-    _.saveBranch(branch)  # save branch meta data to branch folder
-    _.saveCommit(branch, 0)  # save commit meta data to revision folder
-    _.branches[branch] = BranchInfo(branch, _.commits[0].ctime, name, _.branches[_.branch].inSync, tracked, untracked)  # save branch info, before storing repo state at caller
+    _.commits.clear()
+    newBranch:BranchInfo = dataCopy(BranchInfo, _.branches[_.branch],
+        number = branch, ctime = now, name = name ?? "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch),
+        tracked = [t for t in _.branches[_.branch].tracked], untracked = [u for u in _.branches[_.branch].untracked],
+        parent = None if full else _.branch, revision = None if full else revision
+      )
+    os.makedirs(encode(revisionFolder(branch, 0, base = _.root) if full else branchFolder(branch, base = _.root)))
+    if full:  # not fast branching via reference - copy all current files to new branch
+      _.computeSequentialPathSet(_.branch, revision)  # full set of files in latest revision in _.paths
+      for path, pinfo in _.paths.items(): _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)  # copy into initial branch revision
+      _.commits[0] = CommitInfo(0, now, initialMessage ?? "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))  # store initial commit TODO also contain message from latest revision of originating branch
+      _.saveCommit(branch, 0)  # save commit meta data to revision folder
+    _.saveBranch(branch)  # save branch meta data to branch folder - for fast branching, only empty dict
+    _.branches[branch] = newBranch  # save branches meta data, needs to be saved in caller code
 
   def createBranch(_, branch:int, name:str? = None, initialMessage:str? = None):
-    ''' Create a new branch from current file tree. This clears all known commits and modifies the file system.
-        branch: target branch (should not exist yet)
+    ''' Create a new branch from the current file tree. This clears all known commits and modifies the file system.
+        branch: target branch number (must not exist yet)
         name: optional name of new branch
+        initialMessage: commit message for revision 0 of the new branch
         _.branch: current branch, must exist already
     '''
+    now:int = int(time.time() * 1000)
     simpleMode = not (_.track or _.picky)
     tracked:List[str] =  [t for t in _.branches[_.branch].tracked]   if _.track and len(_.branches) > 0 else []  # in case of initial branch creation
     untracked:List[str] = [t for t in _.branches[_.branch].untracked] if _.track and len(_.branches) > 0 else []
@@ -176,44 +186,59 @@ class Metadata:
       if msg: printo(msg)  # display compression factor
       _.paths.update(changes.additions.items())
     else:  # tracking or picky mode: branch from latest revision
-      os.makedirs(encode(branchFolder(branch, 0, base = _.root)))
+      os.makedirs(encode(revisionFolder(branch, 0, base = _.root)))
       if _.branch is not None:  # not immediately after "offline" - copy files from current branch
         _.loadBranch(_.branch)
         revision:int = max(_.commits)  # TODO what if last switch was to an earlier revision? no persisting of last checkout
         _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
         for path, pinfo in _.paths.items():
           _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
-    ts = int(time.time() * 1000)
-    _.commits = {0: CommitInfo(0, ts, initialMessage ?? "Branched on %s" % strftime(ts))}  # store initial commit for new branch
+    _.commits = {0: CommitInfo(0, now, initialMessage ?? "Branched on %s" % strftime(now))}  # store initial commit for new branch
     _.saveBranch(branch)  # save branch meta data (revisions) to branch folder
     _.saveCommit(branch, 0)  # save commit meta data to revision folder
     _.branches[branch] = BranchInfo(branch, _.commits[0].ctime, name, True if len(_.branches) == 0 else _.branches[_.branch].inSync, tracked, untracked)  # save branch info, in case it is needed
 
   def removeBranch(_, branch:int) -> BranchInfo =
     ''' Entirely remove a branch and all its revisions from the file system. '''
-    shutil.rmtree(encode(os.path.join(_.root, metaFolder, "b%d" % branch)))  # TODO put into recycle bin, under ./sos?
-    binfo = _.branches[branch]
+    binfo:BranchInfo
+    deps:List[Tuple[int,int]] = [(binfo.number, binfo.revision) for binfo in _.branches.values() if binfo.parent is not None and _.getParentBranch(binfo.number, 0) == branch]  # get transitively depending branches
+    if deps:  # need to copy all parent revisions to dependet branches first
+      minrev:int = min([e[1] for e in deps])  # minimum revision ever branched from parent (ignoring transitive branching!)
+      progress:indicator = ProgressIndicator()
+      for rev in range(0, minrev + 1):  # rely on caching by copying revision-wise as long as needed in all depending branches
+        for dep, _rev in deps:
+          if rev <= _rev:
+            printo("\rIntegrating revision %02d into dependant branch %02d %s" % (rev, dep, progress.getIndicator()))
+            shutil.copytree(encode(revisionFolder(branch, rev, base = _.root)), encode(revisionFolder(dep, rev, base = _.root)))  # folder would not exist yet
+      for dep, _rev in deps:  # copy remaining revisions per branch
+        for rev in range(minrev + 1, _rev + 1):
+          printo("\rIntegrating revision %02d into dependant branch %02d %s" % (rev, dep, progress.getIndicator()))
+          shutil.copytree(encode(revisionFolder(_.getParentBranch(dep, rev), rev, base = _.root)), encode(revisionFolder(dep, rev, base = _.root)))
+        _.branches[dep] = dataCopy(BranchInfo, _.branches[dep], parent = None, revision = None)  # remove reference information
+    printo(" " * termWidth + "\r")
+    tryOrIgnore(() -> shutil.rmtree(encode(branchFolder(branch) + BACKUP_SUFFIX)))  # remove previous backup first
+    os.rename(encode(branchFolder(branch)), encode(branchFolder(branch) + BACKUP_SUFFIX))
+    binfo = _.branches[branch]  # keep reference for caller
     del _.branches[branch]
-    _.branch = max(_.branches)
+    _.branch = max(_.branches)  # switch to another valid branch
     _.saveBranches()
     _.commits.clear()
     binfo
 
   def loadCommit(_, branch:int, revision:int):
-    ''' Load all file information from a commit meta data. '''
-    with codecs.open(encode(branchFolder(branch, revision, base = _.root, file = metaFile)), "r", encoding = UTF8) as fd:
-      _.paths = json.load(fd)
+    ''' Load all file information from a commit meta data; if branched from another branch before specified revision, load correct revision recursively. '''
+    _branch:int = _.getParentBranch(branch, revision)
+    with codecs.open(encode(revisionFolder(_branch, revision, base = _.root, file = metaFile)), "r", encoding = UTF8) as fd: _.paths = json.load(fd)
     _.paths = {path: PathInfo(*item) for path, item in _.paths.items()}  # re-create type info
-    _.branch = branch
+    _.branch = branch  # store current branch information = "switch" to loaded branch/commit
 
   def saveCommit(_, branch:int, revision:int):
     ''' Save all file information to a commit meta data file. '''
-    target:str = branchFolder(branch, revision, base = _.root)
+    target:str = revisionFolder(branch, revision, base = _.root)
     try: os.makedirs(encode(target))
     except: pass
-    tryOrIgnore(() -> shutil.copy2(encode(os.path.join(target, metaFile)), encode(os.path.join(target, metaBack))))
-    with codecs.open(encode(os.path.join(target, metaFile)), "w", encoding = UTF8) as fd:
-      json.dump(_.paths, fd, ensure_ascii = False)
+    tryOrIgnore(() -> shutil.copy2(encode(os.path.join(target, metaFile)), encode(os.path.join(target, metaBack))))  # ignore error for first backup
+    with codecs.open(encode(os.path.join(target, metaFile)), "w", encoding = UTF8) as fd: json.dump(_.paths, fd, ensure_ascii = False)
 
   def findChanges(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None, dontConsider:FrozenSet[str]? = None, progress:bool = False) -> Tuple[ChangeSet,str?] =
     ''' Find changes on the file system vs. in-memory paths (which should reflect the latest commit state).
@@ -227,7 +252,7 @@ class Metadata:
     '''
     write = branch is not None and revision is not None
     if write:
-      try: os.makedirs(encode(branchFolder(branch, revision, base = _.root)))
+      try: os.makedirs(encode(revisionFolder(branch, revision, base = _.root)))
       except FileExistsError: pass  # HINT "try" only necessary for *testing* hash collision code (!) TODO probably raise exception otherwise in any case?
     changes:ChangeSet = ChangeSet({}, {}, {}, {})  # TODO Needs explicity initialization due to mypy problems with default arguments :-(
     indicator:ProgressIndicator? = ProgressIndicator() if progress else None  # optional file list progress indicator
@@ -262,7 +287,7 @@ class Metadata:
         if filename not in _.paths:  # detected file not present (or untracked) in (other) branch
           nameHash = hashStr(filename)
           try:
-            hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if size > 0 else (None, 0)
+            hashed, written = hashFile(filepath, _.compress, saveTo = revisionFolder(branch, revision, base = _.root, file = nameHash) if write else None, callback = ((sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if show else None) if size > 0 else (None, 0)
             changes.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
             compressed += written; original += size
           except Exception as E: exception(E)
@@ -270,12 +295,12 @@ class Metadata:
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
           try:
-            hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if size > 0 else (None, 0)
+            hashed, written = hashFile(filepath, _.compress, saveTo = revisionFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if size > 0 else (None, 0)
             changes.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
           except Exception as E: exception(E)
         elif size != last.size or (not checkContent and mtime != last.mtime) or (checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress)[0] != last.hash), default = False)):  # detected a modification TODO wrap hashFile exception
           try:
-            hashed, written = hashFile(filepath, _.compress, saveTo = branchFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
+            hashed, written = hashFile(filepath, _.compress, saveTo = revisionFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
             changes.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
           except Exception as E: exception(E)
         else: continue  # with next file
@@ -305,12 +330,16 @@ class Metadata:
     if incrementally: yield _.paths
     m:Metadata = Metadata(_.root); rev:int  # next changes TODO avoid loading all metadata and config
     for rev in range(1, revision + 1):
-      m.loadCommit(branch, rev)
+      m.loadCommit(_.getParentBranch(branch, rev), rev)
       for p, info in m.paths.items():
         if info.size == None: del _.paths[p]
         else: _.paths[p] = info
       if incrementally: yield _.paths
     yield None  # for the default case - not incrementally
+
+  def getTrackingPatterns(_, branch:int? = None, negative:bool = False) -> FrozenSet[str] =
+    ''' Returns list of tracking patterns (or untracking patterns if negative) for provided branch or current branch. '''
+    f{} if not (_.track or _.picky) else frozenset(_.branches[branch ?? _.branch].untracked if negative else _.branches[branch ?? _.branch].tracked)
 
   def parseRevisionString(_, argument:str) -> Tuple[int?,int?]:
     ''' Commit identifiers can be str or int for branch, and int for revision.
@@ -334,21 +363,29 @@ class Metadata:
 
   def findRevision(_, branch:int, revision:int, nameHash:str) -> Tuple[int,str] =
     while True:  # find latest revision that contained the file physically
-      source:str = branchFolder(branch, revision, base = _.root, file = nameHash)
+      _branch:int = _.getParentBranch(branch, revision)
+      source:str = revisionFolder(_branch, revision, base = _.root, file = nameHash)
       if os.path.exists(encode(source)) and os.path.isfile(source): break
       revision -= 1
       if revision < 0: Exit("Cannot determine versioned file '%s' from specified branch '%d'" % (nameHash, branch))
     revision, source
 
+  def getParentBranch(_, branch:int, revision:int) -> int =
+    ''' Determine originating branch for a (potentially branched) revision, traversing all branch parents until found. '''
+    other:int? = _.branches[branch].parent  # reference to originating parent branch, or None
+    if other is None or revision > _.branches[branch].revision: return branch # need to load commit from other branch instead
+    while _.branches[other].parent is not None and revision <= _.branches[other].revision: other = _.branches[other].parent
+    other
+
   def copyVersionedFile(_, branch:int, revision:int, toBranch:int, toRevision:int, pinfo:PathInfo):
     ''' Copy versioned file to other branch/revision. '''
-    target:str = branchFolder(toBranch, toRevision, base = _.root, file = pinfo.nameHash)
+    target:str = revisionFolder(toBranch, toRevision, base = _.root, file = pinfo.nameHash)
     revision, source = _.findRevision(branch, revision, pinfo.nameHash)
     shutil.copy2(encode(source), encode(target))
 
   def readOrCopyVersionedFile(_, branch:int, revision:int, nameHash:str, toFile:str? = None) -> bytes? =
     ''' Return file contents, or copy contents into file path provided. '''
-    source:str = branchFolder(branch, revision, base = _.root, file = nameHash)
+    source:str = revisionFolder(_.getParentBranch(branch, revision), revision, base = _.root, file = nameHash)
     try:
       with openIt(source, "r", _.compress) as fd:
         if toFile is None: return fd.read()  # read bytes into memory and return
@@ -384,13 +421,9 @@ class Metadata:
     except Exception as E: error("Cannot update file's timestamp after restoration '%r'" % E)
     None
 
-  def getTrackingPatterns(_, branch:int? = None, negative:bool = False) -> FrozenSet[str] =
-    ''' Returns list of tracking patterns (or untracking patterns if negative) for provided branch or current branch. '''
-    f{} if not (_.track or _.picky) else frozenset(_.branches[branch ?? _.branch].untracked if negative else _.branches[branch ?? _.branch].tracked)
-
 
 # Main client operations
-def offline(argument:str? = None, options:str[] = []):
+def offline(name:str? = None, initialMessage:str? = None, options:str[] = []):
   ''' Initial command to start working offline. '''
   if os.path.exists(encode(metaFolder)):
     if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over.\nUse 'sos online' to check for dirty branches, or\nWipe existing offline branches with 'sos offline --force'")
@@ -406,7 +439,7 @@ def offline(argument:str? = None, options:str[] = []):
   elif '--track'  in options or m.c.track:    m.track =    True   # Svn-like
   if '--strict'   in options or m.c.strict:   m.strict =   True   # always hash contents
   debug(MARKER + "Going offline...")
-  m.createBranch(0, argument ?? defaults["defaultbranch"], initialMessage = "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
+  m.createBranch(0, name ?? defaults["defaultbranch"], initialMessage ?? "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
   m.saveBranches(also = {"version": version.__version__})  # stores version info only once. no change immediately after going offline, going back online won't issue a warning
   info(MARKER + "Offline repository prepared. Use 'sos online' to finish offline work")
@@ -416,10 +449,13 @@ def online(options:str[] = []):
   debug(MARKER + "Going back online...")
   force:bool = '--force' in options
   m:Metadata = Metadata()
+  strict:bool = '--strict' in options or m.strict
   m.loadBranches()
   if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (dirty) branches.\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit dirty branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions")
-  strict:bool = '--strict' in options or m.strict
+  m.loadBranch(m.branch)
+  maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
   if options.count("--force") < 2:
+    m.computeSequentialPathSet(m.branch, maxi)  # load all commits up to specified revision
     changes, msg = m.findChanges(
       checkContent = strict,
       considerOnly = None if not (m.track or m.picky) else m.getTrackingPatterns(),
@@ -430,44 +466,47 @@ def online(options:str[] = []):
   except Exception as E: Exit("Error removing offline repository: %r" % E)
   info(MARKER + "Offline repository removed, you're back online")
 
-def branch(argument:str? = None, options:str[] = []):
-  ''' Create a new branch (from file tree or last revision) and (by default) continue working on it. '''
+def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
+  ''' Create a new branch (from file tree or last revision) and (by default) continue working on it.
+      Force not necessary, as either branching from last  revision anyway, or branching file tree anyway.
+  '''
   last:bool = '--last' in options  # use last revision for branching, not current file tree
-  stay:bool = '--stay' in options  # continue on current branch after branching
-  force:bool = '--force' in options  # branch even with local modifications
+  stay:bool = '--stay' in options  # continue on current branch after branching (don't switch)
+  fast:bool = '--fast' in options  # branch by referencing TODO move to default and use --full instead for old behavior
   m:Metadata = Metadata()
   m.loadBranch(m.branch)
-  if argument and m.getBranchByName(argument) is not None: Exit("Branch '%s' already exists. Cannot proceed" % argument)  # create a named branch
+  maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision
+  if name and m.getBranchByName(name) is not None: Exit("Branch '%s' already exists. Cannot proceed" % name)  # attempted to create a named branch
   branch = max(m.branches.keys()) + 1  # next branch's key - this isn't atomic but we assume single-user non-concurrent use here
-  debug(MARKER + "Branching to %sbranch b%02d%s%s..." % ("unnamed " if argument is None else "", branch, " '%s'" % argument if argument else "", " from last revision" if last else ""))
-  if last: m.duplicateBranch(branch, (argument ?? "") + " (Branched from r%02d/b%02d)" % (m.branch, max(m.commits.keys())))  # branch from branch's last revision
-  else: m.createBranch(branch, argument ?? "Branched from r%02d/b%02d" % (m.branch, max(m.commits.keys())))  #  branch from current file tree state
-  if not stay:
-    m.branch = branch
-    m.saveBranches()
-  info(MARKER + "%s new %sbranch b%02d%s" % ("Continue work after branching" if stay else "Switched to", "unnamed " if argument is None else "", branch, " '%s'" % argument if argument else ""))
+  debug(MARKER + "Branching to %sbranch b%02d%s%s..." % ("unnamed " if name is None else "", branch, " '%s'" % name if name is not None else "", " from last revision" if last else ""))
+  if last: m.duplicateBranch(branch, name, (initialMessage + " " if initialMessage else "") + "(Branched from r%02d/b%02d)" % (m.branch, maxi), not fast)  # branch from last revision
+  else: m.createBranch(branch, name, initialMessage ?? "Branched from file tree after r%02d/b%02d" % (m.branch, maxi))  # branch from current file tree state
+  if not stay: m.branch = branch
+  m.saveBranches()  # TODO or indent again?
+  info(MARKER + "%s new %sbranch b%02d%s" % ("Continue work after branching" if stay else "Switched to", "unnamed " if name is None else "", branch, " '%s'" % name if name else ""))
 
-def changes(argument:str = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None) -> ChangeSet =
+def changes(argument:str = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None, useChanges:bool = False) -> ChangeSet =
   ''' Show changes of file tree vs. (last or specified) revision on current or specified branch. '''
-  if '--repo' in options: status(options, onlys, excps); return
   m:Metadata = Metadata(); branch:int?; revision:int?
+  if '--repo' in options or useChanges or m.c.useChangesCommand: status(options, onlys, excps); return  # TODO for fossil not possible to restore SVN behavior
   strict:bool = '--strict' in options or m.strict
   branch, revision = m.parseRevisionString(argument)
   if branch not in m.branches: Exit("Unknown branch")
   m.loadBranch(branch)  # knows commits
-  revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
-  if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%02d" % revision)
+  revision = m.branches[branch].revision if not m.commits else (revision if revision >= 0 else max(m.commits) + 1 + revision)  # negative indexing
+  if revision < 0 or (m.commits and revision > max(m.commits)): Exit("Unknown revision r%02d" % revision)
   debug(MARKER + "Changes of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes, msg = m.findChanges(
     checkContent = strict,
-    considerOnly = onlys if not (m.track or m.picky) else conditionalIntersection(onlys, m.getTrackingPatterns()                | m.getTrackingPatterns(branch)),
+    considerOnly = onlys if not (m.track or m.picky) else conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)),
     dontConsider = excps if not (m.track or m.picky) else excps ?? (m.getTrackingPatterns(negative = True) | m.getTrackingPatterns(branch, negative = True)),
     progress = '--progress' in options)
   m.listChanges(changes)
   changes  # for unit tests only TODO remove
 
-def _diff(m:Metadata, branch:int, revision:int, changes:ChangeSet):  # TODO introduce option to diff against committed revision
+def _diff(m:Metadata, branch:int, revision:int, changes:ChangeSet, ignoreWhitespace:bool, textWrap:bool = False):  # TODO introduce option to diff against committed revision
+  wrap:(str) -> str = ((s) -> s) if textWrap else ((s) -> s[:termWidth])
   onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changes, modifications = {k: v for k, v in changes.modifications.items() if not m.isTextType(os.path.basename(k))})
   m.listChanges(onlyBinaryModifications)  # only list modified binary files
   for path, pinfo in (c for c in changes.modifications.items() if m.isTextType(os.path.basename(c[0]))):  # only consider modified text files
@@ -476,43 +515,41 @@ def _diff(m:Metadata, branch:int, revision:int, changes:ChangeSet):  # TODO intr
     else: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
     abspath:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))  # current file
     blocks:List[MergeBlock]; nl:bytes
-    blocks, nl = merge(filename = abspath, into = content, diffOnly = True)  # only determine change blocks
+    blocks, nl = merge(filename = abspath, into = content, diffOnly = True, ignoreWhitespace = ignoreWhitespace)  # only determine change blocks
     printo("DIF %s%s  %s" % (path, " <timestamp or newline>" if len(blocks) == 1 and blocks[0].tipe == MergeBlockType.KEEP else "", NL_NAMES[nl]))
     for block in blocks:
 #      if block.tipe in [MergeBlockType.INSERT, MergeBlockType.REMOVE]:
 #        pass  # TODO print some previous and following lines - which aren't accessible here anymore
       if block.tipe == MergeBlockType.INSERT:  # TODO show color via (n)curses or other library?
-        for no, line in enumerate(block.lines):
-          printo("--- %04d |%s|" % (no + block.line, line))
+        for no, line in enumerate(block.lines):          printo(wrap("--- %04d |%s|" % (no + block.line, line)))
       elif block.tipe == MergeBlockType.REMOVE:
-        for no, line in enumerate(block.lines):
-          printo("+++ %04d |%s|" % (no + block.line, line))
-      elif block.tipe == MergeBlockType.REPLACE:  # TODO for MODIFY also show intra-line change ranges (TODO remove if that code was also removed)
-        for no, line in enumerate(block.replaces.lines):
-          printo("- | %04d |%s|" % (no + block.replaces.line, line))
-        for no, line in enumerate(block.lines):
-          printo("+ | %04d |%s|" % (no + block.line, line))
+        for no, line in enumerate(block.lines):          printo(wrap("+++ %04d |%s|" % (no + block.line, line)))
+      elif block.tipe == MergeBlockType.REPLACE:
+        for no, line in enumerate(block.replaces.lines): printo(wrap("- | %04d |%s|" % (no + block.replaces.line, line)))
+        for no, line in enumerate(block.lines):          printo(wrap("+ | %04d |%s|" % (no + block.line, line)))
 #      elif block.tipe == MergeBlockType.KEEP: pass
 #      elif block.tipe == MergeBlockType.MOVE:  # intra-line modifications
+      if block.tipe != MergeBlockType.KEEP: printo()
 
 def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show text file differences of file tree vs. (last or specified) revision on current or specified branch. '''
   m:Metadata = Metadata(); branch:int?; revision:int?
   strict:bool = '--strict' in options or m.strict
-  _from:str? = {None: option.split("--from=")[1] for option in options if option.startswith("--from=")}.get(None, None)  # TODO implement
+  ignoreWhitespace:bool = '--ignore-whitespace' in options or '--iw' in options
+  wrap:bool = '--wrap' in options  # allow text to wrap around
   branch, revision = m.parseRevisionString(argument)  # if nothing given, use last commit
   if branch not in m.branches: Exit("Unknown branch")
   m.loadBranch(branch)  # knows commits
-  revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
-  if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%02d" % revision)
+  revision = m.branches[branch].revision if not m.commits else (revision if revision >= 0 else max(m.commits) + 1 + revision)  # negative indexing
+  if revision < 0 or (m.commits and revision > max(m.commits)): Exit("Unknown revision r%02d" % revision)
   debug(MARKER + "Textual differences of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changes, msg = m.findChanges(
     checkContent = strict, inverse = True,
     considerOnly = onlys if not (m.track or m.picky) else conditionalIntersection(onlys, m.getTrackingPatterns()                | m.getTrackingPatterns(branch)),
-    dontConsider = excps if not (m.track or m.picky) else excps ?? (m.getTrackingPatterns(negative = True) | m.getTrackingPatterns(branch, negative = True)),
+    dontConsider = excps if not (m.track or m.picky) else excps ??                      (m.getTrackingPatterns(negative = True) | m.getTrackingPatterns(branch, negative = True)),
     progress = '--progress' in options)
-  _diff(m, branch, revision, changes)
+  _diff(m, branch, revision, changes, ignoreWhitespace = ignoreWhitespace, textWrap = wrap)
 
 def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Create new revision from file tree changes vs. last commit. '''
@@ -545,15 +582,16 @@ def status(options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str
   info("Installation path:   %s" % os.path.abspath(os.path.dirname(__file__)))
   info("Current SOS version: %s" % version.__version__)
   info("At creation version: %s" % m.version)
+  info("Metadata format:     %s" % m.format)
   info("Content checking:    %sactivated" % ("" if m.strict else "de"))
   info("Data compression:    %sactivated" % ("" if m.compress else "de"))
   info("Repository mode:     %s" % ("track" if m.track else ("picky" if m.picky else "simple")))
   info("Number of branches:  %d" % len(m.branches))
-#  info("Revisions:           %d" % sum([]))
   trackingPatterns:FrozenSet[str] = m.getTrackingPatterns()
   untrackingPatterns:FrozenSet[str] = m.getTrackingPatterns(negative = True)
-  m.loadBranch(m.branch)
-  m.computeSequentialPathSet(m.branch, max(m.commits))  # load all commits up to specified revision  # line 508
+  m.loadBranch(current)
+  maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision
+  m.computeSequentialPathSet(current, maxi)  # load all commits up to specified revision  # line 508
   changes, msg = m.findChanges(
     checkContent = strict,
     considerOnly = onlys if not (m.track or m.picky) else conditionalIntersection(onlys, trackingPatterns),
@@ -563,7 +601,8 @@ def status(options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
     m.loadBranch(branch.number)  # knows commit history
-    printo("  %s b%02d%s @%s (%s) with %d commits%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.inSync else "dirty", len(m.commits), ". Last comment: '%s'" % m.commits[max(m.commits)].message if m.commits[max(m.commits)].message else ""))
+    maxi = max(m.commits) if m.commits else m.branches[branch.number].revision
+    printo("  %s b%02d%s @%s (%s) with %d commits%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.inSync else "dirty", len(m.commits), ". Last comment: '%s'" % m.commits[maxi].message if maxi in m.commits and m.commits[maxi].message else ""))
   if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):
     info("\nTracked file patterns:")  # TODO print matching untracking patterns side-by-side
     printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))
@@ -585,13 +624,14 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
     branch, revision = m.parseRevisionString(argument)  # for early abort
     if branch is None: Exit("Branch '%s' doesn't exist. Cannot proceed" % argument)
   m.loadBranch(m.branch)  # knows last commits of *current* branch
+  maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision
 
   # Determine current changes
   trackingPatterns:FrozenSet[str] =   m.getTrackingPatterns()
   untrackingPatterns:FrozenSet[str] = m.getTrackingPatterns(negative = True)
-  m.computeSequentialPathSet(m.branch, max(m.commits))  # load all commits up to specified revision
+  m.computeSequentialPathSet(m.branch, maxi)  # load all commits up to specified revision
   changes, msg = m.findChanges(
-    m.branch if commit else None, max(m.commits) + 1 if commit else None, checkContent = strict,
+    m.branch if commit else None, maxi + 1 if commit else None, checkContent = strict,
     considerOnly = onlys if not (m.track or m.picky) else conditionalIntersection(onlys, trackingPatterns),
     dontConsider = excps if not (m.track or m.picky) else excps ?? untrackingPatterns,
     progress = '--progress' in options)
@@ -605,10 +645,11 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
 
   if argument is not None:  # branch/revision specified
     m.loadBranch(branch)  # knows commits of target branch
+    maxi = max(m.commits) if m.commits else m.branches[m.branch].revision
     revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
-    if revision < 0 or revision > max(m.commits): Exit("Unknown revision r%02d" % revision)
+    if revision < 0 or revision > maxi: Exit("Unknown revision r%02d" % revision)
     return (m, branch, revision, changes, strict, force, m.getTrackingPatterns(branch), m.getTrackingPatterns(branch, negative = True))
-  (m, m.branch, max(m.commits) + (1 if commit else 0), changes, strict, force, trackingPatterns, untrackingPatterns)
+  (m, m.branch, maxi + (1 if commit else 0), changes, strict, force, trackingPatterns, untrackingPatterns)
 
 def switch(argument:str, options:List[str] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Continue work on another branch, replacing file tree changes. '''
@@ -716,15 +757,15 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
   m.branch = currentBranch  # need to restore setting before saving TODO operate on different objects instead
   m.saveBranches()
 
-def delete(argument:str, options:str[] = []):
+def destroy(argument:str, options:str[] = []):
   ''' Remove a branch entirely. '''
   m, branch, revision, changes, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options)
   if len(m.branches) == 1: Exit("Cannot remove the only remaining branch. Use 'sos online' to leave offline mode")
   branch, revision = m.parseRevisionString(argument)  # not from exitOnChanges, because we have to set argument to None there
   if branch is None or branch not in m.branches: Exit("Cannot delete unknown branch %r" % branch)
-  debug(MARKER + "Removing branch %d%s..." % (branch, " '%s'" % m.branches[branch].name if m.branches[branch].name else ""))
+  debug(MARKER + "Removing branch b%02d%s..." % (branch, " '%s'" % (m.branches[branch].name ?? "")))
   binfo = m.removeBranch(branch)  # need to keep a reference to removed entry for output below
-  info(MARKER + "Branch b%02d%s removed" % (branch, " '%s'" % binfo.name if binfo.name else ""))
+  info(MARKER + "Branch b%02d%s removed" % (branch, " '%s'" % (binfo.name ?? "")))
 
 def add(relPath:str, pattern:str, options:str[] = [], negative:bool = False):
   ''' Add a tracked files pattern to current branch's tracked files. negative means tracking blacklisting. '''
@@ -784,27 +825,32 @@ def ls(folder:str? = None, options:str[] = []):
     if not ignore:
       for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
         if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(os.path.basename(pattern))
-    matches.sort(key = (element) -> len(element))
+    matches.sort(key = (element) -> len(element))  # sort in-place
     printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "\u00b7\u00b7\u00b7"), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
 
 def log(options:str[] = []):
   ''' List previous commits on current branch. '''
   m:Metadata = Metadata()
   m.loadBranch(m.branch)  # knows commit history
+  maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
   info(MARKER + "Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain info of "from branch/revision" on branching?
-  nl = len("%d" % max(m.commits))  # determine space needed for revision
-  changesetIterator:Iterator[Dict[str,PathInfo]]? = m.computeSequentialPathSetIterator(m.branch, max(m.commits))
-  maxWidth:int = max([wcswidth(commit.message ?? "") for commit in m.commits.values()])
+  nl:int = len("%d" % maxi)  # determine space needed for revision
+  changesetIterator:Iterator[Dict[str,PathInfo]]? = m.computeSequentialPathSetIterator(m.branch, maxi)
   olds:FrozenSet[str] = f{}  # last revision's entries
-  for no in range(max(m.commits) + 1):
-    commit:CommitInfo = m.commits[no]
+  commit:CommitInfo
+  for no in range(maxi + 1):
+    if no in m.commits: commit = m.commits[no]
+    else:  # TODO clean this code
+      n:Metadata = Metadata()
+      n.loadBranch(n.getParentBranch(m.branch, no))
+      commit = n.commits[no]
     nxts:Dict[str,PathInfo] = next(changesetIterator)
     news:FrozenSet[str] = frozenset(nxts.keys())  # side-effect: updates m.paths
     _add:FrozenSet[str] = news - olds
     _del:FrozenSet[str] = olds - news
     _mod:FrozenSet[str] = frozenset([_ for _, info in nxts.items() if _ in m.paths and m.paths[_].size != info.size and (m.paths[_].hash != info.hash if m.strict else m.paths[_].mtime != info.mtime)])
     _txt:int = len([a for a in _add if m.isTextType(a)])
-    printo("  %s r%s @%s (+%02d/-%02d/*%02d +%02dT) |%s|%s" % ("*" if commit.number == max(m.commits) else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), len(_mod), _txt, (commit.message ?? "").ljust(maxWidth), "TAG" if (commit.message ?? "") in m.tags else ""))
+    printo("  %s r%s @%s (+%02d/-%02d/*%02d +%02dT) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
     if '--changes' in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
     if '--diff' in options: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news
@@ -813,12 +859,12 @@ def dump(argument:str, options:str[] = []):
   ''' Exported entire repository as archive for easy transfer. '''
   debug(MARKER + "Dumping repository to archive...")
   progress:bool = '--progress' in options
-  import zipfile  # TODO display compression ratio (if any)
-  try: import zlib; compression = zipfile.ZIP_DEFLATED
+  import zipfile
+  try: import zlib; compression = zipfile.ZIP_DEFLATED  # HINT zlib is the library that contains the deflated algorithm
   except: compression = zipfile.ZIP_STORED
 
   if argument is None: Exit("Argument missing (target filename)")
-  argument = argument if "." in argument else argument + ".sos.zip"
+  argument = argument if "." in argument else argument + DUMP_FILE  # TODO this logic lacks a bit, "v1.2" would not receive the suffix
   if os.path.exists(encode(argument)):
     try: shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))
     except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry. %r" % E)
@@ -828,6 +874,7 @@ def dump(argument:str, options:str[] = []):
     totalsize:int = 0
     start_time:float = time.time()
     for dirpath, dirnames, filenames in os.walk(repopath):  # TODO use index knowledge instead of walking to avoid adding stuff not needed?
+      printo(dirpath.ljust(termWidth))  # TODO improve progress indicator output to | dir | dumpuing file
       dirpath = decode(dirpath)
       dirnames[:] = [decode(d) for d in dirnames]
       filenames[:] = [decode(f) for f in filenames]
@@ -838,7 +885,7 @@ def dump(argument:str, options:str[] = []):
         show:str? = indicator.getIndicator() if progress else None
         if show: printo(("\rDumping %s @%.2f MiB/s %s" % (show, totalsize / (MEBI * (time.time() - start_time)), filename)).ljust(termWidth), nl = "")
         _zip.write(abspath, relpath.replace(os.sep, "/"))  # write entry into archive
-  info("\r" + (MARKER + "Finished dumping entire repository.").ljust(termWidth))  # clean line
+  info("\r" + (MARKER + "Finished dumping entire repository @%.2f MiB/s." % (totalsize / (MEBI * (time.time() - start_time)))).ljust(termWidth))  # clean line
 
 def config(arguments:List[str], options:List[str] = []):
   command, key, value = (arguments + [None] * 2)[:3]
@@ -897,7 +944,7 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   ''' Path differs: Move files, create folder if not existing. Pattern differs: Attempt to rename file, unless exists in target or not unique.
       for "mvnot" don't do any renaming (or do?)
   '''
-  # TODO info(MARKER + TODO write tests for that
+  debug(MARKER + "Renaming %r to %r" % (pattern, newPattern))
   force:bool = '--force' in options
   soft:bool = '--soft' in options
   if not os.path.exists(encode(relPath.replace(SLASH, os.sep))) and not force: Exit("Source folder doesn't exist. Use --force to proceed anyway")
@@ -935,49 +982,49 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   patterns[patterns.index(pattern)] = newPattern
   m.saveBranches()
 
-def parse(root:str, cwd:str):
-  ''' Main operation. Main has already chdir into VCS root folder, cwd is original working directory for add, rm. '''
+def parse(root:str, cwd:str, cmd:str):
+  ''' Main operation. Main has already chdir into VCS root folder, cwd is original working directory for add, rm, mv. '''
   debug("Parsing command-line arguments...")
   try:
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
-    arguments:Union[List[str],str,None] = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]
-    if len(arguments) == 0: arguments = [None]
+    arguments:List[str?] = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]
     options =   [c.strip() for c in sys.argv[2:] if c.startswith("--")]
     onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
-    debug("Processing command %r with arguments %r and options %r." % (command ?? "", arguments if arguments else "", options))
-    if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "."))
+    debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))
+    if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "." ))
     if command[:1] == "m":
-      if len(arguments) < 2: Exit("Need a second file pattern argument as target for move or config command")
-      newRelPath, newPattern = relativize(root, os.path.join(cwd, options[0]))
-    if   command[:1] == "a":   add(relPath, pattern, options, negative = "n" in command)  # also addnot
-    elif command[:1] == "b":   branch(arguments[0], options)
+      if len(arguments) < 2: Exit("Need a second file pattern argument as target for move command")
+      newRelPath, newPattern = relativize(root, os.path.join(cwd, arguments[1]))
+    arguments[:] = (arguments + [None] * 3)[:3]
+    if   command[:1] == "a":   add(relPath, pattern, options, negative = "n" in command)  # addnot
+    elif command[:1] == "b":   branch(arguments[0], arguments[1], options)
     elif command[:3] == "com": commit(arguments[0], options, onlys, excps)
     elif command[:2] == "ch":  changes(arguments[0], options, onlys, excps)  # "changes" (legacy)
     elif command[:2] == "ci":  commit(arguments[0], options, onlys, excps)
     elif command[:3] == 'con': config(arguments, options)
-    elif command[:2] == "de":  delete(arguments[0], options)
+    elif command[:2] == "de":  destroy(arguments[0], options)
     elif command[:2] == "di":  diff(arguments[0], options, onlys, excps)
     elif command[:2] == "du":  dump(arguments[0], options)
     elif command[:1] == "h":   usage(APPNAME, version.__version__)
     elif command[:2] == "lo":  log(options)
     elif command[:2] == "li":  ls(os.path.relpath(arguments[0] ?? cwd, root), options)
-    elif command[:2] == "ls":  ls(os.path.relpath(arguments[0] ?? cwd, root), options)  # TODO avoid and/or normalize root super paths (..)?
-    elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options[1:], negative = "n" in command)  # also mvnot
-    elif command[:2] == "of":  offline(arguments[0], options)
+    elif command[:2] == "ls":  ls(os.path.relpath(arguments[0] ?? cwd, root), options)
+    elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options, negative = "n" in command)  # mvnot
+    elif command[:2] == "of":  offline(arguments[0], arguments[1], options)
     elif command[:2] == "on":  online(options)
-    elif command[:1] == "r":   remove(relPath, pattern, negative = "n" in command)  # also rmnot
-    elif command[:2] == "st":  changes(arguments[0], options, onlys, excps)
+    elif command[:1] == "r":   remove(relPath, pattern, negative = "n" in command)  # rmnot
+    elif command[:2] == "st":  changes(arguments[0], options, onlys, excps, useChanges = cmd == "fossil")
     elif command[:2] == "sw":  switch(arguments[0], options, onlys, excps)
     elif command[:1] == "u":   update(arguments[0], options, onlys, excps)
     elif command[:1] == "v":   usage(APPNAME, version.__version__, short = True)
     else: Exit("Unknown command '%s'" % command)
-    Exit(code = 0)
+    Exit(code = 0)  # regular exit
   except Exception, RuntimeError as E:
     exception(E)
-    Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
+    Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing")
 
 def main():
-  global debug, info, warn, error
+  global debug, info, warn, error  # to modify logger
   logging.basicConfig(level = level, stream = sys.stderr, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
   _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
   for option in (o for o in ['--log', '--verbose', '-v', '--sos'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
@@ -986,12 +1033,13 @@ def main():
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Found root folders for SOS|VCS: %s|%s" % (root ?? "-", vcs ?? "-"))
   defaults["defaultbranch"] = vcsBranches.get(cmd, "trunk") ?? "default"  # sets dynamic default with SVN fallback
-  if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] in ["h", "v"]:  # in offline mode or just going offline TODO what about git config?
+  defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback
+  if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] in "hv":  # in offline mode or just going offline TODO what about git config?
     cwd = os.getcwd()
     os.chdir(cwd if command[:2] == "of" else root ?? cwd)
-    parse(root, cwd)
+    parse(root, cwd, cmd)
   elif force_vcs or cmd is not None:  # online mode - delegate to VCS
-    info("SOS: Running '%s %s'" % (cmd, " ".join(sys.argv[1:])))
+    info("%s: Running '%s %s'" % (COMMAND.upper(), cmd, " ".join(sys.argv[1:])))
     import subprocess  # only required in this section
     process = subprocess.Popen([cmd] + sys.argv[1:], shell = False, stdin = subprocess.PIPE, stdout = sys.stdout, stderr = sys.stderr)
     inp:str = ""

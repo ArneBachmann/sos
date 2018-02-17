@@ -1,5 +1,6 @@
 import sys
 
+COMMAND:str = "sos"
 MARKER:str = r"/SOS/ "
 
 
@@ -13,7 +14,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
        {cmd} <underlying vcs command and arguments>         When operating in online mode, automatic passthrough to traditional VCS
 
   Repository handling:
-    offline [<name>]                                      Start working offline, creating a branch (named <name>), default name depending on VCS
+    offline [<name> [<message>]]                          Start working offline, creating a branch (named <name>), default name depending on VCS
       --compress                                            Compress versioned files (same as `sos config set compress on && sos offline`)
       --track                                               Setup SVN-style mode: users add/remove tracking patterns per branch
       --picky                                               Setup Git-style mode: users pick files for each operation
@@ -22,9 +23,10 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     dump [<path>/]<name[.sos.zip]>                        Dump entire repository into an archive file
 
   Working with branches:
-    branch [<name>]                                       Create a new branch from current file tree and switch to it
+    branch [<name> [<message>]]                           Create a new branch from current file tree and switch to it
       --last                                                Use last revision, not current file tree, but keep file tree unchanged
       --stay                                                Don't switch to new branch, continue on current one
+      --fast                                                Using the reference branching model (experimental)
     destroy [<branch>]                                    Remove (current or specified) branch entirely
     switch [<branch>][/<revision>]                        Continue work on another branch
       --meta                                                Only switch file tracking patterns for current branch, don't update any files
@@ -39,6 +41,8 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --tag                                                 Memorizes commit message as a tag that can be used instead of numeric revisions
     diff [<branch>][/<revision>]                          List changes in file tree (or `--from` specified revision) vs. last (or specified) revision
       --to=branch/revision                                  Take "to" revision as target to compare against (instead of current file tree state)
+      --ignore-whitespace | --iw                            Ignore white spaces during comparison
+      --wrap                                                Wrap text around terminal size instead of shortening
     ls [<folder path>] [--patterns|--tags]                List file tree and mark changes and tracking status
 
   Defining file patterns:
@@ -86,5 +90,5 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     --except <tracked pattern>   Avoid operation for specified pattern(s). Available for "changes", "commit", "diff", "switch", and "update"
     --{cmd}                      When executing {CMD} not being offline, pass arguments to {CMD} instead (e.g. {cmd} --{cmd} config set key value.)
     --log                        Enable logging details
-    --verbose                    Enable verbose output, including show compression ratios""".format(appname = appname, cmd = "sos", CMD = "SOS"))
+    --verbose                    Enable verbose output, including show compression ratios""".format(appname = appname, cmd = COMMAND, CMD = COMMAND.upper()))
   sys.exit(0)
