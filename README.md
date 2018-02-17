@@ -10,7 +10,7 @@
 - [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
 
 ### Important notice from the author ###
-> I have been developing this software over the course of the last 4 months in my spare time, and I put probably around 200 concentrated and sometimes painful hours into it, a rough equivalent of at 10.000€ of development costs that I have granted to the open source community. This project has taken a lot of time away from my family and important duties in my life. I have decided that I cannot continue at the current pace, unless getting support in form of a lifely SOS community, or by getting funding for for the time i put into SOS. I will continue to contribute bug fixes and add features according to my own priorities, unless someone else comes with feature requests and means to support them. I hope you understand and support SOS, which is really meant as a personal productivity tool.
+> I have been developing this software over the course of the last 4 months in my spare time, and I put probably around 200 concentrated and sometimes painful working hours into it, a rough equivalent of at 10.000€ of development costs that I have granted to the open source community. This project has taken a lot of time away from my family and important duties in my life. I have decided that I cannot continue at the current pace, unless getting support in form of a lifely SOS community, or by getting funding for for the time i put into SOS. I will continue to contribute bug fixes and add features according to my own priorities, unless someone else comes with feature requests and means to support them. I hope you understand and support SOS, which is really meant as a personal productivity tool.
 
 ### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
@@ -62,10 +62,10 @@ SOS supports three different file handling models that you may use to your likin
 
 ## Latest Changes ##
 - Version 1.4 release on 2018-02-xx:
-    - [Feature]() Introduces automatic upgrade for metadata format, making manual migration of previous and future releases obsolete
-    - [Feature]() Introduces experimental code for very fast branching. Use `sos branch [<name> [<message>]] --last --fast` for instant branching using only a reference to the parent on the new branch. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to the point in time when the parent branch is destroyed, assuming that destroying a branch is much less often used than branching
-    - [Enhancement]() Reduced lines of code by relying on latest enhancements in Coconut (e.g. `typing` imports), plus removing obsolete code
-    - [Enhancement]() Allow to make the behavior of the `status` command configurable via `useChangesCommand=yes` to either show file tree status (the new default, mimicking SVN and Git) or the repository and branches status (sticking to use `changes` for file tree status instead, for people coming from Fossil)
+    - [Feature 182](https://github.com/ArneBachmann/sos/issues/182) Introduces automatic upgrade for metadata format, making manual migration of previous and future releases obsolete
+    - [Feature 181](https://github.com/ArneBachmann/sos/issues/181) Introduces experimental code for very fast branching. Use `sos branch [<name> [<message>]] --last --fast` for instant branching using only a reference to the parent on the new branch. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to the point in time when the parent branch is destroyed, assuming that destroying a branch is much less often used than branching
+    - [Enhancement 192](https://github.com/ArneBachmann/sos/issues/192) Reduced lines of code by relying on latest enhancements in Coconut (e.g. `typing` imports), plus removing obsolete code
+    - [Enhancement 191](https://github.com/ArneBachmann/sos/issues/191) Allow to make the behavior of the `status` command configurable via `useChangesCommand=yes` to either show file tree status (the new default, mimicking SVN and Git) or the repository and branches status (sticking to use `changes` for file tree status instead, for people coming from Fossil)
 - Version 1.3 release on 2018-02-10:
     - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on status
     - [Enhancement 152, 162](https://github.com/ArneBachmann/sos/issues/152) PEP528/529 compatibility: Now working with any console encoding and file system encoding on Windows (at least with Python 3.6+)
@@ -80,7 +80,7 @@ SOS supports three different file handling models that you may use to your likin
         to
 
         `[0, 1518275599353, "trunk", true, [], []]` (not the additional trailing `, []`)
-    - Downloads so far: 1800
+    - Downloads so far: 2500
 - Version 1.2 released on 2018-02-04:
     - [Bug 135, 145](https://github.com/ArneBachmann/sos/issues/135) Fixes a bug showing ignored files as deleted
     - [Bug 147](https://github.com/ArneBachmann/sos/issues/147) Fixes `sos ls` problems
