@@ -11,6 +11,7 @@ import configr  # optional dependency
 os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
 import sos  # import of package, not file
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
+sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
 
 def sync():
   if sys.version_info[:2] >= (3, 3): os.sync()

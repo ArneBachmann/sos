@@ -485,10 +485,9 @@ def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
   m.saveBranches()  # TODO or indent again?
   info(MARKER + "%s new %sbranch b%02d%s" % ("Continue work after branching" if stay else "Switched to", "unnamed " if name is None else "", branch, " '%s'" % name if name else ""))
 
-def changes(argument:str = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None, useChanges:bool = False) -> ChangeSet =
+def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None) -> ChangeSet =
   ''' Show changes of file tree vs. (last or specified) revision on current or specified branch. '''
   m:Metadata = Metadata(); branch:int?; revision:int?
-  if '--repo' in options or useChanges or m.c.useChangesCommand: status(options, onlys, excps); return  # TODO for fossil not possible to restore SVN behavior
   strict:bool = '--strict' in options or m.strict
   branch, revision = m.parseRevisionString(argument)
   if branch not in m.branches: Exit("Unknown branch")
@@ -573,12 +572,16 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   m.saveBranches()
   info(MARKER + "Created new revision r%02d%s (+%02d/-%02d/\u00b1%02d/*%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications), len(changes.moves)))
 
-def status(options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
+def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show branches and current repository state. '''
   m:Metadata = Metadata()
+  if not m.c.useChangesCommand and not '--repo' in options: changes(argument, options, onlys, excps); return  # TODO for fossil not possible to restore SVN behavior
   current:int = m.branch
   strict:bool = '--strict' in options or m.strict
   info(MARKER + "Offline repository status")
+  info("Repository root:     %s" % os.getcwd())
+  info("Underlying VCS root: %s" % vcs)
+  info("Underlying VCS type: %s" % cmd)
   info("Installation path:   %s" % os.path.abspath(os.path.dirname(__file__)))
   info("Current SOS version: %s" % version.__version__)
   info("At creation version: %s" % m.version)
@@ -592,12 +595,12 @@ def status(options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str
   m.loadBranch(current)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision
   m.computeSequentialPathSet(current, maxi)  # load all commits up to specified revision  # line 508
-  changes, msg = m.findChanges(
+  _changes, msg = m.findChanges(
     checkContent = strict,
     considerOnly = onlys if not (m.track or m.picky) else conditionalIntersection(onlys, trackingPatterns),
     dontConsider = excps if not (m.track or m.picky) else excps ?? untrackingPatterns,  # HINT different logic
     progress = True)
-  printo("File tree %s" % ("has changes vs. last revision of current branch" if modified(changes) else "is unchanged"))
+  printo("File tree %s" % ("has changes" if modified(_changes) else "is unchanged"))
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
     m.loadBranch(branch.number)  # knows commit history
@@ -1013,7 +1016,7 @@ def parse(root:str, cwd:str, cmd:str):
     elif command[:2] == "of":  offline(arguments[0], arguments[1], options)
     elif command[:2] == "on":  online(options)
     elif command[:1] == "r":   remove(relPath, pattern, negative = "n" in command)  # rmnot
-    elif command[:2] == "st":  changes(arguments[0], options, onlys, excps, useChanges = cmd == "fossil")
+    elif command[:2] == "st":  status(arguments[0], cwd, cmd, options, onlys, excps)
     elif command[:2] == "sw":  switch(arguments[0], options, onlys, excps)
     elif command[:1] == "u":   update(arguments[0], options, onlys, excps)
     elif command[:1] == "v":   usage(APPNAME, version.__version__, short = True)

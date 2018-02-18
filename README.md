@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.3.6) #
+# Subversion Offline Solution (SOS 1.4.0) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -10,9 +10,10 @@
 - [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
 
 ### Important notice from the author ###
-> I have been developing this software over the course of the last 4 months in my spare time, and I put probably around 200 concentrated and sometimes painful working hours into it, a rough equivalent of at 10.000€ of development costs that I have granted to the open source community. This project has taken a lot of time away from my family and important duties in my life. I have decided that I cannot continue at the current pace, unless getting support in form of a lively SOS community, or by getting funding for the time I will put into SOS. I will continue to contribute bug fixes and add features according to my own priorities, unless someone else comes with feature requests and means to support them. As a user of FOSS I hope you understand this decision and support SOS in any way you are willing to, to make SOS the number one personal productivity tool for text and code workers.
+> I have been developing this software over the course of the last 4 months in my spare time, and I put probably around 200 concentrated and sometimes painful working hours into it, a rough equivalent of probably 8.500€ of development costs that I have granted to the open source community. Latetly, this project has taken a lot of time away from my family and other significant themes in my life. I cannot continue at the current pace, unless getting support in form of a lively SOS community, or by getting funding for the time I will put into SOS. Since SOS is already somewhat mature and well usable, I will reduce my efforts and contribute only bug fixes and features according to my own schedule and priorities from now on, unless someone else comes with feature requests and (financial) means to support them. As a user of FOSS I hope you understand this decision and support SOS in any way suiting You, to make it your number one personal productivity tool!
 
 ### List of Abbreviations and Definitions ###
+- **FOSS**: Free and Open Source Software
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
 - **PyPI**: [*Python Package Index*](https://pypi.python.org/pypi)
 - **SCM**: *Source Control Management*
@@ -61,25 +62,33 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
-- Version 1.4 release on 2018-02-xx:
-    - [Feature 182](https://github.com/ArneBachmann/sos/issues/182) Introduces automatic upgrade for metadata format, making manual migration of previous and future releases obsolete
-    - [Feature 181](https://github.com/ArneBachmann/sos/issues/181) Introduces experimental code for very fast branching. Use `sos branch [<name> [<message>]] --last --fast` for instant branching using only a reference to the parent on the new branch. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to the point in time when the parent branch is destroyed, assuming that destroying a branch is much less often used than branching
-    - [Enhancement 192](https://github.com/ArneBachmann/sos/issues/192) Reduced lines of code by relying on latest enhancements in Coconut (e.g. `typing` imports), plus removing obsolete code
-    - [Enhancement 191](https://github.com/ArneBachmann/sos/issues/191) Allow to make the behavior of the `status` command configurable via `useChangesCommand=yes` to either show file tree status (the new default, mimicking SVN and Git) or the repository and branches status (sticking to use `changes` for file tree status instead, for people coming from Fossil)
-- Version 1.3 release on 2018-02-10:
+- Version 1.4 release on 2018-02-17:
     - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on status
+    - [Bug 190](https://github.com/ArneBachmann/sos/issues/190) Changes not computed in `sos online`
+    - [Enhancement 75](https://github.com/ArneBachmann/sos/issues/75) Better progress indicators during `sos commit` and other operations
+    - [Enhancement 133](https://github.com/ArneBachmann/sos/issues/133) Now showing entire repository compression advantage after `sos offline` and `sos commit`
+    - [Enhancement 171](https://github.com/ArneBachmann/sos/issues/171) Display target end-of-line type in `sos diff`
+    - [Enhancement 179, 180](https://github.com/ArneBachmann/sos/issues/180) SOS now creates backups from metadata files and dump files automatically
+    - [Enhancement 186](https://github.com/ArneBachmann/sos/issues/186) Option to ignore leading and trailing white space in `sos diff` (not useful for `sos update`, though)
+    - [Enhancement 187](https://github.com/ArneBachmann/sos/issues/187) By default, text in `sos diff` is cut at the end of the (right-hand) terminal border, with the option switch `--wrap` to retain the old behaviour (wrapping text around)
+    - [Enhancement 191](https://github.com/ArneBachmann/sos/issues/191) Allow to make the behavior of the `sos status` command configurable via `useChangesCommand=yes` to either show file tree status (the new default, mirroring the behaviour of SVN and Git), or display the repository and branches status (while having `sos changes` for file tree status instead, especially for people coming from Fossil)
+    - [Enhancement 192](https://github.com/ArneBachmann/sos/issues/192) Reduced lines of code by relying on latest enhancements in Coconut (e.g. `typing` imports), plus removing obsolete code
+    - [Feature 181](https://github.com/ArneBachmann/sos/issues/181) Introduces experimental code for very fast branching. Use `sos branch [<name> [<message>]] --last --fast` for instant branching that uses only a reference to the parent branch instead of copying each file. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to when the parent branch is destroyed, assuming that destroying a branch is an action  much less often used than branching
+    - [Feature 182](https://github.com/ArneBachmann/sos/issues/182) Introduces automatic upgrade for metadata format, making manual migration steps of previous and any future releases obsolete
+    - [Feature 183](https://github.com/ArneBachmann/sos/issues/183) SOS now recognizes and displays renames and file moves inside the repository. The underlying add/remove file behaviour is unchanged, but the user sees a *moved* notification for `sos changes` and `sos commit`
+- Version 1.3 release on 2018-02-10:
     - [Enhancement 152, 162](https://github.com/ArneBachmann/sos/issues/152) PEP528/529 compatibility: Now working with any console encoding and file system encoding on Windows (at least with Python 3.6+)
     - [Enhancement 163](https://github.com/ArneBachmann/sos/issues/163) Rewrite of changeset handling to avoid problems when re-adding files deleted in previous revision
     - [Enhancement 164](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config`
     - [Enhancement 165](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config add`
     - [Enhancement 168](https://github.com/ArneBachmann/sos/issues/168) Don't stop switching if changes are same as live modifications
-    - [Feature 64](https://github.com/ArneBachmann/sos/issues/64) Added blacklisting for tracking patterns (e.g. to except single files or reduce scope of globs). Migration from older repositories: Add a `, []` at the end of each branch info inside `.sos/.meta`, e.g. modify
+    - [Feature 64](https://github.com/ArneBachmann/sos/issues/64) Added blacklisting for tracking patterns (e.g. to except single files or reduce scope of globs). For manual migration from older repositories: Add a `, []` at the end of each branch info inside `.sos/.meta`, e.g. modify
 
         `[0, 1518275599353, "trunk", true, []]`
 
         to
 
-        `[0, 1518275599353, "trunk", true, [], []]` (not the additional trailing `, []`)
+        `[0, 1518275599353, "trunk", true, [], []]` (note the additional trailing `, []`)
     - Downloads so far: 2500
 - Version 1.2 released on 2018-02-04:
     - [Bug 135, 145](https://github.com/ArneBachmann/sos/issues/135) Fixes a bug showing ignored files as deleted
@@ -90,7 +99,7 @@ SOS supports three different file handling models that you may use to your likin
     - [Enhancement 137](https://github.com/ArneBachmann/sos/issues/137) Better usage help page
     - [Enhancement 142, 143](https://github.com/ArneBachmann/sos/issues/142) Extended `sos config` and added local configurations
     - [Enhancement 153](https://github.com/ArneBachmann/sos/issues/153) Removed Python 2 leftovers, raised minimum Python version to 3.4 (but 3.3 may also work)
-    - [Enhancement 159](https://github.com/ArneBachmann/sos/issues/159) Internal metadata updates. Migration from older repositories: Add `, {}` to `.sos/.meta` right before the closing final `]`, and add `version = "pre-1.2", ` after the initial `[{`
+    - [Enhancement 159](https://github.com/ArneBachmann/sos/issues/159) Internal metadata updates. For manual migration from older repositories: Add `, {}` to `.sos/.meta` right before the closing final `]`, and add `version = "pre-1.2", ` after the initial `[{`
     - [Feature 134, 161](https://github.com/ArneBachmann/sos/issues/134) Added dump option
     - Downloads: 1760
 - Version 1.1 released on 2017-12-30:
@@ -185,7 +194,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 ## Recipes ##
 - Diff between any two revisions: Switch to the revision you want to compare against, then perform a diff with the other revision as argument
-- Ignore whitespaces during diff: Add the option `--nows` or `--ignore-whitespace`
+- Ignore whitespaces during diff: Add the option `--iw` or `--ignore-whitespace`
 
 
 ## Hints and Tipps ##
@@ -200,6 +209,9 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 ## Development and Contribution ##
 See [CONTRIBUTING.md](https://github.com/ArneBachmann/sos/blob/master/CONTRIBUTING.md) for further information.
+
+Ideas for future developments:
+- [Issue 158](https://github.com/ArneBachmann/sos/issues/158) Remote metadata folder would allow separating the repository from the checkout, and - in combination with a locking library like `fasteners` could even be used as a multi-user repository. Estimated development effort is 3+3 hours.
 
 
 ## Release Management ##
