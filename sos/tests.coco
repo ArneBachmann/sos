@@ -13,8 +13,7 @@ import sos  # import of package, not file
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
 
-def sync():
-  if sys.version_info[:2] >= (3, 3): os.sync()
+def sync(): os.sync() if sys.version_info[:2] >= (3, 3) else None
 
 
 def determineFilesystemTimeResolution() -> float =
@@ -30,7 +29,7 @@ def determineFilesystemTimeResolution() -> float =
     _count += 1
     with open(name, "w") as fd: fd.write("x")
   os.unlink(name)
-  fsprecision:float = round(time.time() - start, 2)
+  fsprecision:float = max(1., round(time.time() - start, 2))
   print("File system timestamp precision is %.2fs; wrote to the file %d times during that time" % (fsprecision, _count))
   fsprecision
 

@@ -63,7 +63,7 @@ SOS supports three different file handling models that you may use to your likin
 
 ## Latest Changes ##
 - Version 1.4 release on 2018-02-17:
-    - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on status
+    - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on `sos status`
     - [Bug 190](https://github.com/ArneBachmann/sos/issues/190) Changes not computed in `sos online`
     - [Enhancement 75](https://github.com/ArneBachmann/sos/issues/75) Better progress indicators during `sos commit` and other operations
     - [Enhancement 133](https://github.com/ArneBachmann/sos/issues/133) Now showing entire repository compression advantage after `sos offline` and `sos commit`
@@ -73,9 +73,10 @@ SOS supports three different file handling models that you may use to your likin
     - [Enhancement 187](https://github.com/ArneBachmann/sos/issues/187) By default, text in `sos diff` is cut at the end of the (right-hand) terminal border, with the option switch `--wrap` to retain the old behaviour (wrapping text around)
     - [Enhancement 191](https://github.com/ArneBachmann/sos/issues/191) Allow to make the behavior of the `sos status` command configurable via `useChangesCommand=yes` to either show file tree status (the new default, mirroring the behaviour of SVN and Git), or display the repository and branches status (while having `sos changes` for file tree status instead, especially for people coming from Fossil)
     - [Enhancement 192](https://github.com/ArneBachmann/sos/issues/192) Reduced lines of code by relying on latest enhancements in Coconut (e.g. `typing` imports), plus removing obsolete code
-    - [Feature 181](https://github.com/ArneBachmann/sos/issues/181) Introduces experimental code for very fast branching. Use `sos branch [<name> [<message>]] --last --fast` for instant branching that uses only a reference to the parent branch instead of copying each file. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to when the parent branch is destroyed, assuming that destroying a branch is an action  much less often used than branching
+    - [Feature 181](https://github.com/ArneBachmann/sos/issues/181) Introduces experimental code for **very fast branching**. Use `sos branch [<name> [<message>]] --last --fast` for instant branching that uses only a reference to the parent branch instead of copying each file. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to when the parent branch is destroyed, assuming that destroying a branch is an action  much less often used than branching
     - [Feature 182](https://github.com/ArneBachmann/sos/issues/182) Introduces automatic upgrade for metadata format, making manual migration steps of previous and any future releases obsolete
     - [Feature 183](https://github.com/ArneBachmann/sos/issues/183) SOS now recognizes and displays renames and file moves inside the repository. The underlying add/remove file behaviour is unchanged, but the user sees a *moved* notification for `sos changes` and `sos commit`
+    - Downloads so far: 0
 - Version 1.3 release on 2018-02-10:
     - [Enhancement 152, 162](https://github.com/ArneBachmann/sos/issues/152) PEP528/529 compatibility: Now working with any console encoding and file system encoding on Windows (at least with Python 3.6+)
     - [Enhancement 163](https://github.com/ArneBachmann/sos/issues/163) Rewrite of changeset handling to avoid problems when re-adding files deleted in previous revision
@@ -89,7 +90,7 @@ SOS supports three different file handling models that you may use to your likin
         to
 
         `[0, 1518275599353, "trunk", true, [], []]` (note the additional trailing `, []`)
-    - Downloads so far: 2500
+    - Downloads: 2550
 - Version 1.2 released on 2018-02-04:
     - [Bug 135, 145](https://github.com/ArneBachmann/sos/issues/135) Fixes a bug showing ignored files as deleted
     - [Bug 147](https://github.com/ArneBachmann/sos/issues/147) Fixes `sos ls` problems

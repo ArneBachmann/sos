@@ -2,7 +2,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Utiliy functions
-import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()
+import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()  # early time tracking
 try: import enum
 except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport]' to get enum support for Python versions prior 3.4")
 from typing import Generic, TypeVar
