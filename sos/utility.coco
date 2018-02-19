@@ -491,16 +491,20 @@ def relativize(root:str, filepath:str) -> Tuple[str,str] =
 def parseOnlyOptions(root:str, options:str[]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?] =
   ''' Returns set of --only arguments, and set or --except arguments. '''
   cwd:str = os.getcwd()
-  onlys:List[str] = []; excps:List[str] = []; index:int = 0
+  onlys:List[str] = []; excps:List[str] = []; index:int = 0  # zero necessary as last start position
   while True:
     try:
       index = 1 + listindex(options, "--only", index)
       onlys.append(options[index])
+      del options[index]
+      del options[index - 1]
     except: break
   index = 0
   while True:
     try:
       index = 1 + listindex(options, "--except", index)
       excps.append(options[index])
+      del options[index]
+      del options[index - 1]
     except: break
   (frozenset(relativize(root, o)[1] for o in onlys) if onlys else None, frozenset(relativize(root, e)[1] for e in excps) if excps else None)

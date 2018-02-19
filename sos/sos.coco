@@ -862,32 +862,46 @@ def dump(argument:str, options:str[] = []):
   ''' Exported entire repository as archive for easy transfer. '''
   debug(MARKER + "Dumping repository to archive...")
   progress:bool = '--progress' in options
-  import zipfile
+  delta:bool = '--delta' in options
+  import warnings, zipfile
   try: import zlib; compression = zipfile.ZIP_DEFLATED  # HINT zlib is the library that contains the deflated algorithm
   except: compression = zipfile.ZIP_STORED
 
   if argument is None: Exit("Argument missing (target filename)")
   argument = argument if "." in argument else argument + DUMP_FILE  # TODO this logic lacks a bit, "v1.2" would not receive the suffix
+  entries:List[zipfile.ZipInfo] = []
   if os.path.exists(encode(argument)):
-    try: shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))
+    try:
+      debug("Creating backup...")
+      shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))
+      if delta:
+        with zipfile.ZipFile(argument, "r") as _zip: entries = _zip.namelist()  # list of pure relative paths without leading dot, normal slashes
     except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry. %r" % E)
-  with zipfile.ZipFile(argument, "w", compression) as _zip:
+  debug("Dumping revisions...")
+  if delta: warnings.filterwarnings('ignore', 'Duplicate name.*', UserWarning, "zipfile", 0)  # don't show duplicate entries warnings
+  with zipfile.ZipFile(argument, "a", compression) as _zip:  # create
+    _zip.debug = 0  # no debugging output
+    _zip.comment = ("Repository dump from %r" % strftime()).encode(UTF8)
     repopath:str = os.path.join(os.getcwd(), metaFolder)
     indicator:ProgressIndicator? = ProgressIndicator() if progress else None
     totalsize:int = 0
     start_time:float = time.time()
     for dirpath, dirnames, filenames in os.walk(repopath):  # TODO use index knowledge instead of walking to avoid adding stuff not needed?
-      printo(dirpath.ljust(termWidth))  # TODO improve progress indicator output to | dir | dumpuing file
       dirpath = decode(dirpath)
+      if dirpath.endswith(BACKUP_SUFFIX): continue  # don't backup backups
+      printo(dirpath.ljust(termWidth))  # TODO improve progress indicator output to | dir | dumpuing file
       dirnames[:] = [decode(d) for d in dirnames]
       filenames[:] = [decode(f) for f in filenames]
       for filename in filenames:
         abspath:str = os.path.join(dirpath, filename)
-        relpath:str = os.path.relpath(abspath, repopath)
+        relpath:str = os.path.relpath(abspath, repopath).replace(os.sep, "/")
         totalsize += os.stat(encode(abspath)).st_size
         show:str? = indicator.getIndicator() if progress else None
-        if show: printo(("\rDumping %s @%.2f MiB/s %s" % (show, totalsize / (MEBI * (time.time() - start_time)), filename)).ljust(termWidth), nl = "")
-        _zip.write(abspath, relpath.replace(os.sep, "/"))  # write entry into archive
+        if relpath.endswith(BACKUP_SUFFIX): continue  # don't backup backups
+        if not delta or relpath.endswith(metaFile) or relpath not in entries:  # always update metadata, otherwise only add new revision files
+          if show: printo(("\rDumping %s @%.2f MiB/s %s" % (show, totalsize / (MEBI * (time.time() - start_time)), filename)).ljust(termWidth), nl = "")
+          _zip.write(abspath, relpath)  # write entry into archive
+    if delta: _zip.comment = ("Delta dump from %r" % strftime()).encode(UTF8)
   info("\r" + (MARKER + "Finished dumping entire repository @%.2f MiB/s." % (totalsize / (MEBI * (time.time() - start_time)))).ljust(termWidth))  # clean line
 
 def config(arguments:List[str], options:List[str] = []):
@@ -989,10 +1003,10 @@ def parse(root:str, cwd:str, cmd:str):
   ''' Main operation. Main has already chdir into VCS root folder, cwd is original working directory for add, rm, mv. '''
   debug("Parsing command-line arguments...")
   try:
+    onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative information for changes, commit, diff, switch, update
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
     arguments:List[str?] = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]
     options =   [c.strip() for c in sys.argv[2:] if c.startswith("--")]
-    onlys, excps = parseOnlyOptions(cwd, options)  # extracts folder-relative information for changes, commit, diff, switch, update
     debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))
     if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "." ))
     if command[:1] == "m":
