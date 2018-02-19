@@ -482,8 +482,8 @@ class Tests(unittest.TestCase):
     _.createFile("test.txt", "x" * 10)
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
     sos.branch("mod")
-    _.createFile("test.txt", "x" * 5 + "y" * 5)
     time.sleep(FS_PRECISION)
+    _.createFile("test.txt", "x" * 5 + "y" * 5)
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
