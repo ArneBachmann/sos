@@ -29,12 +29,12 @@ def determineFilesystemTimeResolution() -> float =
     _count += 1
     with open(name, "w") as fd: fd.write("x")
   os.unlink(name)
-  fsprecision:float = max(1., round(time.time() - start, 2))
+  fsprecision:float = round(time.time() - start, 2)
   print("File system timestamp precision is %.2fs; wrote to the file %d times during that time" % (fsprecision, _count))
   fsprecision
 
 
-FS_PRECISION = determineFilesystemTimeResolution() * 1.05
+FS_PRECISION = determineFilesystemTimeResolution() * 1.55
 
 
 def debugTestRunner(post_mortem = None) =
