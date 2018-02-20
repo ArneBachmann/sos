@@ -488,7 +488,7 @@ def relativize(root:str, filepath:str) -> Tuple[str,str] =
   relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)
   relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)
 
-def parseOnlyOptions(root:str, options:str[]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?] =
+def parseOnlyOptions(root:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?] =
   ''' Returns set of --only arguments, and set or --except arguments. '''
   cwd:str = os.getcwd()
   onlys:List[str] = []; excps:List[str] = []; index:int = 0  # zero necessary as last start position

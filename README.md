@@ -165,8 +165,8 @@ Some of these options can be defined on a per-repository basis already during of
 ### Configuration Commands ###
 - `sos config set` sets a boolean flag, a string, or an initial list (semicolon-separated)
 - `sos config unset` removes a boolean flag, a string, or an entire list
-- `sos config add` adds a string entry to a list, and creates it if necessary
-- `sos config rm` removes a string entry from a list. Must be typed exactly as the entry to remove
+- `sos config add` adds one or more (semicolon-separated) string entry/entries to a list, and creates it if necessary
+- `sos config rm` removes a string entry from a list. Must be typed exactly as the entry to remove. To remove the list, use `sos unset <key>`
 - `sos config show` lists all defined configuration settings, including storage location/type (global, local, default)
 - `sos config show <parameter>` show only one configuration item
 - `sos config show flags|texts|lists` show supported settings per type

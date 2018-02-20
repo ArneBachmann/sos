@@ -84,6 +84,7 @@ class Tests(unittest.TestCase):
   ''' Entire test suite. '''
 
   def setUp(_):
+    sos.Metadata.singleton = None
     for entry in os.listdir(testFolder):  # cannot remove testFolder on Windows when using TortoiseSVN as VCS
       resource = os.path.join(testFolder, entry)
       shutil.rmtree(resource) if os.path.isdir(resource) else os.unlink(resource)

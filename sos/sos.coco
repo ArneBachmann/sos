@@ -41,6 +41,8 @@ class Metadata:
       using only parts of its attributes at any point in time. Use with care.
   '''
 
+  singleton:configr.Configr? = None
+
   def __init__(_, path:str? = None, offline:bool = False):
     ''' Create empty container object for various repository operations, and import configuration. '''
     _.root:str = path ?? os.getcwd()
@@ -55,7 +57,9 @@ class Metadata:
     _.paths:Dict[str,PathInfo] = {}  # utf-8 encoded relative, normalized file system paths
     _.commit:int? = None  # current revision number
 
-    _.c:configr.Configr = configr.Configr(data = _.repoConf, defaults = loadConfig())  # load global configuration with defaults behind the local configuration
+    if Metadata.singleton is None:  # only load once
+      Metadata.singleton = configr.Configr(data = _.repoConf, defaults = loadConfig())  # load global configuration with defaults behind the local configuration
+    _.c:configr.Configr = Metadata.singleton
 
   def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
 
@@ -204,7 +208,7 @@ class Metadata:
     deps:List[Tuple[int,int]] = [(binfo.number, binfo.revision) for binfo in _.branches.values() if binfo.parent is not None and _.getParentBranch(binfo.number, 0) == branch]  # get transitively depending branches
     if deps:  # need to copy all parent revisions to dependet branches first
       minrev:int = min([e[1] for e in deps])  # minimum revision ever branched from parent (ignoring transitive branching!)
-      progress:indicator = ProgressIndicator()
+      progress:ProgressIndicator = ProgressIndicator()
       for rev in range(0, minrev + 1):  # rely on caching by copying revision-wise as long as needed in all depending branches
         for dep, _rev in deps:
           if rev <= _rev:
@@ -570,7 +574,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch dirty
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
   m.saveBranches()
-  info(MARKER + "Created new revision r%02d%s (+%02d/-%02d/\u00b1%02d/*%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions), len(changes.deletions), len(changes.modifications), len(changes.moves)))
+  info(MARKER + "Created new revision r%02d%s (+%02d/-%02d/\u00b1%02d/*%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions) - len(changes.moves), len(changes.deletions) - len(changes.moves), len(changes.modifications), len(changes.moves)))
 
 def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show branches and current repository state. '''
@@ -848,12 +852,12 @@ def log(options:str[] = []):
       n.loadBranch(n.getParentBranch(m.branch, no))
       commit = n.commits[no]
     nxts:Dict[str,PathInfo] = next(changesetIterator)
-    news:FrozenSet[str] = frozenset(nxts.keys())  # side-effect: updates m.paths
-    _add:FrozenSet[str] = news - olds
+    news:FrozenSet[str] = frozenset(nxts.keys())
+    _add:FrozenSet[str] = news - olds  # TODO determine moves
     _del:FrozenSet[str] = olds - news
     _mod:FrozenSet[str] = frozenset([_ for _, info in nxts.items() if _ in m.paths and m.paths[_].size != info.size and (m.paths[_].hash != info.hash if m.strict else m.paths[_].mtime != info.mtime)])
     _txt:int = len([a for a in _add if m.isTextType(a)])
-    printo("  %s r%s @%s (+%02d/-%02d/*%02d +%02dT) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
+    printo("  %s r%s @%s (+%02d/-%02d/\u00b1%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
     if '--changes' in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
     if '--diff' in options: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news
@@ -879,7 +883,7 @@ def dump(argument:str, options:str[] = []):
     except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry. %r" % E)
   debug("Dumping revisions...")
   if delta: warnings.filterwarnings('ignore', 'Duplicate name.*', UserWarning, "zipfile", 0)  # don't show duplicate entries warnings
-  with zipfile.ZipFile(argument, "a", compression) as _zip:  # create
+  with zipfile.ZipFile(argument, "a" if delta else "w", compression) as _zip:  # create
     _zip.debug = 0  # no debugging output
     _zip.comment = ("Repository dump from %r" % strftime()).encode(UTF8)
     repopath:str = os.path.join(os.getcwd(), metaFolder)
