@@ -65,6 +65,8 @@ bufSize:int = MEBI
 UTF8:str = "utf_8"  # early used constant, not defined in standard library
 SVN:str = "svn"
 SLASH:str = "/"
+PLUSMINUS_SYMBOL = "\u00b1"
+FOLDER_SYMBOL:str = "\U0001F5C0"
 METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None}
@@ -180,7 +182,7 @@ def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None)
 def Exit(message:str = "", code = 1): printe("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else "")); sys.exit(code)
 
 def exception(E):
-  ''' Report an exception. '''
+  ''' Report an exception to the user to enable useful bug reporting. '''
   printo(str(E))
   import traceback
   traceback.print_exc()
@@ -191,7 +193,7 @@ def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str
   indicator:ProgressIndicator? = ProgressIndicator(callback) if callback else None
   _hash = hashlib.sha256()
   wsize:int = 0
-  if saveTo and os.path.exists(encode(saveTo)): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime.")
+  if saveTo and os.path.exists(encode(saveTo)): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime")
   to = openIt(saveTo, "w", compress) if saveTo else None
   with open(encode(path), "rb") as fd:
     while True:
@@ -232,6 +234,16 @@ def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, byValue:bool = False, 
   r:Dict[str,Any] = _old._asdict()
   r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required
   makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here
+
+def detectMoves(changes:ChangeSet) -> Dict[str,PathInfo] =
+  ''' Compute renames/removes for a changeset. '''
+  moves:Dict[str,PathInfo] = {}
+  for path, info in changes.additions.items():
+    for dpath, dinfo in changes.deletions.items():
+      if info.size == dinfo.size and info.mtime == dinfo.mtime and info.hash == dinfo.hash:  # was moved TODO check either mtime or hash?
+        moves[path] = (dpath, info)  # store new data and original name, but don't remove add/del
+        break  # deletions loop, continue with next addition
+  moves
 
 def user_block_input(output:List[str]):
   sep:str = input("Enter end-of-text marker (default: <empty line>: "); line:str = sep

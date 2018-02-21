@@ -67,7 +67,7 @@ class Metadata:
     moves:Dict[str,PathInfo] = dict(changes.moves.values())
     realadditions:Dict[str,PathInfo] = {k: v for k, v in changes.additions.items() if k not in changes.moves}
     realdeletions:Dict[str,PathInfo] = {k: v for k, v in changes.deletions.items() if k not in moves}
-    if len(changes.moves) > 0:         printo(ajoin("MOV ", ["%s  <=  %s" % (path, dpath) for path, (dpath, dinfo) in sorted(changes.moves.items())], "\n"))
+    if len(changes.moves) > 0:         printo(ajoin("MOV ", ["%s  <-  %s" % (path, dpath) for path, (dpath, dinfo) in sorted(changes.moves.items())], "\n"))
     if len(        realadditions) > 0: printo(ajoin("ADD ", sorted(        realadditions.keys()), "\n"))
     if len(        realdeletions) > 0: printo(ajoin("DEL ", sorted(        realdeletions.keys()), "\n"))
     if len(changes.modifications) > 0: printo(ajoin("MOD ", sorted(changes.modifications.keys()), "\n"))
@@ -315,11 +315,7 @@ class Metadata:
         if len([n for n in _.c.ignores if fnmatch.fnmatch(file, n)]) > 0 and len([p for p in _.c.ignoresWhitelist if fnmatch.fnmatch(file, p)]) == 0: continue  # don't mark ignored files as deleted
         pth:str = path + SLASH + file
         changes.deletions[pth] = _.paths[pth]
-    for path, info in changes.additions.items():
-      for dpath, dinfo in changes.deletions.items():
-        if info.size == dinfo.size and info.mtime == dinfo.mtime and info.hash == dinfo.hash:  # was moved TODO check either mtime or hash?
-          changes.moves[path] = (dpath, info)  # store new data and original name, but don't remove add/del
-          break  # deletions loop, continue with next addition
+    changes = dataCopy(ChangeSet, changes, moves = detectMoves(changes))
     if progress: printo("\r" + " " * termWidth + "\r", nl = "")  # forces clean line of progress output
     else: debug("Finished detecting changes")
     (changes, ("Compression advantage is %.1f%%" % (original * 100. / compressed - 100.)) if _.compress and write and compressed > 0 else None)
@@ -563,18 +559,20 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   if m.picky and not trackingPatterns: Exit("No file patterns staged for commit in picky mode")
   debug(MARKER + "Committing changes to branch '%s'..." % m.branches[m.branch].name ?? "b%d" % m.branch)
   m, branch, revision, changes, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options, check = False, commit = True, onlys = onlys, excps = excps)  # special flag creates new revision for detected changes, but aborts if no changes
-  m.paths = changes.additions
+  changes = dataCopy(ChangeSet, changes, moves = detectMoves(changes))
+  m.paths = {k: v for k, v in changes.additions.items()}  # copy to avoid wrong file numbers report below
   m.paths.update(changes.modifications)  # update pathset to changeset only
   m.paths.update({k: dataCopy(PathInfo, v, size = None, hash = None) for k, v in changes.deletions.items()})
   m.saveCommit(m.branch, revision)  # revision has already been incremented
   m.commits[revision] = CommitInfo(revision, int(time.time() * 1000), argument)  # comment can be None
   m.saveBranch(m.branch)
   m.loadBranches()  # TODO is it necessary to load again?
+  # TODO moved files recognition not used here
   if m.picky: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
   else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch dirty
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
   m.saveBranches()
-  info(MARKER + "Created new revision r%02d%s (+%02d/-%02d/\u00b1%02d/*%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions) - len(changes.moves), len(changes.deletions) - len(changes.moves), len(changes.modifications), len(changes.moves)))
+  printo(MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions) - len(changes.moves), len(changes.deletions) - len(changes.moves), PLUSMINUS_SYMBOL, len(changes.modifications), FOLDER_SYMBOL, len(changes.moves)))
 
 def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show branches and current repository state. '''
@@ -853,14 +851,15 @@ def log(options:str[] = []):
       commit = n.commits[no]
     nxts:Dict[str,PathInfo] = next(changesetIterator)
     news:FrozenSet[str] = frozenset(nxts.keys())
-    _add:FrozenSet[str] = news - olds  # TODO determine moves
+    _add:FrozenSet[str] = news - olds
     _del:FrozenSet[str] = olds - news
     _mod:FrozenSet[str] = frozenset([_ for _, info in nxts.items() if _ in m.paths and m.paths[_].size != info.size and (m.paths[_].hash != info.hash if m.strict else m.paths[_].mtime != info.mtime)])
+#    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds})  # TODO determine moves - can we reuse detectMoves(changes)?
     _txt:int = len([a for a in _add if m.isTextType(a)])
-    printo("  %s r%s @%s (+%02d/-%02d/\u00b1%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
+    printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL, len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
     if '--changes' in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
     if '--diff' in options: pass  #  _diff(m, changes)  # needs from revision diff
-    olds = news
+    olds = news  # replaces olds for next revision compare
 
 def dump(argument:str, options:str[] = []):
   ''' Exported entire repository as archive for easy transfer. '''

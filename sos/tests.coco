@@ -52,12 +52,12 @@ def debugTestRunner(post_mortem = None) =
       super(DebugTestResult, _).addFailure(test, err)
   unittest.TextTestRunner(resultclass = DebugTestResult)
 
-def wrapChannels(func: -> Any) =
+def wrapChannels(func: -> Any) -> str =
   ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
   oldv = sys.argv
   buf = TextIOWrapper(BufferedRandom(BytesIO(b"")), encoding = sos.UTF8)
+  handler = logging.StreamHandler(buf)  # TODO doesn't seem to be captured
   sys.stdout = sys.stderr = buf
-  handler = logging.StreamHandler(buf)
   logging.getLogger().addHandler(handler)
   try: func()  # capture output into buf
   except Exception as E:  buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
@@ -157,6 +157,20 @@ class Tests(unittest.TestCase):
     _.assertTrue(os.path.exists(sos.revisionFolder(0, 1)))
     _.assertTrue(os.path.exists(sos.revisionFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))
     # TODO test moves
+
+  def testMoves(_):
+    _.createFile(1, "1")
+    _.createFile(2, "2", "sub")
+    sos.offline(options = ["--strict"])
+    os.renames("." + os.sep + "file1", "sub" + os.sep + "file1")
+    os.renames("sub" + os.sep + "file2", "." + os.sep + "file2")
+    out:str = wrapChannels(() -> sos.changes())
+    _.assertIn("MOV ./file2  <-  sub/file2", out)
+    _.assertIn("MOV sub/file1  <-  ./file1", out)
+    out = wrapChannels(() -> sos.commit())
+    _.assertIn("MOV ./file2  <-  sub/file2", out)
+    _.assertIn("MOV sub/file1  <-  ./file1", out)
+    _.assertIn("Created new revision r01 (+00/-00/\u00b100/\U0001F5C002)", out)  # TODO why is this not captured?
 
   def testPatternPaths(_):
     sos.offline(options = ["--track"])
