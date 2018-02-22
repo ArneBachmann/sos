@@ -180,6 +180,8 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - `track`: Flag for always going offline in tracking mode (SVN-style). Default: False
 - `picky`: Flag for always going offline in picky mode (Git-style). Default: False
 - `compress`: Flag for compressing versioned artifacts. Default: False
+- `useChangesCommand`: Flag for making `sos status` into `sos status --repo` and using `sos changes` instead of `sos status` to more closely copy Fossil's behaviour
+- `useUnicodeFont`: Flag to use more fancy symbols, granted the console font supports them
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN, no name for Fossil)
 - `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. Example: `*.bak` could be a text file on your system, so add it to the `texttype` configuration, either globally (default) or locally (using `--local`). *Default*: Empty list
 - `bintype`: List of file patterns that should be recognized as binary files which cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list

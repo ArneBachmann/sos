@@ -28,13 +28,13 @@ class Counter(Generic[Number]):
 
 class ProgressIndicator(Counter):
   ''' Manages a rotating progress indicator. '''
-  def __init__(_, callback:Optional[(str) -> None] = None): super(ProgressIndicator, _).__init__(-1); _.timer:float = time.time(); _.callback:Optional[(str) -> None] = callback
+  def __init__(_, symbols:str, callback:Optional[(str) -> None] = None): super(ProgressIndicator, _).__init__(-1); _.symbols = symbols; _.timer:float = time.time(); _.callback:Optional[(str) -> None] = callback
   def getIndicator(_) -> str? =
     ''' Returns a value only if a certain time has passed. '''
     newtime = time.time()
     if newtime - _.timer < .1: return None
     _.timer = newtime
-    sign:str = PROGRESS_MARKER[int(_.inc() % 4)]
+    sign:str = _.symbols[int(_.inc() % len(_.symbols))]
     if _.callback: _.callback(sign)
     sign
 
@@ -49,12 +49,12 @@ class Logger:
 
 # Constants
 _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
-CONFIGURABLE_FLAGS:List[str] = ["strict", "track", "picky", "compress", "useChangesCommand"]
+CONFIGURABLE_FLAGS:List[str] = ["strict", "track", "picky", "compress", "useChangesCommand", "useUnicodeFont"]
 CONFIGURABLE_LISTS:List[str] = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 GLOBAL_LISTS:List[str] = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 TRUTH_VALUES:List[str] = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
 FALSE_VALUES:List[str] = ["false", "no", "off", "0", "disable", "disabled"]
-PROGRESS_MARKER:List[str] = ["|", "/", "-", "\\"]
+PROGRESS_MARKER:List[str] =  ["|/-\\", "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588\u2587\u2586\u2585\u2584\u2583\u2582", "\U0001f55b\U0001f550\U0001f551\U0001f552\U0001f553\U0001f554\U0001f555\U0001f556\U0001f557\U0001f558\U0001f559\U0001f55a\U0001f559\U0001f558\U0001f557\U0001f556\U0001f555\U0001f554\U0001f553\U0001f552\U0001f551\U0001f550"]
 BACKUP_SUFFIX:str = "_last"
 metaFolder:str = ".sos"
 DUMP_FILE:str = metaFolder + ".zip"
@@ -65,20 +65,23 @@ bufSize:int = MEBI
 UTF8:str = "utf_8"  # early used constant, not defined in standard library
 SVN:str = "svn"
 SLASH:str = "/"
-PLUSMINUS_SYMBOL = "\u00b1"
+DOT_SYMBOL:str = "\u00b7"
+CROSS_SYMBOL:str = "\u2714"
+CHECKMARK_SYMBOL:str = "\u2716"
+PLUSMINUS_SYMBOL:str = "\u00b1"
 FOLDER_SYMBOL:str = "\U0001F5C0"
 METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None}
 NL_NAMES:Dict[bytes,str] = {None: "<No newline>", b"\r\n": "<CR+LF>", b"\n\r": "<LF+CR>", b"\n": "<LF>", b"\r": "<CR>"}
 defaults:Accessor = Accessor({
-    "strict": False, "track": False, "picky": False, "compress": False, "useChangesCommand": False,
+    "strict": False, "track": False, "picky": False, "compress": False, "useChangesCommand": False, "useUnicodeFont": False,
     "texttype": ["*.md", "*.coco", "*.py", "*.pyi", "*.pth"],
     "bintype": [],
     "ignoreDirs": [".*", "__pycache__", ".mypy_cache"],
     "ignoreDirsWhitelist": [],
     "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*%s" % DUMP_FILE],
-    "ignoresWhitelist": []
+    "ignoresWhitelist": [],
   })
 
 
@@ -188,9 +191,9 @@ def exception(E):
   traceback.print_exc()
   traceback.print_stack()
 
-def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str) -> None] = None) -> Tuple[str,int] =
+def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str) -> None] = None, symbols:str = PROGRESS_MARKER[0]) -> Tuple[str,int] =
   ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''
-  indicator:ProgressIndicator? = ProgressIndicator(callback) if callback else None
+  indicator:ProgressIndicator? = ProgressIndicator(symbols, callback) if callback else None
   _hash = hashlib.sha256()
   wsize:int = 0
   if saveTo and os.path.exists(encode(saveTo)): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime")

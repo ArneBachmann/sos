@@ -12,6 +12,7 @@ os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
 import sos  # import of package, not file
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
+sos.defaults["useUnicodeFont"] = False  # because sos.main() is never called
 
 def sync(): os.sync() if sys.version_info[:2] >= (3, 3) else None
 
@@ -170,7 +171,7 @@ class Tests(unittest.TestCase):
     out = wrapChannels(() -> sos.commit())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
-    _.assertIn("Created new revision r01 (+00/-00/\u00b100/\U0001F5C002)", out)  # TODO why is this not captured?
+    _.assertIn("Created new revision r01 (+00/-00/~00/#02)", out)  # TODO why is this not captured?
 
   def testPatternPaths(_):
     sos.offline(options = ["--track"])

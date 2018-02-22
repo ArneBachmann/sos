@@ -1,5 +1,6 @@
 
 echo NOMYPY=%NOMYPY%
+echo BACKPORT=%BACKPORT%
 
 python -m pip install -U pip
 

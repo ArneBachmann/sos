@@ -20,7 +20,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --picky                                               Setup Git-style mode: users pick files for each operation
       --strict                                              Always compare entire file contents
     online                                                Finish working offline
-    dump [<path>/]<name[.sos.zip]> [--delta]              Dump entire repository into an archive file (differentially)
+    dump [<path>/]<name[.sos.zip]> [--full]               Perform (differential) repository dump (or export the entire repository via `sos dump <filename> --full`)
 
   Working with branches:
     branch [<name> [<message>]]                           Create a new branch from current file tree and switch to it

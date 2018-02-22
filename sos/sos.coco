@@ -208,7 +208,7 @@ class Metadata:
     deps:List[Tuple[int,int]] = [(binfo.number, binfo.revision) for binfo in _.branches.values() if binfo.parent is not None and _.getParentBranch(binfo.number, 0) == branch]  # get transitively depending branches
     if deps:  # need to copy all parent revisions to dependet branches first
       minrev:int = min([e[1] for e in deps])  # minimum revision ever branched from parent (ignoring transitive branching!)
-      progress:ProgressIndicator = ProgressIndicator()
+      progress:ProgressIndicator = ProgressIndicator(PROGRESS_MARKER[1 if _.c.useUnicodeFont else 0])
       for rev in range(0, minrev + 1):  # rely on caching by copying revision-wise as long as needed in all depending branches
         for dep, _rev in deps:
           if rev <= _rev:
@@ -259,7 +259,7 @@ class Metadata:
       try: os.makedirs(encode(revisionFolder(branch, revision, base = _.root)))
       except FileExistsError: pass  # HINT "try" only necessary for *testing* hash collision code (!) TODO probably raise exception otherwise in any case?
     changes:ChangeSet = ChangeSet({}, {}, {}, {})  # TODO Needs explicity initialization due to mypy problems with default arguments :-(
-    indicator:ProgressIndicator? = ProgressIndicator() if progress else None  # optional file list progress indicator
+    indicator:ProgressIndicator? = ProgressIndicator(PROGRESS_MARKER[1 if _.c.useUnicodeFont else 0]) if progress else None  # optional file list progress indicator
     hashed:str?; written:int; compressed:int = 0; original:int = 0
     knownPaths:Dict[str,List[str]] = collections.defaultdict(list)
     for path, pinfo in _.paths.items():
@@ -288,10 +288,11 @@ class Metadata:
         if show:  # indication character returned
           outstring = "\r%s %s  %s" % ("Preparing" if write else "Checking", show, filename)
           printo(outstring + " " * max(0, termWidth - len(outstring)), nl = "")
+        progressSymbols:str = PROGRESS_MARKER[1 if _.c.useUnicodeFont else 0]
         if filename not in _.paths:  # detected file not present (or untracked) in (other) branch
           nameHash = hashStr(filename)
           try:
-            hashed, written = hashFile(filepath, _.compress, saveTo = revisionFolder(branch, revision, base = _.root, file = nameHash) if write else None, callback = ((sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if show else None) if size > 0 else (None, 0)
+            hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = revisionFolder(branch, revision, base = _.root, file = nameHash) if write else None, callback = ((sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if show else None) if size > 0 else (None, 0)
             changes.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
             compressed += written; original += size
           except Exception as E: exception(E)
@@ -299,12 +300,12 @@ class Metadata:
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
           try:
-            hashed, written = hashFile(filepath, _.compress, saveTo = revisionFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if size > 0 else (None, 0)
+            hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = revisionFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if size > 0 else (None, 0)
             changes.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
           except Exception as E: exception(E)
-        elif size != last.size or (not checkContent and mtime != last.mtime) or (checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress)[0] != last.hash), default = False)):  # detected a modification TODO wrap hashFile exception
+        elif size != last.size or (not checkContent and mtime != last.mtime) or (checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress, symbols = progressSymbols)[0] != last.hash), default = False)):  # detected a modification TODO wrap hashFile exception
           try:
-            hashed, written = hashFile(filepath, _.compress, saveTo = revisionFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
+            hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = revisionFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(outstring + " " + sign + " " * max(0, termWidth - len(outstring) - 2), nl = "")) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
             changes.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
           except Exception as E: exception(E)
         else: continue  # with next file
@@ -572,7 +573,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch dirty
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
   m.saveBranches()
-  printo(MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions) - len(changes.moves), len(changes.deletions) - len(changes.moves), PLUSMINUS_SYMBOL, len(changes.modifications), FOLDER_SYMBOL, len(changes.moves)))
+  printo(MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions) - len(changes.moves), len(changes.deletions) - len(changes.moves), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(changes.modifications), FOLDER_SYMBOL if m.c.useUnicodeFont else "#", len(changes.moves)))
 
 def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show branches and current repository state. '''
@@ -602,7 +603,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     considerOnly = onlys if not (m.track or m.picky) else conditionalIntersection(onlys, trackingPatterns),
     dontConsider = excps if not (m.track or m.picky) else excps ?? untrackingPatterns,  # HINT different logic
     progress = True)
-  printo("File tree %s" % ("has changes" if modified(_changes) else "is unchanged"))
+  printo("%s File tree %s" % ((CROSS_SYMBOL if m.c.useUnicodeFont else "!") if modified(_changes) else (CHECKMARK_SYMBOL if m.c.useUnicodeFont else " "), "has changes" if modified(_changes) else "is unchanged"))  # TODO use other marks if no unicode console detected TODO bad choice of symbols for changed vs. unchanged
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
     m.loadBranch(branch.number)  # knows commit history
@@ -807,7 +808,7 @@ def ls(folder:str? = None, options:str[] = []):
   m:Metadata = Metadata()
   debug(MARKER + "Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
   relPath:str = relativize(m.root, os.path.join(folder, "-"))[0]
-  if relPath.startswith(".."): Exit("Cannot list contents of folder outside offline repository")
+  if relPath.startswith(os.pardir): Exit("Cannot list contents of folder outside offline repository")
   trackingPatterns:FrozenSet[str]? = m.getTrackingPatterns() if m.track or m.picky else f{}  # for current branch
   untrackingPatterns:FrozenSet[str]? = m.getTrackingPatterns(negative = True) if m.track or m.picky else f{}  # for current branch
   if '--tags' in options:
@@ -831,7 +832,7 @@ def ls(folder:str? = None, options:str[] = []):
       for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
         if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(os.path.basename(pattern))
     matches.sort(key = (element) -> len(element))  # sort in-place
-    printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else "\u00b7\u00b7\u00b7"), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
+    printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else DOT_SYMBOL * 3), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
 
 def log(options:str[] = []):
   ''' List previous commits on current branch. '''
@@ -856,7 +857,7 @@ def log(options:str[] = []):
     _mod:FrozenSet[str] = frozenset([_ for _, info in nxts.items() if _ in m.paths and m.paths[_].size != info.size and (m.paths[_].hash != info.hash if m.strict else m.paths[_].mtime != info.mtime)])
 #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds})  # TODO determine moves - can we reuse detectMoves(changes)?
     _txt:int = len([a for a in _add if m.isTextType(a)])
-    printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL, len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
+    printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
     if '--changes' in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
     if '--diff' in options: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news  # replaces olds for next revision compare
@@ -864,8 +865,9 @@ def log(options:str[] = []):
 def dump(argument:str, options:str[] = []):
   ''' Exported entire repository as archive for easy transfer. '''
   debug(MARKER + "Dumping repository to archive...")
+  m:Metadata() = Metadata()  # to load the configuration
   progress:bool = '--progress' in options
-  delta:bool = '--delta' in options
+  delta:bool = not '--full' in options
   import warnings, zipfile
   try: import zlib; compression = zipfile.ZIP_DEFLATED  # HINT zlib is the library that contains the deflated algorithm
   except: compression = zipfile.ZIP_STORED
@@ -886,7 +888,7 @@ def dump(argument:str, options:str[] = []):
     _zip.debug = 0  # no debugging output
     _zip.comment = ("Repository dump from %r" % strftime()).encode(UTF8)
     repopath:str = os.path.join(os.getcwd(), metaFolder)
-    indicator:ProgressIndicator? = ProgressIndicator() if progress else None
+    indicator:ProgressIndicator? = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if progress else None
     totalsize:int = 0
     start_time:float = time.time()
     for dirpath, dirnames, filenames in os.walk(repopath):  # TODO use index knowledge instead of walking to avoid adding stuff not needed?
