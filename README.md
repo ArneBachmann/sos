@@ -1,4 +1,4 @@
-# Subversion Offline Solution (SOS 1.4.2) #
+# Subversion Offline Solution (SOS 1.4.3) #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -10,7 +10,7 @@
 - [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
 
 ### Important notice from the author ###
-> I've been developing this software over the course of the last 4 months in my spare time, and until version 1.4 I've put probably around 200 concentrated and sometimes painful working hours into it, a rough equivalent of probably 8.500€ of development costs that I have granted to the open source community. Lately, this project has taken too much time away from my family and other significant themes in my life. I cannot continue at the current pace, unless getting support in form of a lively SOS community, or by getting funding for the effort that I put into SOS. Since SOS is already somewhat mature, I will reduce my efforts and contribute only bug fixes and little enhancements according to my own schedule and priorities from now on, unless someone comes with contributions, or feature requests and means to support them. As a user of open source software I hope you can relate to this decision and support SOS in any way suiting you, to make it your and our number one personal productivity tool!
+> I've been developing this software over the course of the last 4 months in my spare time, and until version 1.4 I've put probably around 200 working hours into it, a rough equivalent of 8.500€ in development costs that I have granted to the open source community. Lately, this project has taken too much time away from my family and other significant themes in my life. I cannot continue at the current pace, unless getting support in form of a lively SOS community, or by getting funding for the effort that I put into SOS. Since SOS is already quite mature, so I will reduce my efforts and contribute only little enhancements and bug fixes according to my own pace and priorities, unless someone comes with contributions, or feature requests and means to support them. As a user of open source software I hope you can relate to this decision and support SOS in any way suiting you, to make it our number one personal productivity tool!
 
 ### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
