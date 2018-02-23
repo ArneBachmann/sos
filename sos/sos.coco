@@ -578,7 +578,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
 def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show branches and current repository state. '''
   m:Metadata = Metadata()
-  if not m.c.useChangesCommand and not '--repo' in options: changes(argument, options, onlys, excps); return  # TODO for fossil not possible to restore SVN behavior
+  if not (m.c.useChangesCommand or '--repo' in options): changes(argument, options, onlys, excps); return
   current:int = m.branch
   strict:bool = '--strict' in options or m.strict
   info(MARKER + "Offline repository status")
@@ -865,7 +865,7 @@ def log(options:str[] = []):
 def dump(argument:str, options:str[] = []):
   ''' Exported entire repository as archive for easy transfer. '''
   debug(MARKER + "Dumping repository to archive...")
-  m:Metadata() = Metadata()  # to load the configuration
+  m:Metadata = Metadata()  # to load the configuration
   progress:bool = '--progress' in options
   delta:bool = not '--full' in options
   import warnings, zipfile
@@ -874,7 +874,7 @@ def dump(argument:str, options:str[] = []):
 
   if argument is None: Exit("Argument missing (target filename)")
   argument = argument if "." in argument else argument + DUMP_FILE  # TODO this logic lacks a bit, "v1.2" would not receive the suffix
-  entries:List[zipfile.ZipInfo] = []
+  entries:List[str] = []
   if os.path.exists(encode(argument)):
     try:
       debug("Creating backup...")

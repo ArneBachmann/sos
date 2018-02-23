@@ -20,12 +20,12 @@ def sync(): os.sync() if sys.version_info[:2] >= (3, 3) else None
 def determineFilesystemTimeResolution() -> float =
   name:str = str(uuid.uuid4())
   with open(name, "w") as fd: fd.write("x")  # create temporary file
-  mt:float = os.stat(name).st_mtime  # get current timestamp
-  while os.stat(name).st_mtime == mt:  # wait until timestamp modified
+  mt:float = os.stat(sos.encode(name)).st_mtime  # get current timestamp
+  while os.stat(sos.encode(name)).st_mtime == mt:  # wait until timestamp modified
     time.sleep(0.05)  # to avoid 0.00s bugs (came up some time for unknown reasons)
     with open(name, "w") as fd: fd.write("x")
-  mt, start, _count = os.stat(name).st_mtime, time.time(), 0
-  while os.stat(name).st_mtime == mt:  # now cound and measure time until modified again
+  mt, start, _count = os.stat(sos.encode(name)).st_mtime, time.time(), 0
+  while os.stat(sos.encode(name)).st_mtime == mt:  # now cound and measure time until modified again
     time.sleep(0.05)
     _count += 1
     with open(name, "w") as fd: fd.write("x")
@@ -88,7 +88,7 @@ class Tests(unittest.TestCase):
     sos.Metadata.singleton = None
     for entry in os.listdir(testFolder):  # cannot remove testFolder on Windows when using TortoiseSVN as VCS
       resource = os.path.join(testFolder, entry)
-      shutil.rmtree(resource) if os.path.isdir(resource) else os.unlink(resource)
+      shutil.rmtree(sos.encode(resource)) if os.path.isdir(sos.encode(resource)) else os.unlink(sos.encode(resource))
     os.chdir(testFolder)
 
 
@@ -163,8 +163,8 @@ class Tests(unittest.TestCase):
     _.createFile(1, "1")
     _.createFile(2, "2", "sub")
     sos.offline(options = ["--strict"])
-    os.renames("." + os.sep + "file1", "sub" + os.sep + "file1")
-    os.renames("sub" + os.sep + "file2", "." + os.sep + "file2")
+    os.renames(sos.encode("." + os.sep + "file1"), sos.encode("sub" + os.sep + "file1"))
+    os.renames(sos.encode("sub" + os.sep + "file2"), sos.encode("." + os.sep + "file2"))
     out:str = wrapChannels(() -> sos.changes())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
@@ -354,8 +354,8 @@ class Tests(unittest.TestCase):
                   list(sorted(os.listdir(sos.revisionFolder(1, 0)))))
     _.createFile(1, "z")  # modify file
     sos.branch()  # b2/r0  branch to unnamed branch with modified file tree contents
-    _.assertNotEqual(os.stat("." + os.sep + sos.metaFolder + os.sep + "b1" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa").st_size,
-                     os.stat("." + os.sep + sos.metaFolder + os.sep + "b2" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa").st_size)
+    _.assertNotEqual(os.stat(sos.encode("." + os.sep + sos.metaFolder + os.sep + "b1" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa")).st_size,
+                     os.stat(sos.encode("." + os.sep + sos.metaFolder + os.sep + "b2" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa")).st_size)
     _.createFile(3, "z")
     sos.branch("from_last_revision", options = ["--last", "--stay"])  # b3/r0 create copy of other file1,file2 and don't switch
     _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b3" + os.sep + "r0"))),
