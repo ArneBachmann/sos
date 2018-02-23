@@ -10,6 +10,7 @@ environment:
   matrix:
     - PYTHON_VERSION: 3.4
       platform: x86
+      NOMYPY: true
     - PYTHON_VERSION: 3.4
       platform: x64
     - PYTHON_VERSION: 3.5
