@@ -8,10 +8,12 @@ try:  # try needed as paths differ when installed via pip TODO investigate furth
   import sos.version as version
   from sos.utility import *
   from sos.usage import *
+  import sos.utility as _utility  # WARN necessary because "tests" can only mock "sos.utility.input", because "sos" does "import *"" from "utility" and "sos.input" cannot be mocked for some reason
 except:
   import version
   from utility import *
   from usage import *
+  import utility as _utility
 
 # External dependencies
 import configr
@@ -741,7 +743,7 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
         printo(("MOD " if not binary else "BIN ") + path)
         while True:
           printo(into)  # TODO print mtime, size differences?
-          op = input(" Resolve: *M[I]ne (skip), [T]heirs" + (": " if binary else ", [M]erge: ")).strip().lower()  # TODO set encoding on stdin
+          op = _utility.input(" Resolve: *M[I]ne (skip), [T]heirs" + (": " if binary else ", [M]erge: ")).strip().lower()  # TODO set encoding on stdin
           if op in ("it" if binary else "itm"): break
       if op == "t":
         printo("THR " + path); m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile = into)  # blockwise copy of contents
