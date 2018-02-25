@@ -3,19 +3,24 @@
 
 import codecs, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
 from io import BytesIO, BufferedRandom, TextIOWrapper
+
+try:
+  if TYPE_CHECKING:
+    from typing import *
+    mock:Any  # to avoid mypy complaint
+except: pass
+
 try: from unittest import mock  # Python 3
 except: import mock  # installed via pip
-coco_version:Any
-from coconut.convenience import version as coco_version
-coco_version = coco_version("num")  # Get number string
-if "-" in coco_version: coco_version = tuple([int(_) for _ in coco_version.split("-")[0].split(".")] + [int(coco_version.split("-")[1].split("_dev")[1])])
-else: coco_version = tuple([int(_) for _ in coco_version.split(".")] + [0])
-if coco_version < (1, 3, 1, 21): import builtins
 
-testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))
-import configr  # optional dependency
+testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))  # this needs to be set before the configr and sos imports
 os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
+
+import configr
 import sos  # import of package, not file
+
+if sos.coco_version < (1, 3, 1, 21): import builtins
+
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
 sos.defaults["useUnicodeFont"] = False  # because sos.main() is never called
@@ -37,7 +42,7 @@ def determineFilesystemTimeResolution() -> float =
     with open(name, "w") as fd: fd.write("x")
   os.unlink(name)
   fsprecision:float = round(time.time() - start, 2)
-  print("File system timestamp precision is %.2fs; wrote to the file %d times during that time" % (fsprecision, _count))
+  print("File system timestamp precision is %s%.2fs; wrote to the file %d times during that time" % ("probably even higher than " if fsprecision == 0.05 else "", fsprecision, _count))
   fsprecision
 
 
@@ -75,7 +80,7 @@ def wrapChannels(func: -> Any) -> str =
   buf.read()
 
 def mockInput(datas:str[], func: -> Any) -> Any:
-  if coco_version < (1, 3, 1, 21):
+  if sos.coco_version < (1, 3, 1, 21):
     with mock.patch("builtins.input", side_effect = datas): return func()
   else:
     with mock.patch("sos.utility.input", side_effect = datas): return func()

@@ -3,15 +3,21 @@
 
 # Utiliy functions
 import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()  # early time tracking
-try: import enum
-except: raise Exception("Please install SOS via 'pip install -U sos-vcs[backport]' to get enum support for Python versions prior 3.4")
-from typing import Generic, TypeVar
-Number = TypeVar("Number", int, float)
-try: import wcwidth
-except: pass  # optional dependency
 
+try: from typing import *  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
+except: pass
+from coconut.convenience import version as _coco_version  # Compute version-number for version-dependent features
+_coco_ver:str[] = _coco_version("num").split(".")[:4]  # Get number string
+coco_version:Tuple[int,int,int,int] = (int(_coco_ver[0]), int(_coco_ver[1]), int(_coco_ver[2].split("-")[0] if "-" in _coco_ver[2] else _coco_ver[2]), int(_coco_ver[2].split("-")[1].split("_dev")[1]) if "-" in _coco_ver[2] else 0)
+
+try: import enum
+except: raise Exception("SOS requires the enum module (Python 3.4+). You may try to manually install it via 'pip install enum34' or use 'pip install -U sos-vcs[backport]'")
+if coco_version < (1, 3, 1, 23): TYPE_CHECKING:bool = False
+try: import wcwidth  # optional dependency for unicode support
+except: pass
 
 verbose = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv  # imported from utility, and only modified here
+
 
 # Classes
 class Accessor(dict):
@@ -21,10 +27,16 @@ class Accessor(dict):
     try: return _[name]
     except: return dict.__getattribute__(_, name)
 
-class Counter(Generic[Number]):
-  ''' A simple counter. Can be augmented to return the last value instead. '''
-  def __init__(_, initial:Number = 0): _.value:Number = initial
-  def inc(_, by:Number = 1) -> Number: _.value += by; return _.value
+if TYPE_CHECKING:
+  Number = TypeVar("Number", int, float)
+  class Counter(Generic[Number]):
+    ''' A simple counter. Can be augmented to return the last value instead. '''
+    def __init__(_, initial:Number = 0): _.value:Number = initial
+    def inc(_, by:Number = 1) -> Number: _.value += by; return _.value
+else:
+  class Counter:
+    def __init__(_, initial = 0): _.value = initial
+    def inc(_, by = 1): _.value += by; return _.value
 
 class ProgressIndicator(Counter):
   ''' Manages a rotating progress indicator. '''
@@ -99,7 +111,6 @@ data Range(tipe:MergeBlockType, indexes:int[])  # MergeBlockType[1,2,4], line nu
 data MergeBlock(tipe:MergeBlockType, lines:List[str], line:int, replaces:MergeBlock? = None, changes:Range? = None)
 data GlobBlock(isLiteral:bool, content:str, index:int)  # for file pattern rename/move matching
 data GlobBlock2(isLiteral:bool, content:str, matches:str)  # matching file pattern and input filename for translation
-DataType = TypeVar("DataType", BranchInfo, ChangeSet, MergeBlock, PathInfo)
 
 
 # Functions
@@ -129,13 +140,6 @@ def tryOrIgnore(func:() -> Any) -> None:  # handle with care!
   try: func()
   except: pass
 
-def wcswidth(string:str) -> int:
-  l:int = 0
-  try:
-    l = wcwidth.wcswitdh(string)
-    return len(string) if l < 0 else l
-  finally: return len(string)
-
 def removePath(key:str, value:str) -> str =
   ''' Cleanup of user-specified global file patterns. '''
   value if value in GLOBAL_LISTS or SLASH not in value else value[value.rindex(SLASH)+1:]
@@ -159,9 +163,11 @@ def eoldet(file:bytes) -> bytes? =
   if cr > lf: return b"\r"  # older 8-bit machines
   None  # no new line contained, cannot determine
 
-try: Splittable = TypeVar("Splittable", str, bytes)
-except: pass
-def safeSplit(s:Splittable, d:Splittable? = None) -> List[Splittable]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
+if TYPE_CHECKING:
+  Splittable = TypeVar("Splittable", str, bytes)  # TODO isn't that the same as AnyStr?
+  def safeSplit(s:Splittable, d:Splittable? = None) -> List[Splittable]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
+else:
+  def safeSplit(s, d = None): return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 
 def ajoin(sep:str, seq:str[], nl:str = "") -> str = (sep + (nl + sep).join(seq)) if seq else ""
 
@@ -177,6 +183,17 @@ def getTermWidth() -> int =
   try: import termwidth
   except: return 80
   termwidth.getTermWidth()[0]
+termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80
+
+def wcswidth(string:str) -> int:  # TODO currently unused!
+  try:
+    l:int = wcwidth.wcswitdh(string)
+    return len(string) if l < 0 else l
+  except: return len(string)
+
+def ljust(string:str, width:int = termWidth) -> str =
+  assert width > 0
+  string + " " * max(0, width - wcswidth(str))
 
 def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.path.join(base ?? os.getcwd(), metaFolder, "b%d" % branch) + ((os.sep + file) if file else "")
 
@@ -232,15 +249,23 @@ def detectAndLoad(filename:str? = None, content:bytes? = None, ignoreWhitespace:
   if ignoreWhitespace: lines[:] = [line.replace("\t", "  ").strip() for line in lines]
   (encoding, eol, lines)
 
-def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, byValue:bool = False, **_kwargs) -> DataType =
-  ''' A better makedata() version. '''
-  r:Dict[str,Any] = _old._asdict()
-  r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required
-  makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here
+if TYPE_CHECKING:
+  DataType = TypeVar("DataType", BranchInfo, ChangeSet, MergeBlock, PathInfo)
+  def dataCopy(_tipe:Type[DataType], _old:DataType, *_args, byValue:bool = False, **_kwargs) -> DataType =
+    ''' A better makedata() version. '''
+    r:Dict[str,Any] = _old._asdict()
+    r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required
+    makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here
+else:
+  def dataCopy(_tipe, _old, *_args, byValue = False, **_kwargs) -> DataType =
+    ''' A better makedata() version. '''
+    r = _old._asdict()
+    r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required
+    makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here
 
-def detectMoves(changes:ChangeSet) -> Dict[str,PathInfo] =
+def detectMoves(changes:ChangeSet) -> Dict[str,Tuple[str,PathInfo]] =
   ''' Compute renames/removes for a changeset. '''
-  moves:Dict[str,PathInfo] = {}
+  moves:Dict[str,Tuple[str,PathInfo]] = {}
   for path, info in changes.additions.items():
     for dpath, dinfo in changes.deletions.items():
       if info.size == dinfo.size and info.mtime == dinfo.mtime and info.hash == dinfo.hash:  # was moved TODO check either mtime or hash?
