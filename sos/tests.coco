@@ -23,8 +23,6 @@ sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
 sos.defaults["useUnicodeFont"] = False  # because sos.main() is never called
 
-def sync(): os.sync() if sys.version_info[:2] >= (3, 3) else None
-
 
 def determineFilesystemTimeResolution() -> float =
   name:str = str(uuid.uuid4())
@@ -45,6 +43,10 @@ def determineFilesystemTimeResolution() -> float =
 
 
 FS_PRECISION = determineFilesystemTimeResolution() * 1.55
+
+def sync():
+  if sys.version_info[:2] >= (3, 3): os.sync()
+  time.sleep(FS_PRECISION)
 
 
 def debugTestRunner(post_mortem = None) =
@@ -511,7 +513,7 @@ class Tests(unittest.TestCase):
     _.createFile("test.txt", "x" * 10)
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
     sos.branch("mod")
-    time.sleep(FS_PRECISION)
+    sync()
     _.createFile("test.txt", "x" * 5 + "y" * 5)
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
@@ -520,11 +522,13 @@ class Tests(unittest.TestCase):
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
     _.createFile("test.txt", "x" * 10)
     mockInput(["t"], () -> sos.update("mod", ["--ask-lines"]))
+    sync()
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
     _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
     sos.update("mod")  # auto-insert/removes (no intra-line conflict)
     _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
     mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
+    sync()
     with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
 
   def testIsTextType(_):
