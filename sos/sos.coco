@@ -507,7 +507,7 @@ def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = No
   changes  # for unit tests only TODO remove
 
 def _diff(m:Metadata, branch:int, revision:int, changes:ChangeSet, ignoreWhitespace:bool, textWrap:bool = False):  # TODO introduce option to diff against committed revision
-  wrap:(str) -> str = ((s) -> s) if textWrap else ((s) -> s[:termWidth])
+  wrap:(str) -> str = ((s) -> s) if textWrap else ((s) -> s[:termWidth])  # HINT since we don't know the actual width of unicode strings, we cannot be sure this is really maximizing horizontal space (like ljust), but probably not worth iteratively finding the right size
   onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changes, modifications = {k: v for k, v in changes.modifications.items() if not m.isTextType(os.path.basename(k))})
   m.listChanges(onlyBinaryModifications)  # only list modified binary files
   for path, pinfo in (c for c in changes.modifications.items() if m.isTextType(os.path.basename(c[0]))):  # only consider modified text files

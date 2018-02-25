@@ -7,7 +7,7 @@ import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = t
 try: from typing import *  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass
 from coconut.convenience import version as _coco_version  # Compute version-number for version-dependent features
-_coco_ver:str[] = _coco_version("num").split(".")[:4]  # Get number string
+_coco_ver:List[str] = _coco_version("num").split(".")[:4]
 coco_version:Tuple[int,int,int,int] = (int(_coco_ver[0]), int(_coco_ver[1]), int(_coco_ver[2].split("-")[0] if "-" in _coco_ver[2] else _coco_ver[2]), int(_coco_ver[2].split("-")[1].split("_dev")[1]) if "-" in _coco_ver[2] else 0)
 
 try: import enum

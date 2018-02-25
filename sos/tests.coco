@@ -19,8 +19,6 @@ os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
 import configr
 import sos  # import of package, not file
 
-if sos.coco_version < (1, 3, 1, 21): import builtins
-
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
 sos.defaults["useUnicodeFont"] = False  # because sos.main() is never called
@@ -81,6 +79,7 @@ def wrapChannels(func: -> Any) -> str =
 
 def mockInput(datas:str[], func: -> Any) -> Any:
   if sos.coco_version < (1, 3, 1, 21):
+    import builtins
     with mock.patch("builtins.input", side_effect = datas): return func()
   else:
     with mock.patch("sos.utility.input", side_effect = datas): return func()
