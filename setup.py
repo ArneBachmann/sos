@@ -12,7 +12,9 @@ if 'build' in sys.argv:
   print("Transpiling Coconut files to Python...")
   cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 1000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
 
-  if "--mypy" in sys.argv: shutil.rmtree(".mypy_cache/")
+  if "--mypy" in sys.argv:
+    try: shutil.rmtree(".mypy_cache/")
+    except: pass
   assert 0 == os.system("coconut%s %s %s -l -t 3.4 sos%s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--force" if "--force" in sys.argv else "", " --mypy --ignore-missing-imports --warn-incomplete-stub --warn-redundant-casts --warn-unused-ignores" if "--mypy" in sys.argv else ""))  #  or useChanges
   if "--mypy" in sys.argv:  sys.argv.remove('--mypy')
   if "--force" in sys.argv: sys.argv.remove('--force')
