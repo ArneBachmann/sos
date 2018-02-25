@@ -193,7 +193,7 @@ def wcswidth(string:str) -> int:  # TODO currently unused!
 
 def ljust(string:str, width:int = termWidth) -> str =
   assert width > 0
-  string + " " * max(0, width - wcswidth(str))
+  string + " " * max(0, width - wcswidth(string))
 
 def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.path.join(base ?? os.getcwd(), metaFolder, "b%d" % branch) + ((os.sep + file) if file else "")
 

@@ -45,7 +45,9 @@ def determineFilesystemTimeResolution() -> float =
 FS_PRECISION = determineFilesystemTimeResolution() * 1.55
 
 def sync():
-  if sys.version_info[:2] >= (3, 3) and hasattr(os, "sync"): os.sync()
+  if sys.version_info[:2] >= (3, 3):
+    try: os.sync()  # only Linux
+    except: pass
   time.sleep(FS_PRECISION)
 
 
@@ -124,8 +126,10 @@ class Tests(unittest.TestCase):
   def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None):
     if prefix and not os.path.exists(prefix): os.makedirs(prefix)
     with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "wb") as fd: fd.write(contents if isinstance(contents, bytes) else contents.encode("cp1252"))
+    sync()
 
   def existsFile(_, number:Union[int, str], expectedContents:bytes = None) -> bool:
+    sync()
     if not os.path.exists(("." + os.sep + "file%d" % number) if isinstance(number, int) else number): return False
     if expectedContents is None: return True
     with open(("." + os.sep + "file%d" % number) if isinstance(number, int) else number, "rb") as fd: return fd.read() == expectedContents
@@ -512,24 +516,24 @@ class Tests(unittest.TestCase):
   def testUpdate2(_):
     _.createFile("test.txt", "x" * 10)
     sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing
-    sos.branch("mod")
     sync()
+    sos.branch("mod")
     _.createFile("test.txt", "x" * 5 + "y" * 5)
     sos.commit("mod")  # create b0/r1
     sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more
-    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 10, fd.read())
+    _.assertTrue(_.existsFile("test.txt", b"x" * 10))
     sos.update("mod")  # integrate changes TODO same with ask -> theirs
-    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
+    _.existsFile("test.txt", b"x" * 5 + b"y" * 5)
     _.createFile("test.txt", "x" * 10)
     mockInput(["t"], () -> sos.update("mod", ["--ask-lines"]))
     sync()
-    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
+    _.assertTrue(_.existsFile("test.txt", b"x" * 5 + b"y" * 5))
     _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
     sos.update("mod")  # auto-insert/removes (no intra-line conflict)
     _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
-    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
     sync()
-    with open("test.txt", "rb") as fd: _.assertEqual(b"x" * 5 + b"y" * 5, fd.read())
+    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
+    _.assertTrue(_.existsFile("test.txt", b"x" * 5 + b"y" * 5))
 
   def testIsTextType(_):
     m = sos.Metadata(".")

@@ -4,7 +4,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.4.4"
+RELEASE = "1.4.5"
 
 print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
@@ -12,6 +12,7 @@ if 'build' in sys.argv:
   print("Transpiling Coconut files to Python...")
   cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 1000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
 
+  if "--mypy" in sys.argv: shutil.rmtree(".mypy_cache/")
   assert 0 == os.system("coconut%s %s %s -l -t 3.4 sos%s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--force" if "--force" in sys.argv else "", " --mypy --ignore-missing-imports --warn-incomplete-stub --warn-redundant-casts --warn-unused-ignores" if "--mypy" in sys.argv else ""))  #  or useChanges
   if "--mypy" in sys.argv:  sys.argv.remove('--mypy')
   if "--force" in sys.argv: sys.argv.remove('--force')
