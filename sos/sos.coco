@@ -569,12 +569,11 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   m.commits[revision] = CommitInfo(revision, int(time.time() * 1000), argument)  # comment can be None
   m.saveBranch(m.branch)
   m.loadBranches()  # TODO is it necessary to load again?
-  # TODO moved files recognition not used here
   if m.picky: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
   else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch dirty
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
   m.saveBranches()
-  printo(MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions) - len(changes.moves), len(changes.deletions) - len(changes.moves), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(changes.modifications), FOLDER_SYMBOL if m.c.useUnicodeFont else "#", len(changes.moves)))
+  printo(MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changes.additions) - len(changes.moves), len(changes.deletions) - len(changes.moves), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(changes.modifications), MOVE_SYMBOL if m.c.useUnicodeFont else "#", len(changes.moves)))
 
 def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show branches and current repository state. '''
@@ -869,6 +868,7 @@ def dump(argument:str, options:str[] = []):
   m:Metadata = Metadata()  # to load the configuration
   progress:bool = '--progress' in options
   delta:bool = not '--full' in options
+  skipBackup:bool = '--skip-backup' in options
   import warnings, zipfile
   try: import zlib; compression = zipfile.ZIP_DEFLATED  # HINT zlib is the library that contains the deflated algorithm
   except: compression = zipfile.ZIP_STORED
@@ -876,7 +876,7 @@ def dump(argument:str, options:str[] = []):
   if argument is None: Exit("Argument missing (target filename)")
   argument = argument if "." in argument else argument + DUMP_FILE  # TODO this logic lacks a bit, "v1.2" would not receive the suffix
   entries:List[str] = []
-  if os.path.exists(encode(argument)):
+  if os.path.exists(encode(argument)) and not skipBackup:
     try:
       debug("Creating backup...")
       shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))
@@ -886,7 +886,7 @@ def dump(argument:str, options:str[] = []):
   debug("Dumping revisions...")
   if delta: warnings.filterwarnings('ignore', 'Duplicate name.*', UserWarning, "zipfile", 0)  # don't show duplicate entries warnings
   with zipfile.ZipFile(argument, "a" if delta else "w", compression) as _zip:  # create
-    _zip.debug = 0  # no debugging output
+    _zip.debug = 0  # suppress debugging output
     _zip.comment = ("Repository dump from %r" % strftime()).encode(UTF8)
     repopath:str = os.path.join(os.getcwd(), metaFolder)
     indicator:ProgressIndicator? = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if progress else None
@@ -896,11 +896,11 @@ def dump(argument:str, options:str[] = []):
       dirpath = decode(dirpath)
       if dirpath.endswith(BACKUP_SUFFIX): continue  # don't backup backups
       printo(ljust(dirpath))  # TODO improve progress indicator output to | dir | dumpuing file
-      dirnames[:] = [decode(d) for d in dirnames]
-      filenames[:] = [decode(f) for f in filenames]
+      dirnames[:] = sorted([decode(d) for d in dirnames])  # HINT sort for reproducible delta dumps
+      filenames[:] = sorted([decode(f) for f in filenames])
       for filename in filenames:
         abspath:str = os.path.join(dirpath, filename)
-        relpath:str = os.path.relpath(abspath, repopath).replace(os.sep, "/")
+        relpath:str = os.path.join(metaFolder, os.path.relpath(abspath, repopath)).replace(os.sep, "/")
         totalsize += os.stat(encode(abspath)).st_size
         show:str? = indicator.getIndicator() if progress else None
         if relpath.endswith(BACKUP_SUFFIX): continue  # don't backup backups

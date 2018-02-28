@@ -5,7 +5,7 @@ import codecs, enum, json, logging, os, shutil, sys, time, traceback, unittest, 
 from io import BytesIO, BufferedRandom, TextIOWrapper
 
 try:
-  if TYPE_CHECKING:
+  if TYPE_CHECKING:  # true only during compilation/mypy run
     from typing import *
     mock:Any  # to avoid mypy complaint
 except: pass
@@ -72,10 +72,12 @@ def wrapChannels(func: -> Any) -> str =
   buf = TextIOWrapper(BufferedRandom(BytesIO(b"")), encoding = sos.UTF8)
   handler = logging.StreamHandler(buf)  # TODO doesn't seem to be captured
   sys.stdout = sys.stderr = buf
+  logging.getLogger().setLevel(logging.DEBUG)
   logging.getLogger().addHandler(handler)
   try: func()  # capture output into buf
   except Exception as E:  buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
   except SystemExit as F: buf.write("EXIT CODE %s" % F.code + "\n"); traceback.print_exc(file = buf)
+  logging.getLogger().setLevel(logging.INFO)
   logging.getLogger().removeHandler(handler)
   sys.argv, sys.stdout, sys.stderr = oldv, sys.__stdout__, sys.__stderr__  # TODO when run using pythonw.exe and/or no console, these could be None
   buf.seek(0)
@@ -86,7 +88,7 @@ def mockInput(datas:str[], func: -> Any) -> Any:
     import builtins
     with mock.patch("builtins.input", side_effect = datas): return func()
   else:
-    with mock.patch("sos.utility.input", side_effect = datas): return func()
+    with mock.patch("sos._utility.input", side_effect = datas): return func()
 
 def setRepoFlag(name:str, value:bool):
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
@@ -138,6 +140,13 @@ class Tests(unittest.TestCase):
     a = sos.Accessor({"a": 1})
     _.assertEqual((1, 1), (a["a"], a.a))
 
+  def testRestoreFile(_):
+    m = sos.Metadata()
+    os.makedirs(sos.revisionFolder(0, 0))
+    _.createFile("hashed_file", "content", sos.revisionFolder(0, 0))
+    m.restoreFile(relPath = "restored", branch = 0, revision = 0, pinfo = sos.PathInfo("hashed_file", 0, (time.time() - 2000) * 1000, "content hash"))
+    _.assertTrue(_.existsFile("restored", b""))
+
   def testGetAnyOfmap(_):
     _.assertEqual(2, sos.getAnyOfMap({"a": 1, "b": 2}, ["x", "b"]))
     _.assertIsNone(sos.getAnyOfMap({"a": 1, "b": 2}, []))
@@ -181,7 +190,7 @@ class Tests(unittest.TestCase):
   def testMoves(_):
     _.createFile(1, "1")
     _.createFile(2, "2", "sub")
-    sos.offline(options = ["--strict"])
+    sos.offline(options = ["--strict", "--compress"])  # TODO move compress flag to own test function and check if it actually works
     os.renames(sos.encode("." + os.sep + "file1"), sos.encode("sub" + os.sep + "file1"))
     os.renames(sos.encode("sub" + os.sep + "file2"), sos.encode("." + os.sep + "file2"))
     out:str = wrapChannels(() -> sos.changes())
@@ -209,12 +218,12 @@ class Tests(unittest.TestCase):
   def testAutoUpgrade(_):
     sos.offline()
     with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "r", encoding = sos.UTF8) as fd: repo, branches, config = json.load(fd)
-    repo["version"] = "0"  # lower than any pip version
+    repo["version"] = None  # lower than any pip version
     branches[:] = [branch[:5] for branch in branches]  # simulate some older state
     del repo["format"]  # simulate pre-1.3.5
     with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "w", encoding = sos.UTF8) as fd: json.dump((repo, branches, config), fd, ensure_ascii = False)
     out = wrapChannels(() -> sos.status(options = ["--repo"]))
-    _.assertAllIn(["Upgraded repository metadata to match SOS version '2018.1210.3028'", "Upgraded repository metadata to match SOS version '1.3.5'"], out)
+    _.assertAllIn(["pre-1.2", "Upgraded repository metadata to match SOS version '2018.1210.3028'", "Upgraded repository metadata to match SOS version '1.3.5'"], out)
 
   def testFastBranching(_):
     _.createFile(1)
@@ -461,6 +470,10 @@ class Tests(unittest.TestCase):
     _.assertIn("    b01 'second'", out)
     _.assertIn("(dirty)", out)  # one branch has commits
     _.assertIn("(in sync)", out)  # the other doesn't
+    sos.defaults["useChangesCommand"] = False  # because sos.main() is never called
+    out = wrapChannels(() -> sos.status()).replace("\r", "")  # trigger repo info
+    _.assertAllIn(["Metadata format", "Content checking:    deactivated", "Data compression:    deactivated", "Repository mode:     simple", "Number of branches:  2"], out)
+    sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
     _.createFile(4, "xy")  # generate a file
     sos.switch("second", ["--force"])  # avoids warning on uncommited changes, but keeps file4
     _.assertFalse(_.existsFile(4))  # removed when forcedly switching back to test
@@ -469,6 +482,15 @@ class Tests(unittest.TestCase):
     sos.switch("test", ["--force"])  # should restore file1 and remove file3
     _.assertTrue(_.existsFile(1))  # was restored from branch's revision r1
     _.assertFalse(_.existsFile(3))  # was restored from branch's revision r1
+    out = wrapChannels(() -> sos.dump("dumped.sos.zip", options = ["--skip-backup", "--full"])).replace("\r", "")
+    _.assertAllIn(["Dumping revisions"], out)
+    _.assertNotIn("Creating backup", out)
+    out = wrapChannels(() -> sos.dump("dumped.sos.zip", options = ["--skip-backup"])).replace("\r", "")
+    _.assertIn("Dumping revisions", out)
+    _.assertNotIn("Creating backup", out)
+    out = wrapChannels(() -> sos.dump("dumped.sos.zip", options = ["--full"])).replace("\r", "")
+    _.assertAllIn(["Creating backup"], out)
+    _.assertIn("Dumping revisions", out)
 
   def testAutoDetectVCS(_):
     os.mkdir(".git")
