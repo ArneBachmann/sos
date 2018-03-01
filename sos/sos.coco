@@ -507,28 +507,29 @@ def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = No
   changes  # for unit tests only TODO remove
 
 def _diff(m:Metadata, branch:int, revision:int, changes:ChangeSet, ignoreWhitespace:bool, textWrap:bool = False):  # TODO introduce option to diff against committed revision
+  ''' The diff display code. '''
   wrap:(str) -> str = ((s) -> s) if textWrap else ((s) -> s[:termWidth])  # HINT since we don't know the actual width of unicode strings, we cannot be sure this is really maximizing horizontal space (like ljust), but probably not worth iteratively finding the right size
   onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changes, modifications = {k: v for k, v in changes.modifications.items() if not m.isTextType(os.path.basename(k))})
   m.listChanges(onlyBinaryModifications)  # only list modified binary files
   for path, pinfo in (c for c in changes.modifications.items() if m.isTextType(os.path.basename(c[0]))):  # only consider modified text files
-    content:bytes?
-    if pinfo.size == 0: content = b""  # empty file contents
-    else: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
+    content:bytes? = b""
+    if pinfo.size != 0: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
     abspath:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))  # current file
     blocks:List[MergeBlock]; nl:bytes
     blocks, nl = merge(filename = abspath, into = content, diffOnly = True, ignoreWhitespace = ignoreWhitespace)  # only determine change blocks
     printo("DIF %s%s  %s" % (path, " <timestamp or newline>" if len(blocks) == 1 and blocks[0].tipe == MergeBlockType.KEEP else "", NL_NAMES[nl]))
+    linemax:int = requiredDecimalDigits(max([block.line for block in blocks]) if len(blocks) > 0 else 1)
     for block in blocks:
 #      if block.tipe in [MergeBlockType.INSERT, MergeBlockType.REMOVE]:
 #        pass  # TODO print some previous and following lines - which aren't accessible here anymore
       if block.tipe == MergeBlockType.INSERT:  # TODO show color via (n)curses or other library?
-        for no, line in enumerate(block.lines):          printo(wrap("--- %04d |%s|" % (no + block.line, line)))
+        for no, line in enumerate(block.lines):          printo(wrap("--- %%0%dd |%%s|" % linemax % (no + block.line, line)))
       elif block.tipe == MergeBlockType.REMOVE:
-        for no, line in enumerate(block.lines):          printo(wrap("+++ %04d |%s|" % (no + block.line, line)))
+        for no, line in enumerate(block.lines):          printo(wrap("+++ %%0%dd |%%s|" % linemax % (no + block.line, line)))
       elif block.tipe == MergeBlockType.REPLACE:
-        for no, line in enumerate(block.replaces.lines): printo(wrap("- | %04d |%s|" % (no + block.replaces.line, line)))
-        for no, line in enumerate(block.lines):          printo(wrap("+ | %04d |%s|" % (no + block.line, line)))
-#      elif block.tipe == MergeBlockType.KEEP: pass
+        for no, line in enumerate(block.replaces.lines): printo(wrap("- | %%0%dd |%%s|" % linemax % (no + block.replaces.line, line)))
+        for no, line in enumerate(block.lines):          printo(wrap("+ | %%0%dd |%%s|" % linemax % (no + block.line, line)))
+#      elif block.tipe == MergeBlockType.KEEP: pass  # TODO allow to show kept stuff, or a part of pre-post lines
 #      elif block.tipe == MergeBlockType.MOVE:  # intra-line modifications
       if block.tipe != MergeBlockType.KEEP: printo()
 
@@ -843,6 +844,7 @@ def log(options:str[] = []):
   nl:int = len("%d" % maxi)  # determine space needed for revision
   changesetIterator:Iterator[Dict[str,PathInfo]]? = m.computeSequentialPathSetIterator(m.branch, maxi)
   olds:FrozenSet[str] = f{}  # last revision's entries
+  last:Dict[str,PathInfo] = {}  # path infos from previous revision
   commit:CommitInfo
   for no in range(maxi + 1):
     if no in m.commits: commit = m.commits[no]
@@ -854,13 +856,15 @@ def log(options:str[] = []):
     news:FrozenSet[str] = frozenset(nxts.keys())
     _add:FrozenSet[str] = news - olds
     _del:FrozenSet[str] = olds - news
-    _mod:FrozenSet[str] = frozenset([_ for _, info in nxts.items() if _ in m.paths and m.paths[_].size != info.size and (m.paths[_].hash != info.hash if m.strict else m.paths[_].mtime != info.mtime)])
+#    _mod_:Dict[str,PathInfo] = {k: nxts[k] for k in news - _add - _del}
+    _mod:FrozenSet[str] = frozenset([_ for _, info in {k: nxts[k] for k in news - _add - _del}.items() if last[_].size != info.size or (last[_].hash != info.hash if m.strict else last[_].mtime != info.mtime)])
 #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds})  # TODO determine moves - can we reuse detectMoves(changes)?
     _txt:int = len([a for a in _add if m.isTextType(a)])
     printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
     if '--changes' in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
     if '--diff' in options: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news  # replaces olds for next revision compare
+    last = {k: v for k, v in nxts.items()}  # create new reference
 
 def dump(argument:str, options:str[] = []):
   ''' Exported entire repository as archive for easy transfer. '''

@@ -48,7 +48,7 @@ def sync():
   if sys.version_info[:2] >= (3, 3):
     try: os.sync()  # only Linux
     except: pass
-  time.sleep(FS_PRECISION)
+#  time.sleep(FS_PRECISION)
 
 
 def debugTestRunner(post_mortem = None) =
@@ -72,12 +72,10 @@ def wrapChannels(func: -> Any) -> str =
   buf = TextIOWrapper(BufferedRandom(BytesIO(b"")), encoding = sos.UTF8)
   handler = logging.StreamHandler(buf)  # TODO doesn't seem to be captured
   sys.stdout = sys.stderr = buf
-  logging.getLogger().setLevel(logging.DEBUG)
   logging.getLogger().addHandler(handler)
   try: func()  # capture output into buf
   except Exception as E:  buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
   except SystemExit as F: buf.write("EXIT CODE %s" % F.code + "\n"); traceback.print_exc(file = buf)
-  logging.getLogger().setLevel(logging.INFO)
   logging.getLogger().removeHandler(handler)
   sys.argv, sys.stdout, sys.stderr = oldv, sys.__stdout__, sys.__stderr__  # TODO when run using pythonw.exe and/or no console, these could be None
   buf.seek(0)
@@ -104,6 +102,7 @@ class Tests(unittest.TestCase):
   ''' Entire test suite. '''
 
   def setUp(_):
+    logging.getLogger().setLevel(logging.DEBUG)  # allowing to capture debug output
     sos.Metadata.singleton = None
     for entry in os.listdir(testFolder):  # cannot remove testFolder on Windows when using TortoiseSVN as VCS
       resource = os.path.join(testFolder, entry)
@@ -941,7 +940,7 @@ class Tests(unittest.TestCase):
     _.createFile(3)
     out = wrapChannels(() -> sos.diff("/-2"))  # compare with r1 (second counting from last which is r2)
     _.assertIn("ADD ./file3", out)
-    _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "- | 0001 |xxxxxxxxxx|", "+ | 0000 |foobar|"], out)
+    _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "- | 0 |xxxxxxxxxx|", "+ | 0 |foobar|"], out)
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(() -> sos.diff("/-2", onlys = f{"./file2"})))
 
   def testReorderRenameActions(_):

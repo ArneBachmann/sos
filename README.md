@@ -78,7 +78,7 @@ SOS supports three different file handling models that you may use to your likin
     - [Feature 181](https://github.com/ArneBachmann/sos/issues/181) Introduces experimental code for **very fast branching**. Use `sos branch [<name> [<message>]] --last --fast` for instant branching that uses only a reference to the parent branch instead of copying each file. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to when the parent branch is destroyed, assuming that destroying a branch is an action  much less often used than branching
     - [Feature 182](https://github.com/ArneBachmann/sos/issues/182) Introduces automatic upgrade for metadata format, making manual migration steps of previous and any future releases obsolete
     - [Feature 183](https://github.com/ArneBachmann/sos/issues/183) SOS now recognizes and displays renames and file moves inside the repository. The underlying add/remove file behaviour is unchanged, but the user sees a *moved* notification for `sos changes` and `sos commit`
-    - Downloads so far: 470
+    - Downloads so far: 2850
 - Version 1.3 release on 2018-02-10:
     - [Enhancement 152, 162](https://github.com/ArneBachmann/sos/issues/152) PEP528/529 compatibility: Now working with any console encoding and file system encoding on Windows (at least with Python 3.6+)
     - [Enhancement 163](https://github.com/ArneBachmann/sos/issues/163) Rewrite of changeset handling to avoid problems when re-adding files deleted in previous revision

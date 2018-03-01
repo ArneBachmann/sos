@@ -140,6 +140,9 @@ def tryOrIgnore(func:() -> Any) -> None:  # handle with care!
   try: func()
   except: pass
 
+def requiredDecimalDigits(number:int) -> int =
+  1 if number <= 0 else int(math.floor(round(math.log(number, 10), 6)) + 1)
+
 def removePath(key:str, value:str) -> str =
   ''' Cleanup of user-specified global file patterns. '''
   value if value in GLOBAL_LISTS or SLASH not in value else value[value.rindex(SLASH)+1:]
@@ -306,22 +309,25 @@ def merge(
   blocks:List[MergeBlock] = []  # merged result in blocks
   tmp:List[str] = []  # block lines
   last:str = " "; no:int; line:str
+  offset:int = 0  # into file offset for remark lines
   for no, line in enumerate(output + ["X"]):  # EOF marker (difflib's output will never be "X" alone)
     if line[0] == last: tmp.append(line[2:]); continue  # continue filling current block, no matter what type of block it is
     if line == "X" and len(tmp) == 0: break  # break if nothing left to do, otherwise perform operation for stored block
     if last == " ":  # block is same in both files
-      if len(tmp) > 0: blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line = no - len(tmp)))  # avoid adding empty keep block
+      if len(tmp) > 0: blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line = no - offset - len(tmp)))  # avoid adding empty keep block
     elif last == "-":  # may be a pure deletion or part of a replacement (with next block being "+")
-      blocks.append(MergeBlock(MergeBlockType.REMOVE, [line for line in tmp], line = no - len(tmp)))
+      blocks.append(MergeBlock(MergeBlockType.REMOVE, [line for line in tmp], line = no - offset - len(tmp)))
       if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.INSERT:
-        blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-1].lines, line = no - len(tmp) - 1, replaces = blocks[-2])  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
+        offset += len(blocks[-2].lines)
+        blocks[-2] = dataCopy(MergeBlock, blocks[-1], tipe = MergeBlockType.REPLACE, replaces = dataCopy(MergeBlock, blocks[-2], line = blocks[-1].line))  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
         blocks.pop()
     elif last == "+":  # may be insertion or replacement (with previous - block)
-      blocks.append(MergeBlock(MergeBlockType.INSERT, [line for line in tmp], line = no - len(tmp)))  # first, assume simple insertion, then check for replacement
+      blocks.append(MergeBlock(MergeBlockType.INSERT, [line for line in tmp], line = no - offset - len(tmp)))  # first, assume simple insertion, then check for replacement
       if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.REMOVE:  #  and len(blocks[-1].lines) == len(blocks[-2].lines):  # requires previous block and same number of lines TODO allow multiple intra-line merge for same-length blocks
-        blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-2].lines, line = no - len(tmp) - 1, replaces = blocks[-1])  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
+        offset += len(blocks[-1].lines)
+        blocks[-2] = dataCopy(MergeBlock, blocks[-2], tipe = MergeBlockType.REPLACE, replaces = dataCopy(MergeBlock, blocks[-1], line = blocks[-2].line))  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
         blocks.pop()  # remove TOS due to merging two blocks into replace or modify
-#    elif last == "?": pass # marker for intra-line change comment -> add to block info
+    elif last == "?": offset += 1  # marker for intra-line change comment HINT was earlier part of the MergeBlock
     last = line[0]
     tmp[:] = [line[2:]]  # only keep current line for next block
   # TODO add code to detect block moves here
