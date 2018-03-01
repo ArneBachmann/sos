@@ -45,10 +45,8 @@ def determineFilesystemTimeResolution() -> float =
 FS_PRECISION = determineFilesystemTimeResolution() * 1.55
 
 def sync():
-  if sys.version_info[:2] >= (3, 3):
-    try: os.sync()  # only Linux
-    except: pass
-#  time.sleep(FS_PRECISION)
+  try: os.sync()  # only Linux  if sys.version_info[:2] >= (3, 3):
+  except: time.sleep(FS_PRECISION)  # Windows testing on AppVeyor
 
 
 def debugTestRunner(post_mortem = None) =
