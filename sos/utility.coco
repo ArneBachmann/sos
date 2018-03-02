@@ -2,7 +2,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Utiliy functions
-import bz2, codecs, difflib, hashlib, logging, os, re, sys, time; START_TIME = time.time()  # early time tracking
+import bz2, codecs, difflib, hashlib, logging, math, os, re, sys, time; START_TIME = time.time()  # early time tracking
 
 try: from typing import Dict, FrozenSet, List, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass
@@ -347,13 +347,14 @@ def merge(
       if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner
         output.append(lineMerge(block.lines[0], block.replaces.lines[0], mergeOperation = charMergeOperation))
       elif mergeOperation == MergeOperation.ASK:  # more than one line: needs user input
-        printo(ajoin("- ", block.replaces.lines, nl = "\n"))  # TODO check +/- in update mode, could be swapped
-        printo(ajoin("+ ", block.lines, nl = "\n"))
+        printo(ajoin("- ", block.lines, nl = "\n"))  # TODO check +/- in update mode, could be swapped
+        printo(ajoin("+ ", block.replaces.lines, nl = "\n"))
         while True:
-          op:str = input(" Line replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()
-          if op in "tb": output.extend(block.lines); break
-          if op in "ib": output.extend(block.replaces.lines); break
-          if op == "m": user_block_input(output); break
+          op:str = input(" Line replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()[:1]
+          if op in "tb": output.extend(block.lines)
+          if op in "ib": output.extend(block.replaces.lines)
+          if op == "u": user_block_input(output)
+          if op in "tbiu": break
       else:  # more than one line and not ask
         if   mergeOperation == MergeOperation.REMOVE: pass
         elif mergeOperation == MergeOperation.BOTH: output.extend(block.lines)

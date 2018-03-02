@@ -747,15 +747,14 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
       if op == "t":
         printo("THR " + path); m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile = into)  # blockwise copy of contents
       elif op == "m":
-        current:bytes
-        with open(encode(into), "rb") as fd: current = fd.read()  # TODO slurps file
+        with open(encode(into), "rb") as fd: current:bytes = fd.read()  # TODO slurps current file
         file:bytes? = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # parse lines
         if current == file: debug("No difference to versioned file")
         elif file is not None:  # if None, error message was already logged
-          contents:bytes; nl:bytes
-          contents, nl = merge(file = file, into = current, mergeOperation = mrgline, charMergeOperation = mrgchar, eol = eol)
-          if contents != current:
-            with open(encode(path), "wb") as fd: fd.write(contents)  # TODO write to temp file first, in case writing fails
+          merged:bytes; nl:bytes
+          merged, nl = merge(file = file, into = current, mergeOperation = mrgline, charMergeOperation = mrgchar, eol = eol)
+          if merged != current:
+            with open(encode(path), "wb") as fd: fd.write(merged)  # TODO write to temp file first, in case writing fails
           else: debug("No change")  # TODO but update timestamp?
       else:  # mine or wrong input
         printo("MNE " + path)  # nothing to do! same as skip
