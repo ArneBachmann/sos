@@ -1,14 +1,13 @@
 # Subversion Offline Solution (SOS 1.4.7) #
 
-![SOS Logo](logo-small.png)
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
 [![Code coverage badge](https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master)](https://coveralls.io/github/ArneBachmann/sos?branch=master)
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
-- [Documentation](http://sos-vcs.net) (official website), [Code Repository](https://github.com/ArneBachmann/sos) (at Github)
-- [Buy a coffee](http://PayPal.Me/ArneBachmann/) for the developer to show your appreciation!
+- [Documentation](http://sos-vcs.net) (official website), [Code Repository](https://github.com/ArneBachmann/sos) (at ![Github](https://octicons.github.com/icon/logo-github))
+- [Buy the developer a coffee](http://PayPal.Me/ArneBachmann/) to show your appreciation!
 
 ### Important notice from the author ###
 > I've been developing this software over the course of the last 4 months in my spare time, and until version 1.4 I've put probably around 200 working hours into it, a rough equivalent of 8.500€ in development costs that I have granted to the open source community. Lately, this project has taken too much time away from my family and other significant themes in my life. I cannot continue at the current pace, unless getting support in form of a lively SOS community, or by getting funding for the effort that I put into SOS. Since SOS is already quite mature, so I will reduce my efforts and contribute only little enhancements and bug fixes according to my own pace and priorities, unless someone comes with contributions, or feature requests and means to support them. As a user of open source software I hope you can relate to this decision and support SOS in any way suiting you, to make it our number one personal productivity tool!
@@ -28,7 +27,7 @@
 
 
 ## Introduction ##
-If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
+<img src="logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
 
 SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline extension of those VCSs that either don't support offline branching and committing or are too complex, and *c)* as a standalone VCS.
 You may run `sos offline` not only inside a SVN checkout, but in any (and also multiple, even nested) folders of your file system, even outside of VCS repository checkouts/clones.
@@ -63,8 +62,14 @@ SOS supports three different file handling models that you may use to your likin
 
 ## Latest Changes ##
 - version 1.5 (not released yet):
+    - [Bug 78](https://github.com/ArneBachmann/sos/issues/78) Long standing bug computing wrong line numbers in diff view
     - [Bug 196](https://github.com/ArneBachmann/sos/issues/196) `--only` and `--except` not working
-    - [Enhancement 157](https://github.com/ArneBachmann/sos/issues/157) Experimental support for incremental dumps
+    - [Bug 197](https://github.com/ArneBachmann/sos/issues/197) Bug fix for shown number of files in `commit` and `log`
+    - [Bug 206, 207](https://github.com/ArneBachmann/sos/issues/206) Merge not asking for user input on one-line replace, also wrong use of mine/theirs
+    - [Enhancement 195](https://github.com/ArneBachmann/sos/issues/195) Minimize the number of digits in diff line numbers to the required amount
+    - [Enhancement 199](https://github.com/ArneBachmann/sos/issues/199) Unicode symbols added (force set via `useUnicodeFont`)
+    - [Enhancement 202](https://github.com/ArneBachmann/sos/issues/202) Now using the `wcwidth` library to determine visible width of unicode strings (untested)
+    - [Feature 157, 200, 204](https://github.com/ArneBachmann/sos/issues/157) Experimental support for incremental dumps
 - Version 1.4 release on 2018-02-17:
     - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on `sos status`
     - [Bug 190](https://github.com/ArneBachmann/sos/issues/190) Changes not computed in `sos online`
