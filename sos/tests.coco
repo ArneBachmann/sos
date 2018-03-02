@@ -84,7 +84,10 @@ def mockInput(datas:str[], func: -> Any) -> Any:
     import builtins
     with mock.patch("builtins.input", side_effect = datas): return func()
   else:
-    with mock.patch("sos._utility.input", side_effect = datas): return func()
+    try:  # via python sos/tests.py
+      with mock.patch("sos._utility.input", side_effect = datas): return func()
+    except:  # via setup.py
+      with mock.patch("sos.utility.input", side_effect = datas): return func()
 
 def setRepoFlag(name:str, value:bool):
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
