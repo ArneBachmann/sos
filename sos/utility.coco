@@ -406,7 +406,7 @@ def lineMerge(othr:str, into:str, mergeOperation:MergeOperation = MergeOperation
         printo("+ " + (" " * i) + block.lines[0])
         printo(ajoin("+ ", into))
         while True:
-          op:str = input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()
+          op:str = input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()[:1]
           if op in "tb": out.extend(block.lines); break
           if op in "ib": out.extend(block.replaces.lines); break
           if op == "m":  user_block_input(out); break
