@@ -804,35 +804,46 @@ def remove(relPath:str, pattern:str, negative:bool = False):
 
 def ls(folder:str? = None, options:str[] = []):
   ''' List specified directory, augmenting with repository metadata. '''
-  folder = folder ?? os.getcwd()
   m:Metadata = Metadata()
+  folder = folder ?? os.getcwd()
+  if '--all' in options: folder = m.root  # always start at SOS repo root with --all
+  recursive:bool = '--recursive' in options or '-r' in options or '--all' in options
+  patterns:bool = '--patterns' in options or '-p' in options
+  DOT:str = (DOT_SYMBOL if m.c.useUnicodeFont else " ") * 3
   debug(MARKER + "Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
   relPath:str = relativize(m.root, os.path.join(folder, "-"))[0]
   if relPath.startswith(os.pardir): Exit("Cannot list contents of folder outside offline repository")
   trackingPatterns:FrozenSet[str]? = m.getTrackingPatterns() if m.track or m.picky else f{}  # for current branch
   untrackingPatterns:FrozenSet[str]? = m.getTrackingPatterns(negative = True) if m.track or m.picky else f{}  # for current branch
-  if '--tags' in options:
-    printo(ajoin("TAG ", sorted(m.tags), nl = "\n"))
+  if '--tags' in options:  # TODO this has nothing to do with "ls" - it's an entirely different command. Move if something like "sos tag" has been implemented
+    if len(m.tags) > 0: printo(ajoin("TAG ", sorted(m.tags), nl = "\n"))
     return
-  if '--patterns' in options:
-    out:str = ajoin("TRK ", [os.path.basename(p) for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath], nl = "\n")
-    if out: printo(out)
-    return
-  files:List[str] = list(sorted(entry for entry in os.listdir(folder) if os.path.isfile(os.path.join(folder, entry))))
-  printo("DIR %s" % relPath)
-  for file in files:  # for each file list all tracking patterns that match, or none (e.g. in picky mode after commit)
-    ignore:str? = None
-    for ig in m.c.ignores:
-      if fnmatch.fnmatch(file, ig): ignore = ig; break  # remember first match
-    if ig:
-      for wl in m.c.ignoresWhitelist:
-        if fnmatch.fnmatch(file, wl): ignore = None; break  # found a white list entry for ignored file, undo ignoring it
-    matches:List[str] = []
-    if not ignore:
-      for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
-        if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(os.path.basename(pattern))
-    matches.sort(key = (element) -> len(element))  # sort in-place
-    printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else DOT_SYMBOL * 3), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
+  for dirpath, dirnames, _filenames in os.walk(folder):
+    if not recursive: dirnames.clear()  # avoid recursion
+    dirnames[:] = sorted([decode(d) for d in dirnames])
+    dirnames[:] = [d for d in dirnames  if len([n for n in m.c.ignoreDirs if fnmatch.fnmatch(d, n)]) == 0 or len([p for p in m.c.ignoreDirsWhitelist if fnmatch.fnmatch(d, p)]) > 0]  # global ignores
+
+    folder = decode(dirpath)
+    relPath:str = relativize(m.root, os.path.join(folder, "-"))[0]
+    if patterns:
+      out:str = ajoin("TRK ", [os.path.basename(p) for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath], nl = "\n")
+      if out: printo("DIR %s\n" % relPath + out)
+      continue  # with next folder
+    files:List[str] = list(sorted(entry for entry in os.listdir(folder) if os.path.isfile(os.path.join(folder, entry))))
+    if len(files) > 0: printo("DIR %s" % relPath)
+    for file in files:  # for each file list all tracking patterns that match, or none (e.g. in picky mode after commit)
+      ignore:str? = None
+      for ig in m.c.ignores:
+        if fnmatch.fnmatch(file, ig): ignore = ig; break  # remember first match
+      if ig:
+        for wl in m.c.ignoresWhitelist:
+          if fnmatch.fnmatch(file, wl): ignore = None; break  # found a white list entry for ignored file, undo ignoring it
+      matches:List[str] = []
+      if not ignore:
+        for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder
+          if fnmatch.fnmatch(file, os.path.basename(pattern)): matches.append(os.path.basename(pattern))
+      matches.sort(key = (element) -> len(element))  # sort in-place
+      printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else DOT), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
 
 def log(options:str[] = []):
   ''' List previous commits on current branch. '''
@@ -1009,7 +1020,7 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   m.saveBranches()
 
 def parse(root:str, cwd:str, cmd:str):
-  ''' Main operation. Main has already chdir into VCS root folder, cwd is original working directory for add, rm, mv. '''
+  ''' Main operation. Main has already chdir into SOS root folder, cwd is original working directory for add, rm, mv. '''
   debug("Parsing command-line arguments...")
   try:
     onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative information for changes, commit, diff, switch, update
@@ -1057,7 +1068,7 @@ def main():
   if '--help' in sys.argv or len(sys.argv) < 2: usage(APPNAME, version.__version__)
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
-  debug("Found root folders for SOS|VCS: %s|%s" % (root ?? "-", vcs ?? "-"))
+  debug("Found root folders for SOS | VCS:  %s | %s" % (root ?? "-", vcs ?? "-"))
   defaults["defaultbranch"] = vcsBranches.get(cmd, "trunk") ?? "default"  # sets dynamic default with SVN fallback
   defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback
   if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] in "hv":  # in offline mode or just going offline TODO what about git config?

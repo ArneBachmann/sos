@@ -721,7 +721,7 @@ class Tests(unittest.TestCase):
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny("TRK file1  (file*)", out)
     _.assertNotInAny("... file1  (file*)", out)
-    _.assertInAny("··· foo", out)
+    _.assertInAny("    foo", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls(options = ["--patterns"])).replace("\r", ""), "\n")
     _.assertInAny("TRK file*", out)
     _.createFile("a", prefix = "sub")
@@ -817,6 +817,7 @@ class Tests(unittest.TestCase):
     _.createFile("foo")
     _.createFile("ign1")
     _.createFile("ign2")
+    _.createFile("bar", prefix = "sub")
     sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)
     try: sos.config(["set", "ignores", "ign1"])  # define an ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
@@ -827,9 +828,14 @@ class Tests(unittest.TestCase):
     out = wrapChannels(() -> sos.config(["show"])).replace("\r", "")
     _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
-    _.assertInAny('··· file1', out)
-    _.assertInAny('··· ign1', out)
-    _.assertInAny('··· ign2', out)
+    _.assertInAny('    file1', out)
+    _.assertInAny('    ign1', out)
+    _.assertInAny('    ign2', out)
+    _.assertNotIn('DIR sub', out)
+    _.assertNotIn('    bar', out)
+    out = wrapChannels(() -> sos.ls(options = ["--recursive"])).replace("\r", "")
+    _.assertIn('DIR sub', out)
+    _.assertIn('    bar', out)
     try: sos.config(["rm", "foo", "bar"]); _.fail()
     except SystemExit as E: _.assertEqual(1, E.code)
     try: sos.config(["rm", "ignores", "foo"]); _.fail()
@@ -839,9 +845,9 @@ class Tests(unittest.TestCase):
     try: sos.config(["unset", "ignoresWhitelist"])  # remove ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
     out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
-    _.assertInAny('··· ign1', out)
+    _.assertInAny('    ign1', out)
     _.assertInAny('IGN ign2', out)
-    _.assertNotInAny('··· ign2', out)
+    _.assertNotInAny('    ign2', out)
 
   def testWhitelist(_):
     # TODO test same for simple mode

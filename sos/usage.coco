@@ -21,8 +21,8 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --strict                                              Always compare entire file contents
     online                                                Finish working offline
     dump [<path>/]<name[.sos.zip]>                        Perform (differential) repository dump
-      [--full]                                               Export the entire repository, don't attempt differential backup
-      [--skip-nackup]                                        Don't create an archive copy before commencing backup
+      [--full]                                               Export the entire repository, don't attempt differential backup, if file already exists
+      [--skip-nackup]                                        Don't create an archive copy before backup
 
   Working with branches:
     branch [<name> [<message>]]                           Create a new branch from current file tree and switch to it
@@ -45,7 +45,11 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
       --to=branch/revision                                  Take "to" revision as target to compare against (instead of current file tree state)
       --ignore-whitespace | --iw                            Ignore white spaces during comparison
       --wrap                                                Wrap text around terminal size instead of shortening
-    ls [<folder path>] [--patterns|--tags]                List file tree and mark changes and tracking status
+    ls [<folder path>]                                    List file tree and mark changes and tracking status
+      --patterns                                            Only show tracking patterns
+      --tags                                                List all repository tags (has nothing to do with file or filepattern listing)
+      --recursive | -r                                      Recursively list also sub-folders
+      --all | -a                                            Recursively list all starting from repository root
 
   Defining file patterns:
     add[not] <file pattern>                               Add a tracking pattern to current branch (file pattern). Using addnot adds to tracking blacklist
