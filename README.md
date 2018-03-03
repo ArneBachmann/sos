@@ -61,16 +61,17 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
-- version 1.5 (not released yet):
-    - [Bug 78](https://github.com/ArneBachmann/sos/issues/78) Long standing bug computing wrong line numbers in diff view
-    - [Bug 196](https://github.com/ArneBachmann/sos/issues/196) `--only` and `--except` not working
+- Version 1.5, released on 2018-03-03:
+    - [Bug 78](https://github.com/ArneBachmann/sos/issues/78) Long standing bug, computing wrong line numbers in diff view
+    - [Bug 196](https://github.com/ArneBachmann/sos/issues/196) Ubiquitous `--only` and `--except` options not working
     - [Bug 197](https://github.com/ArneBachmann/sos/issues/197) Bug fix for shown number of files in `commit` and `log`
     - [Bug 206, 207](https://github.com/ArneBachmann/sos/issues/206) Merge not asking for user input on one-line replace, also wrong use of mine/theirs
     - [Enhancement 195](https://github.com/ArneBachmann/sos/issues/195) Minimize the number of digits in diff line numbers to the required amount
     - [Enhancement 199](https://github.com/ArneBachmann/sos/issues/199) Unicode symbols added (force set via `useUnicodeFont`)
     - [Enhancement 202](https://github.com/ArneBachmann/sos/issues/202) Now using the `wcwidth` library to determine visible width of unicode strings (untested)
+    - [Feature 102](https://github.com/ArneBachmann/sos/issues/102) Option to list tracking patterns, and list (tracked) files recursively
     - [Feature 157, 200, 204](https://github.com/ArneBachmann/sos/issues/157) Experimental support for incremental dumps
-- Version 1.4 release on 2018-02-17:
+- Version 1.4, released on 2018-02-17:
     - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on `sos status`
     - [Bug 190](https://github.com/ArneBachmann/sos/issues/190) Changes not computed in `sos online`
     - [Enhancement 75](https://github.com/ArneBachmann/sos/issues/75) Better progress indicators during `sos commit` and other operations
@@ -84,8 +85,8 @@ SOS supports three different file handling models that you may use to your likin
     - [Feature 181](https://github.com/ArneBachmann/sos/issues/181) Introduces experimental code for **very fast branching**. Use `sos branch [<name> [<message>]] --last --fast` for instant branching that uses only a reference to the parent branch instead of copying each file. This feature goes a step into the direction of Git and introduces complexity into the code base, but was seen as essential to not stand in the way of the developer. The burden of copying revisions to dependant branches is delayed to when the parent branch is destroyed, assuming that destroying a branch is an action  much less often used than branching
     - [Feature 182](https://github.com/ArneBachmann/sos/issues/182) Introduces automatic upgrade for metadata format, making manual migration steps of previous and any future releases obsolete
     - [Feature 183](https://github.com/ArneBachmann/sos/issues/183) SOS now recognizes and displays renames and file moves inside the repository. The underlying add/remove file behaviour is unchanged, but the user sees a *moved* notification for `sos changes` and `sos commit`
-    - Downloads so far: 2850
-- Version 1.3 release on 2018-02-10:
+    - Downloads: 3100
+- Version 1.3, released on 2018-02-10:
     - [Enhancement 152, 162](https://github.com/ArneBachmann/sos/issues/152) PEP528/529 compatibility: Now working with any console encoding and file system encoding on Windows (at least with Python 3.6+)
     - [Enhancement 163](https://github.com/ArneBachmann/sos/issues/163) Rewrite of changeset handling to avoid problems when re-adding files deleted in previous revision
     - [Enhancement 164](https://github.com/ArneBachmann/sos/issues/164) Little improvement for `sos config`
@@ -99,7 +100,7 @@ SOS supports three different file handling models that you may use to your likin
 
         `[0, 1518275599353, "trunk", true, [], []]` (note the additional trailing `, []`)
     - Downloads: 2550
-- Version 1.2 released on 2018-02-04:
+- Version 1.2, released on 2018-02-04:
     - [Bug 135, 145](https://github.com/ArneBachmann/sos/issues/135) Fixes a bug showing ignored files as deleted
     - [Bug 147](https://github.com/ArneBachmann/sos/issues/147) Fixes `sos ls` problems
     - [Enhancement 113](https://github.com/ArneBachmann/sos/issues/113) Usability improvements
@@ -111,7 +112,7 @@ SOS supports three different file handling models that you may use to your likin
     - [Enhancement 159](https://github.com/ArneBachmann/sos/issues/159) Internal metadata updates. For manual migration from older repositories: Add `, {}` to `.sos/.meta` right before the closing final `]`, and add `version = "pre-1.2", ` after the initial `[{`
     - [Feature 134, 161](https://github.com/ArneBachmann/sos/issues/134) Added dump option
     - Downloads: 1760
-- Version 1.1 released on 2017-12-30:
+- Version 1.1, released on 2017-12-30:
     - [Bug 90](https://github.com/ArneBachmann/sos/issues/90) Removed directories weren't picked up
     - [Bug 93](https://github.com/ArneBachmann/sos/issues/93) Picky mode lists any file as added
     - [Enhancement 63](https://github.com/ArneBachmann/sos/issues/63) Show more change details in `log` and `status`, and also `ls` (in [#101](https://github.com/ArneBachmann/sos/issues/101))
@@ -123,7 +124,7 @@ SOS supports three different file handling models that you may use to your likin
     - [QA 94](https://github.com/ArneBachmann/sos/issues/94) More test coverage
     - Many little fixes and improvements
     - Downloads: 5200
-- Version 1.0 released on 2017-12-14:
+- Version 1.0, released on 2017-12-14:
     - First release with basic functionality
     - Lots of test cases, good test coverage
     - System integration and packaging
