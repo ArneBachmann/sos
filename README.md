@@ -9,8 +9,8 @@
 - [Documentation](https://sos-vcs.net) (official website), [Code Repository](https://github.com/ArneBachmann/sos) (at Github)
 - [Buy the developer a coffee](https://PayPal.Me/ArneBachmann/) to show your appreciation!
 
-### Important notice from the author ###
-> I've been developing this software over the course of the last 4 months in my spare time, and until version 1.4 I've put probably around 200 working hours into it, a rough equivalent of 8.500€ in development costs that I have granted to the open source community. Lately, this project has taken too much time away from my family and other significant themes in my life. I cannot continue at the current pace, unless getting support in form of a lively SOS community, or by getting funding for the effort that I put into SOS. Since SOS is already quite mature, so I will reduce my efforts and contribute only little enhancements and bug fixes according to my own pace and priorities, unless someone comes with contributions, or feature requests and means to support them. As a user of open source software I hope you can relate to this decision and support SOS in any way suiting you, to make it our number one personal productivity tool!
+### From the author ###
+> <img src="https://github.com/ArneBachmann/sos/raw/master/logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> I've been developing this software continuously over the course of the last months in my spare time, and it has been turned out great so far. I cannot, however, continue at this fast pace without the support of a lively community, or by getting funding for the effort that I put into SOS besides my day job and being there for my family. Bug reports, feature requests and contributions are welcome, granted there's enough time to process them. Please support SOS in any way suiting you, to make it our no. 1 personal productivity tool!
 
 ### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
@@ -27,7 +27,7 @@
 
 
 ## Introduction ##
-<img src="https://logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
+<img src="https://github.com/ArneBachmann/sos/raw/master/logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
 
 SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline extension of those VCSs that either don't support offline branching and committing or are too complex, and *c)* as a standalone VCS.
 You may run `sos offline` not only inside a SVN checkout, but in any (and also multiple, even nested) folders of your file system, even outside of VCS repository checkouts/clones.
