@@ -1,4 +1,4 @@
-# SOS v1.5.0 #
+# <img src="https://github.com/ArneBachmann/sos/raw/master/logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> SOS v1.5.0 #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -10,7 +10,7 @@
 - [Buy the developer a coffee](https://PayPal.Me/ArneBachmann/) to show your appreciation!
 
 ### From the author ###
-> <img src="https://github.com/ArneBachmann/sos/raw/master/logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> I've been developing this software continuously over the course of the last months in my spare time, and it has been turned out great so far. I cannot, however, continue at this fast pace without the support of a lively community, or by getting funding for the effort that I put into SOS besides my day job and being there for my family. Bug reports, feature requests and contributions are welcome, granted there's enough time to process them. Please support SOS in any way suiting you, to make it our no. 1 personal productivity tool!
+> I've been developing this software continuously over the course of the last months in my spare time, and it has been turned out great so far. I cannot, however, continue at this fast pace without the support of a lively community, or by getting funding for the effort that I put into SOS besides my day job and being there for my family. Bug reports, feature requests and contributions are welcome, granted there's enough time to process them. Please support SOS in any way suiting you, to make it our no. 1 personal productivity tool!
 
 ### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
