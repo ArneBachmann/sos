@@ -1,4 +1,4 @@
-# <img src="https://github.com/ArneBachmann/sos/raw/master/logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> SOS v1.5.0 #
+# SOS v1.5.0 #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -17,7 +17,7 @@
 - **PyPI**: [*Python Package Index*](https://pypi.python.org/pypi)
 - **SCM**: *Source Control Management*
 - **SOS**: *Subversion Offline Solution*
-- **SVN**: [Apache Subversion](http://subversion.apache.org/)
+- **SVN**: [Apache Subversion](http://subversion.apache.org)
 - **VCS**: *Version Control System*
 
 - **Filename**: Fixed term for file names used throughout SOS and this documentation

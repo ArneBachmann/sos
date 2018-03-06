@@ -4,7 +4,7 @@
 # Utiliy functions
 import bz2, codecs, difflib, hashlib, logging, math, os, re, sys, time; START_TIME = time.time()  # early time tracking
 
-try: from typing import Dict, FrozenSet, List, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
+try: from typing import Any, Dict, FrozenSet, Generic, IO, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass
 from coconut.convenience import version as _coco_version  # Compute version-number for version-dependent features
 _coco_ver:List[str] = _coco_version("num").split(".")[:4]
@@ -22,7 +22,7 @@ verbose = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in s
 # Classes
 class Accessor(dict):
   ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
-  def __init__(_, mapping:Dict[str,Any]): dict.__init__(_, mapping)
+  def __init__(_, mapping:Dict[str,Any]) -> None: dict.__init__(_, mapping)  # TODO remove -> None when fixed in Coconut stub
   def __getattribute__(_, name:str) -> Any:
     try: return _[name]
     except: return dict.__getattribute__(_, name)
@@ -31,16 +31,16 @@ if TYPE_CHECKING:
   Number = TypeVar("Number", int, float)
   class Counter(Generic[Number]):
     ''' A simple counter. Can be augmented to return the last value instead. '''
-    def __init__(_, initial:Number = 0): _.value:Number = initial
+    def __init__(_, initial:Number = 0) -> None: _.value:Number = initial
     def inc(_, by:Number = 1) -> Number: _.value += by; return _.value
 else:
   class Counter:
-    def __init__(_, initial = 0): _.value = initial
+    def __init__(_, initial = 0) -> None: _.value = initial
     def inc(_, by = 1): _.value += by; return _.value
 
 class ProgressIndicator(Counter):
   ''' Manages a rotating progress indicator. '''
-  def __init__(_, symbols:str, callback:Optional[(str) -> None] = None): super(ProgressIndicator, _).__init__(-1); _.symbols = symbols; _.timer:float = time.time(); _.callback:Optional[(str) -> None] = callback
+  def __init__(_, symbols:str, callback:Optional[(str) -> None] = None) -> None: super(ProgressIndicator, _).__init__(-1); _.symbols = symbols; _.timer:float = time.time(); _.callback:Optional[(str) -> None] = callback
   def getIndicator(_) -> str? =
     ''' Returns a value only if a certain time has passed. '''
     newtime = time.time()
@@ -52,7 +52,7 @@ class ProgressIndicator(Counter):
 
 class Logger:
   ''' Logger that supports many items. '''
-  def __init__(_, log): _._log = log
+  def __init__(_, log) -> None: _._log = log
   def debug(_, *s): _._log.debug(sjoin(*s))
   def info(_, *s): _._log.info(sjoin(*s))
   def warn(_, *s): _._log.warning(sjoin(*s))
@@ -72,6 +72,7 @@ metaFolder:str = ".sos"
 DUMP_FILE:str = metaFolder + ".zip"
 metaFile:str = ".meta"
 metaBack:str = metaFile + BACKUP_SUFFIX
+KIBI:int = 1 << 10
 MEBI:int = 1 << 20
 bufSize:int = MEBI
 UTF8:str = "utf_8"  # early used constant, not defined in standard library

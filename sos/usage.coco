@@ -22,7 +22,7 @@ Usage: {cmd} <command> [<argument>] [<option1>, ...]        When operating in of
     online                                                Finish working offline
     dump [<path>/]<name[.sos.zip]>                        Perform (differential) repository dump
       [--full]                                               Export the entire repository, don't attempt differential backup, if file already exists
-      [--skip-nackup]                                        Don't create an archive copy before backup
+      [--skip-backup]                                        Don't create an archive copy before backup
 
   Working with branches:
     branch [<name> [<message>]]                           Create a new branch from current file tree and switch to it

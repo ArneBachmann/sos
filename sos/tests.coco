@@ -243,6 +243,19 @@ class Tests(unittest.TestCase):
     _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(2)), only = True)  # revisions were copied to branch 1
     # TODO test also other functions like status --repo, log
 
+  def testModificationWithOldRevisionRecognition(_):
+    now:float = time.time()
+    _.createFile(1)
+    sync()
+    sos.offline(options = ["--strict"])
+    _.createFile(1, "abc")  # modify contents
+    os.utime(sos.encode("file1"), (now - 2000, now - 2000))  # make it look like an older version
+    sync()
+    out = wrapChannels(() -> sos.changes())
+    _.assertAllIn(["<older than last revision>", "<older than previously committed>"], out)
+    out = wrapChannels(() -> sos.commit())
+    _.assertAllIn(["<older than last revision>", "<older than previously committed>"], out)
+
   def testGetParentBranch(_):
     m = sos.Accessor({"branches": {0: sos.Accessor({"parent": None, "revision": None}), 1: sos.Accessor({"parent": 0, "revision": 1})}})
     _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 0))
