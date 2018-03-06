@@ -16,7 +16,8 @@ if coco_version < (1, 3, 1, 23): TYPE_CHECKING:bool = False
 try: import wcwidth  # optional dependency for unicode support
 except: pass
 
-verbose = os.environ.get("DEBUG", "False").lower() == "true" or '--verbose' in sys.argv or '-v' in sys.argv  # imported from utility, and only modified here
+verbose:bool = '--verbose' in sys.argv or '-v' in sys.argv
+debug_:bool = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv
 
 
 # Classes
@@ -43,7 +44,7 @@ class ProgressIndicator(Counter):
   def __init__(_, symbols:str, callback:Optional[(str) -> None] = None) -> None: super(ProgressIndicator, _).__init__(-1); _.symbols = symbols; _.timer:float = time.time(); _.callback:Optional[(str) -> None] = callback
   def getIndicator(_) -> str? =
     ''' Returns a value only if a certain time has passed. '''
-    newtime = time.time()
+    newtime:float = time.time()
     if newtime - _.timer < .1: return None
     _.timer = newtime
     sign:str = _.symbols[int(_.inc() % len(_.symbols))]
@@ -51,7 +52,7 @@ class ProgressIndicator(Counter):
     sign
 
 class Logger:
-  ''' Logger that supports many items. '''
+  ''' Logger that supports joining many items. '''
   def __init__(_, log) -> None: _._log = log
   def debug(_, *s): _._log.debug(sjoin(*s))
   def info(_, *s): _._log.info(sjoin(*s))
@@ -360,7 +361,7 @@ def merge(
         if   mergeOperation == MergeOperation.REMOVE: pass
         elif mergeOperation == MergeOperation.BOTH: output.extend(block.lines)
         elif mergeOperation == MergeOperation.INSERT: output.extend(list(block.replaces.lines) + list(block.lines))  # TODO optionally allow insertion BEFORE or AFTER original (order of these both lines)
-#  debug("Merge output: " + "; ".join(output))
+  debug("Merge output: " + "; ".join(output))
   ((nl ?? b"\n").join([line.encode(encoding) for line in output]), nl)  # returning bytes
   # TODO handle check for more/less lines in found -/+ blocks to find common section and splitting prefix/suffix out
 
