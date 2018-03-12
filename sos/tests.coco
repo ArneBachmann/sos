@@ -103,6 +103,7 @@ class Tests(unittest.TestCase):
   ''' Entire test suite. '''
 
   def setUp(_):
+    sos.__dict__["verbose"] = True  # required when executing tests manually
     sos.Metadata.singleton = None
     for entry in os.listdir(testFolder):  # cannot remove testFolder on Windows when using TortoiseSVN as VCS
       resource = os.path.join(testFolder, entry)
@@ -1053,8 +1054,5 @@ class Tests(unittest.TestCase):
   # TODO test wrong branch/revision after fast branching, would raise exception for -1 otherwise
 
 if __name__ == '__main__':
-  logging.basicConfig(level = logging.DEBUG,
-    stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")
-  c = configr.Configr("sos"); c.loadSettings()
-  if len(c.keys()) > 0: sos.Exit("Cannot run test suite with existing local SOS user configuration (would affect results)")
+  logging.basicConfig(level = logging.DEBUG, stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")
   unittest.main(testRunner = debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")

@@ -4,7 +4,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.5.0"
+RELEASE = "1.5.1"
 
 print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
@@ -44,7 +44,13 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
 
   import sos.sos as sos
 
-if 'test' in sys.argv: print("Warning: Won't create distribution archive after running unit tests")
+if 'test' in sys.argv:
+  import logging
+  logging.basicConfig(level = logging.DEBUG, stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")
+  sys.argv.append("--verbose")
+  import sos.sos as sos
+  sys.argv.pop()
+  print("Warning: Won't create distribution archive after running unit tests")
 
 if 'sdist' in sys.argv:
   print("Cleaning up old archives for twine upload")
@@ -74,7 +80,7 @@ print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["chardet >= 3.0.4", "configr >= 2018.1202.3244", "termwidth >= 2017.2204.2811"],  # all of them are optional dependencies
+  install_requires = ["chardet >= 3.0.4", "configr >= 2018.1202.3244", "termwidth >= 2017.2204.2811", "PyFiglet >= 0.7.5"],  # all of them are optional dependencies
   test_suite = "sos.tests",
   description = "Subversion Offline Solution (SOS)",
   long_description = README,

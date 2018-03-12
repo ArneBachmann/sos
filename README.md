@@ -1,4 +1,4 @@
-# SOS v1.5.0 #
+# SOS v1.5.1 #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -6,7 +6,7 @@
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
-- [Documentation](https://sos-vcs.net) (official website), [Code Repository](https://github.com/ArneBachmann/sos) (at Github)
+- Read the documentation on the [official website](https://sos-vcs.net), chat with the author and others [on Gitter](https://gitter.im/sos-vcs/Lobby), file issues and requests [on Github](https://github.com/ArneBachmann/sos/issues), fork the code repository [on Github](https://github.com/ArneBachmann/sos)
 - [Buy the developer a coffee](https://PayPal.Me/ArneBachmann/) to show your appreciation!
 
 ### From the author ###
