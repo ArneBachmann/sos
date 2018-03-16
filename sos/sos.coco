@@ -445,7 +445,7 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = []):
   if '--picky'    in options or m.c.picky:    m.picky =    True   # Git-like
   elif '--track'  in options or m.c.track:    m.track =    True   # Svn-like
   if '--strict'   in options or m.c.strict:   m.strict =   True   # always hash contents
-  title:str = usage.getTitle()
+  title:str? = usage.getTitle()
   if title: printo(title)
   if verbose: info(usage.MARKER + "Going offline...")
   m.createBranch(0, name ?? defaults["defaultbranch"], initialMessage ?? "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
@@ -667,7 +667,7 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
 
 def switch(argument:str, options:List[str] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Continue work on another branch, replacing file tree changes. '''
-  m, branch, revision, changed, strict, _force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, ["--force"] + options)
+  m, branch, revision, changed, strict, _force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, ["--force"] + options)  # force continuation to delay check to this function
   force:bool = '--force' in options  # needed as we fake force in above access
 
   # Determine file changes from other branch to current file tree
@@ -958,7 +958,7 @@ def config(arguments:List[str], options:List[str] = []):
     if key not in c.keys():  Exit("Unknown key %r" % key)
     if value not in c[key]:  Exit("Unknown value %r" % value)
     c[key].remove(value)
-    if local and len(c[key]) == 0 and "--prune" in options: del c[key]  # remove local enty, to fallback to global
+    if local and len(c[key]) == 0 and "--prune" in options: del c[key]  # remove local entry, to fallback to global
   else:  # Show or list
     if   key == "flags": printo(", ".join(CONFIGURABLE_FLAGS))  # list valid configuration items
     elif key == "lists": printo(", ".join(CONFIGURABLE_LISTS))
@@ -1049,7 +1049,7 @@ def parse(root:str, cwd:str, cmd:str):
     elif command[:2] == "de":  destroy(arguments[0], options)
     elif command[:2] == "di":  diff(arguments[0], options, onlys, excps)
     elif command[:2] == "du":  dump(arguments[0], options)
-    elif command[:1] == "h":   usage.usage(arguments[0])
+    elif command[:1] == "h":   usage.usage(arguments[0], verbose = verbose)
     elif command[:2] == "lo":  log(options)
     elif command[:2] == "li":  ls(os.path.relpath(arguments[0] ?? cwd, root), options)
     elif command[:2] == "ls":  ls(os.path.relpath(arguments[0] ?? cwd, root), options)
@@ -1060,7 +1060,7 @@ def parse(root:str, cwd:str, cmd:str):
     elif command[:2] == "st":  status(arguments[0], cwd, cmd, options, onlys, excps)
     elif command[:2] == "sw":  switch(arguments[0], options, onlys, excps)
     elif command[:1] == "u":   update(arguments[0], options, onlys, excps)
-    elif command[:1] == "v":   usage.usage(arguments[0], short = True)
+    elif command[:1] == "v":   usage.usage(arguments[0], version = True)
     else: Exit("Unknown command '%s'" % command)
     Exit(code = 0)  # regular exit
   except Exception, RuntimeError as E:
@@ -1072,7 +1072,7 @@ def main():
   logging.basicConfig(level = level, stream = sys.stderr, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
   _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
   for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
-  if '--help' in sys.argv or len(sys.argv) < 2: usage.usage(sys.argv[sys.argv.index('--help') + 1] if len(sys.argv) > sys.argv.index('--help') + 1 else None, short = True)
+  if '--help' in sys.argv or len(sys.argv) < 2: usage.usage(sys.argv[sys.argv.index('--help') + 1] if len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose = verbose)
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Found root folders for SOS | VCS:  %s | %s" % (root ?? "-", vcs ?? "-"))

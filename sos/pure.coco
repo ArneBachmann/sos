@@ -1,13 +1,14 @@
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import math
 from typing import Any, FrozenSet, Tuple
 try:
   import wcwidth  # optional dependency for unicode support
   def wcswidth(string:str) -> int =
     l:int = wcwidth.wcswidth(string)
     len(string) if l < 0 else l
-except: wcswidth:(str) -> int = str.len
+except: wcswidth:(str) -> int = len
 
 
 # "Pure" functions
@@ -32,3 +33,4 @@ def ljust(string:str = "", width:int = termWidth) -> str =
   assert width > 0
   string + " " * max(0, width - wcswidth(string))
 
+def splitStrip(string:str) -> str = [_.strip() for _ in string.replace("\r", "").split("\n")]
