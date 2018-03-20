@@ -1034,7 +1034,7 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   m.saveBranches()
 
 def parse(root:str, cwd:str, cmd:str):
-  ''' Main operation. Main has already chdir into SOS root folder, cwd is original working directory for add, rm, mv. '''
+  ''' Main operation. root is underlying VCS base dir. main() has already chdir'ed into SOS root folder, cwd is original working directory for add, rm, mv. '''
   debug("Parsing command-line arguments...")
   try:
     onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative information for changes, commit, diff, switch, update
@@ -1088,7 +1088,7 @@ def main():
   if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] in "hv":  # in offline mode or just going offline TODO what about git config?
     cwd = os.getcwd()
     os.chdir(cwd if command[:2] == "of" else root ?? cwd)
-    parse(root, cwd, cmd)
+    parse(vcs, cwd, cmd)
   elif force_vcs or cmd is not None:  # online mode - delegate to VCS
     info("%s: Running '%s %s'" % (usage.COMMAND.upper(), cmd, " ".join(sys.argv[1:])))
     import subprocess  # only required in this section

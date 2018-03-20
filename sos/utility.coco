@@ -411,7 +411,7 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
     vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type from dot folder
     choice:str? = None
     if len(vcss) > 1:
-      choice = SVN if SVN in vcss else vcss[0]
+      choice = SVN if SVN in vcss else vcss[0]  # SVN is preferred
       warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))
     elif len(vcss) > 0: choice = vcss[0]
     if not vcs[0] and choice: vcs = (path, choice)  # memorize current repo root
