@@ -21,9 +21,6 @@ except:
 import configr
 
 
-# Constants
-
-
 # Functions
 def loadConfig() -> configr.Configr =  # Accessor when using defaults only
   ''' Simplifies loading user-global config from file system or returning application defaults. '''
@@ -272,7 +269,7 @@ class Metadata:
         knownPaths[os.path.dirname(path)].append(os.path.basename(path))  # TODO reimplement using fnmatch.filter and set operations for all files per path for speed
     for path, dirnames, filenames in os.walk(_.root):
       path = decode(path)
-      dirnames[:] = [decode(d) for d in dirnames]
+      dirnames[:] =  [decode(d) for d in dirnames]
       filenames[:] = [decode(f) for f in filenames]
       dirnames[:]  = [d for d in dirnames  if len([n for n in _.c.ignoreDirs if fnmatch.fnmatch(d, n)]) == 0 or len([p for p in _.c.ignoreDirsWhitelist if fnmatch.fnmatch(d, p)]) > 0]  # global ignores
       filenames[:] = [f for f in filenames if len([n for n in _.c.ignores    if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in _.c.ignoresWhitelist    if fnmatch.fnmatch(f, p)]) > 0]
@@ -555,8 +552,8 @@ def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, ex
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changed, msg = m.findChanges(
     checkContent = strict, inverse = True,
-    considerOnly = onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, m.getTrackingPatterns()                | m.getTrackingPatterns(branch)),
-    dontConsider = excps if not (m.track or m.picky) else excps ??                      (m.getTrackingPatterns(negative = True) | m.getTrackingPatterns(branch, negative = True)),
+    considerOnly = onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)),
+    dontConsider = excps if not (m.track or m.picky) else excps ?? (m.getTrackingPatterns(negative = True)            | m.getTrackingPatterns(branch, negative = True)),
     progress = '--progress' in options)
   _diff(m, branch, revision, changed, ignoreWhitespace = ignoreWhitespace, textWrap = wrap)
 
@@ -614,9 +611,16 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
   printo("%s File tree %s" % ((CROSS_SYMBOL if m.c.useUnicodeFont else "!") if modified(changed) else (CHECKMARK_SYMBOL if m.c.useUnicodeFont else " "), "has changes" if modified(changed) else "is unchanged"))  # TODO use other marks if no unicode console detected TODO bad choice of symbols for changed vs. unchanged
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
+    payload:int = 0; overhead:int = 0  # count used storage per branch
+    for dn, ds, fs in os.walk(branchFolder(branch.number)):
+      for f in fs:  # TODO count all backup folders as overhead instead? check "onlydeveloped" code for that logic
+        if f == metaFile or f.endswith(BACKUP_SUFFIX): overhead += tryOrDefault(() -> os.stat(encode(os.path.join(dn, f))).st_size, 0)
+        else: payload += tryOrDefault(() -> os.stat(encode(os.path.join(dn, f))).st_size, 0)
+    pl_amount:float = float(payload) / MEBI; oh_amount:float = float(overhead) / MEBI
+    # if pl_amount >= 1100.:   convert to string
     m.loadBranch(branch.number)  # knows commit history
     maxi = max(m.commits) if m.commits else m.branches[branch.number].revision
-    printo("  %s b%02d%s @%s (%s) with %d commits%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.inSync else "dirty", len(m.commits), ". Last comment: '%s'" % m.commits[maxi].message if maxi in m.commits and m.commits[maxi].message else ""))
+    printo("  %s b%02d%s @%s (%s) with %d commits, using %.2f MiB (%.3f%% SOS overhead)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.inSync else "dirty", len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
   if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):
     info("\nTracked file patterns:")  # TODO print matching untracking patterns side-by-side
     printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))
@@ -854,6 +858,8 @@ def ls(folder:str? = None, options:str[] = []):
 
 def log(options:str[] = []):
   ''' List previous commits on current branch. '''
+  changes_:bool = "--changes" in options
+  diff_:bool = "--diff" in options
   m:Metadata = Metadata()
   m.loadBranch(m.branch)  # knows commit history
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
@@ -863,10 +869,10 @@ def log(options:str[] = []):
   olds:FrozenSet[str] = f{}  # last revision's entries
   last:Dict[str,PathInfo] = {}  # path infos from previous revision
   commit:CommitInfo
-  for no in range(maxi + 1):
+  n:Metadata = Metadata()  # used for reading parent branch information
+  for no in range(0 if "--all" in options else max(0, maxi + 1 - m.c.logLines), maxi + 1):
     if no in m.commits: commit = m.commits[no]
-    else:  # TODO clean this code
-      n:Metadata = Metadata()
+    else:
       n.loadBranch(n.getParentBranch(m.branch, no))
       commit = n.commits[no]
     nxts:Dict[str,PathInfo] = next(changesetIterator)
@@ -876,10 +882,10 @@ def log(options:str[] = []):
 #    _mod_:Dict[str,PathInfo] = {k: nxts[k] for k in news - _add - _del}
     _mod:FrozenSet[str] = frozenset([_ for _, info in {k: nxts[k] for k in news - _add - _del}.items() if last[_].size != info.size or (last[_].hash != info.hash if m.strict else last[_].mtime != info.mtime)])
 #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds})  # TODO determine moves - can we reuse detectMoves(changes)?
-    _txt:int = len([a for a in _add if m.isTextType(a)])
+    _txt:int = len([m_ for m_ in _mod if m.isTextType(m_)])
     printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
-    if '--changes' in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
-    if '--diff' in options: pass  #  _diff(m, changes)  # needs from revision diff
+    if changes_ in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
+    if diff_ in options: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news  # replaces olds for next revision compare
     last = {k: v for k, v in nxts.items()}  # create new reference
 
@@ -917,7 +923,7 @@ def dump(argument:str, options:str[] = []):
       dirpath = decode(dirpath)
       if dirpath.endswith(BACKUP_SUFFIX): continue  # don't backup backups
       printo(pure.ljust(dirpath))  # TODO improve progress indicator output to | dir | dumpuing file
-      dirnames[:] = sorted([decode(d) for d in dirnames])  # HINT sort for reproducible delta dumps
+      dirnames[:] =  sorted([decode(d) for d in dirnames])  # HINT sort for reproducible delta dumps
       filenames[:] = sorted([decode(f) for f in filenames])
       for filename in filenames:
         abspath:str = os.path.join(dirpath, filename)
@@ -939,9 +945,9 @@ def config(arguments:List[str], options:List[str] = []):
   c:configr.Configr = m.c if local else m.c.__defaults
   if command == "set":
     if None in (key, value): Exit("Key or value not specified")
-    if key not in (["defaultbranch"] + ([] if local else CONFIGURABLE_FLAGS) + CONFIGURABLE_LISTS): Exit("Unsupported key for %s configuration %r" % ("local " if local else "global", key))
+    if key not in (([] if local else CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % ("local " if local else "global", key))  # TODO move defaultbranch to configurable_texts?
     if key in CONFIGURABLE_FLAGS and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())
-    c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")])  # TODO sanitize texts?
+    c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (tryOrIgnore(() -> int(value), (E) -> error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?
   elif command == "unset":
     if key is None: Exit("No key specified")
     if key not in c.keys(): Exit("Unknown key")  # HINT: Works on local configurations when used with --local
@@ -960,7 +966,8 @@ def config(arguments:List[str], options:List[str] = []):
     c[key].remove(value)
     if local and len(c[key]) == 0 and "--prune" in options: del c[key]  # remove local entry, to fallback to global
   else:  # Show or list
-    if   key == "flags": printo(", ".join(CONFIGURABLE_FLAGS))  # list valid configuration items
+    if   key == "ints":  printo(", ".join(CONFIGURABLE_INTS))  # list valid configuration items
+    elif key == "flags": printo(", ".join(CONFIGURABLE_FLAGS))
     elif key == "lists": printo(", ".join(CONFIGURABLE_LISTS))
     elif key == "texts": printo(", ".join([_ for _ in defaults.keys() if _ not in (CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS)]))
     else:
@@ -1072,7 +1079,7 @@ def main():
   logging.basicConfig(level = level, stream = sys.stderr, format = ("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))
   _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
   for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
-  if '--help' in sys.argv or len(sys.argv) < 2: usage.usage(sys.argv[sys.argv.index('--help') + 1] if len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose = verbose)
+  if '--help' in sys.argv or len(sys.argv) < 2: usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose = verbose)
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Found root folders for SOS | VCS:  %s | %s" % (root ?? "-", vcs ?? "-"))

@@ -81,7 +81,7 @@ COMMANDS:Dict[str,Command] = {
   "status": Command(Category.Repository_handling,
     [
       Argument("[<branch>][/<revision>]", """Branch and/or revision to show changes of current file state against (if "useChangesCommand" flag is disabled).
-                                             Argument ignored (if "useChangesCommand" is enabled)""")
+                                             The argument is ignored (if "useChangesCommand" is enabled)""")
     ],
     "Display file tree changes or repository stats",
     """Display changed filepaths vs. last committed or specified revision on current or specified branch (if "useChangesCommand" flag is disabled).
@@ -334,7 +334,9 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
     "ls": "Recursively list also files in sub-folders"
   },
   "all": {
-    "ls": "Recursively list all files, starting from repository root"
+    "ls": "Recursively list all files, starting from repository root",
+    "log": """Show all commits since creation of the branch.
+              Default is only showing the last "logLines" entries"""
   },
   "a": {
     "ls": "Recursively list all files, starting from repository root"
