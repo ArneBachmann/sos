@@ -1,4 +1,4 @@
-# SOS v1.5.2 #
+# SOS v1.5.3 #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -61,6 +61,21 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
+- Version 1.6, not yet released:
+    - [Feature 127, 218](https://github.com/ArneBachmann/sos/issues/127) Implement much better help system
+    - [Feature 212](https://github.com/ArneBachmann/sos/issues/212) Limit number of displayed revisions in `sos log`. Can be controlled by option flag `--all` and configuration setting `logLines`
+    - [Feature 213](https://github.com/ArneBachmann/sos/issues/213) Now displaying occupied storage space
+    - [Feature 209](https://github.com/ArneBachmann/sos/issues/209) Added warning when committing a file with a older timestamp than its previous revision or previous commit
+    - [Feature 210](https://github.com/ArneBachmann/sos/issues/210) Logic coding bug that prevented the distinction between full or differential dump to work
+    - [Enhancement 201, 208](https://github.com/ArneBachmann/sos/issues/201) Added a project logo
+    - [Enhancement 144](https://github.com/ArneBachmann/sos/issues/144) Make a semantic distinction between verbose output using `--verbose` and debugging output using `--debug` and `--log`
+    - [Enhancement 211](https://github.com/ArneBachmann/sos/issues/211) Add a fancy ASCII art title
+    - [Enhancement 214](https://github.com/ArneBachmann/sos/issues/214) More documentation
+    - [Enhancement 216](https://github.com/ArneBachmann/sos/issues/216) Change display in `sos log` to display number of modified text files instead of added text files
+    - [Bug 217](https://github.com/ArneBachmann/sos/issues/217) Wrong path displayed in `sos status`
+    - [Bug 219](https://github.com/ArneBachmann/sos/issues/219) Error in revision computation leading to switching not working correctly between fast-branched branches
+    - [QA 198](https://github.com/ArneBachmann/sos/issues/198) Finally made the tests run on AppVeyor. Reason was file system synchronization problems not shown on Linux
+    - Downloads so far: 0
 - Version 1.5, released on 2018-03-03:
     - [Bug 78](https://github.com/ArneBachmann/sos/issues/78) Long standing bug, computing wrong line numbers in diff view
     - [Bug 196](https://github.com/ArneBachmann/sos/issues/196) Ubiquitous `--only` and `--except` options not working
@@ -71,6 +86,7 @@ SOS supports three different file handling models that you may use to your likin
     - [Enhancement 202](https://github.com/ArneBachmann/sos/issues/202) Now using the `wcwidth` library to determine visible width of unicode strings (untested)
     - [Feature 102](https://github.com/ArneBachmann/sos/issues/102) Option to list tracking patterns, and list (tracked) files recursively
     - [Feature 157, 200, 204](https://github.com/ArneBachmann/sos/issues/157) Experimental support for incremental dumps
+    - Downloads so far: 1930
 - Version 1.4, released on 2018-02-17:
     - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on `sos status`
     - [Bug 190](https://github.com/ArneBachmann/sos/issues/190) Changes not computed in `sos online`

@@ -221,7 +221,8 @@ class Metadata:
         _.branches[dep] = dataCopy(BranchInfo, _.branches[dep], parent = None, revision = None)  # remove reference information
     printo(pure.ljust() + "\r")
     tryOrIgnore(() -> shutil.rmtree(encode(branchFolder(branch) + BACKUP_SUFFIX)))  # remove previous backup first
-    os.rename(encode(branchFolder(branch)), encode(branchFolder(branch) + BACKUP_SUFFIX))
+    try: os.rename(encode(branchFolder(branch)), encode(branchFolder(branch) + BACKUP_SUFFIX))
+    except: Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?")
     binfo = _.branches[branch]  # keep reference for caller
     del _.branches[branch]
     _.branch = max(_.branches)  # switch to another valid branch
@@ -366,7 +367,9 @@ class Metadata:
     Exit("This should never happen. Please create a issue report"); return (None, None)
 
   def findRevision(_, branch:int, revision:int, nameHash:str) -> Tuple[int,str] =
-    while True:  # find latest revision that contained the file physically
+    ''' Find latest revision that contained the file physically, not returning the actual parent branch it is stored on.
+        Returns (highest revision <= specified revision containing the file, file path to file on (actual parent) branch).'''
+    while True:
       _branch:int = _.getParentBranch(branch, revision)
       source:str = revisionFolder(_branch, revision, base = _.root, file = nameHash)
       if os.path.exists(encode(source)) and os.path.isfile(source): break
@@ -381,6 +384,15 @@ class Metadata:
     while _.branches[other].parent is not None and revision <= _.branches[other].revision: other = _.branches[other].parent
     other
 
+  def getHighestRevision(_, branch:int) -> int? =
+    m:Metadata = Metadata()
+    other:int? = branch
+    while other is not None:
+      m.loadBranch(other)
+      if m.commits: return max(m.commits)
+      other = _.branches[branch].parent  # reference to originating parent branch, or None
+    None
+
   def copyVersionedFile(_, branch:int, revision:int, toBranch:int, toRevision:int, pinfo:PathInfo):
     ''' Copy versioned file to other branch/revision. '''
     target:str = revisionFolder(toBranch, toRevision, base = _.root, file = pinfo.nameHash)
@@ -389,7 +401,7 @@ class Metadata:
 
   def readOrCopyVersionedFile(_, branch:int, revision:int, nameHash:str, toFile:str? = None) -> bytes? =
     ''' Return file contents, or copy contents into file path provided. '''
-    source:str = revisionFolder(_.getParentBranch(branch, revision), revision, base = _.root, file = nameHash)
+    source:str = _.findRevision(branch, revision, nameHash)[1]  # revisionFolder(_.getParentBranch(branch, revision), _.findRevision(branch, revision, nameHash)[0], base = _.root, file = nameHash)
     try:
       with openIt(source, "r", _.compress) as fd:
         if toFile is None: return fd.read()  # read bytes into memory and return
@@ -399,12 +411,12 @@ class Metadata:
             to.write(buffer)
             if len(buffer) < bufSize: break
           return None
-    except Exception as E: warn("Cannot read versioned file: %r (%d/%d/%s)" % (E, branch, revision, nameHash))
+    except Exception as E: warn("Cannot read versioned file: %r (%d:%d:%s)" % (E, branch, revision, nameHash))
     None
 
   def restoreFile(_, relPath:str?, branch:int, revision:int, pinfo:PathInfo, ensurePath:bool = False) -> bytes? =
     ''' Recreate file for given revision, or return binary contents if path is None. '''
-    if relPath is None: return _.readOrCopyVersionedFile(branch, _.findRevision(branch, revision, pinfo.nameHash)[0], pinfo.nameHash) if pinfo.size > 0 else b''  # just return contents
+    if relPath is None: return _.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # _.findRevision(branch, revision, pinfo.nameHash)[0], pinfo.nameHash) if pinfo.size > 0 else b''  # just return contents
     target:str = os.path.join(_.root, relPath.replace(SLASH, os.sep))
     if ensurePath:  #  and not os.path.exists(encode(os.path.dirname(target))):
       try: os.makedirs(encode(os.path.dirname(target)))
@@ -414,7 +426,7 @@ class Metadata:
       try: os.utime(encode(target), (pinfo.mtime / 1000., pinfo.mtime / 1000.))  # update access/modification timestamps on file system
       except Exception as E: error("Cannot update file's timestamp after restoration '%r'" % E)
       return None
-    revision, source = _.findRevision(branch, revision, pinfo.nameHash)
+    _revision, source = _.findRevision(branch, revision, pinfo.nameHash)
     # Restore file by copying buffer-wise
     with (openIt(source, "r", _.compress) as fd, open(encode(target), "wb") as to):  # using Coconut's Enhanced Parenthetical Continuation
       while True:
@@ -507,8 +519,8 @@ def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = No
     considerOnly = onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)),
     dontConsider = excps if not (m.track or m.picky) else excps ?? (m.getTrackingPatterns(negative = True) | m.getTrackingPatterns(branch, negative = True)),
     progress = '--progress' in options)
-  m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime)
-  changed  # for unit tests only TODO remove
+  m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if m.commits else time.time())
+  changed  # returning for unit tests only TODO remove?
 
 def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitespace:bool, textWrap:bool = False):  # TODO introduce option to diff against committed revision
   ''' The diff display code. '''
@@ -611,7 +623,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
   printo("%s File tree %s" % ((CROSS_SYMBOL if m.c.useUnicodeFont else "!") if modified(changed) else (CHECKMARK_SYMBOL if m.c.useUnicodeFont else " "), "has changes" if modified(changed) else "is unchanged"))  # TODO use other marks if no unicode console detected TODO bad choice of symbols for changed vs. unchanged
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
-    payload:int = 0; overhead:int = 0  # count used storage per branch
+    payload:int = 0; overhead:int = 0; original:int = 0  # count used storage per branch
     for dn, ds, fs in os.walk(branchFolder(branch.number)):
       for f in fs:  # TODO count all backup folders as overhead instead? check "onlydeveloped" code for that logic
         if f == metaFile or f.endswith(BACKUP_SUFFIX): overhead += tryOrDefault(() -> os.stat(encode(os.path.join(dn, f))).st_size, 0)
@@ -619,8 +631,11 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     pl_amount:float = float(payload) / MEBI; oh_amount:float = float(overhead) / MEBI
     # if pl_amount >= 1100.:   convert to string
     m.loadBranch(branch.number)  # knows commit history
+    for commit_ in range(max(m.commits) if m.commits else 0):
+      m.loadCommit(m.branch, commit_)
+      for pinfo in m.paths.values(): original += pinfo.size ?? 0
     maxi = max(m.commits) if m.commits else m.branches[branch.number].revision
-    printo("  %s b%02d%s @%s (%s) with %d commits, using %.2f MiB (%.3f%% SOS overhead)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.inSync else "dirty", len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
+    printo("  %s b%02d%s @%s (%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.inSync else "dirty", len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "", (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
   if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):
     info("\nTracked file patterns:")  # TODO print matching untracking patterns side-by-side
     printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))
@@ -654,17 +669,17 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
     dontConsider = excps if not (m.track or m.picky) else excps ?? untrackingPatterns,
     progress = '--progress' in options)
   if check and modified(changed) and not force:
-    m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if len(m.commits) > 0 else 0)
+    m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if m.commits else 0)
     Exit("File tree contains changes. Use --force to proceed")
   elif commit:
     if not modified(changed) and not force: Exit("Nothing to commit")
-    m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if len(m.commits) > 0 else 0)
+    m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if m.commits else 0)
     if msg: printo(msg)
 
   if argument is not None:  # branch/revision specified
     m.loadBranch(branch)  # knows commits of target branch
     maxi = max(m.commits) if m.commits else m.branches[m.branch].revision
-    revision = revision if revision >= 0 else len(m.commits) + revision  # negative indexing
+    revision = revision if revision >= 0 else (max(m.commits) if m.commits else m.getHighestRevision(m.branch)) + 1 + revision  # negative indexing
     if revision < 0 or revision > maxi: Exit("Unknown revision r%02d" % revision)
     return (m, branch, revision, changed, strict, force, m.getTrackingPatterns(branch), m.getTrackingPatterns(branch, negative = True))
   (m, m.branch, maxi + (1 if commit else 0), changed, strict, force, trackingPatterns, untrackingPatterns)
@@ -740,11 +755,11 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
   else:  # integration required
     for path, pinfo in changed.deletions.items():  # file-based update. Deletions mark files not present in current file tree -> needs addition!
       if mrg.value & MergeOperation.INSERT.value: m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # deleted in current file tree: restore from branch to reach target
-      printo("ADD " + path if mrg.value & MergeOperation.INSERT.value else "(A) " + path)
+      printo(("ADD " if mrg.value & MergeOperation.INSERT.value else "(A) ") + path)  # TODO add ask operation here!
     for path, pinfo in changed.additions.items():
       if m.track or m.picky: Exit("This should never happen. Please create an issue report")  # because untracked files of other branch cannot be detected (which is good)
       if mrg.value & MergeOperation.REMOVE.value: os.unlink(encode(m.root + os.sep + path.replace(SLASH, os.sep)))
-      printo("DEL " + path if mrg.value & MergeOperation.REMOVE.value else "(D) " + path)  # not contained in other branch, but maybe kept
+      printo(("DEL " if mrg.value & MergeOperation.REMOVE.value else "(D) ") + path)  # not contained in other branch, but maybe kept
     for path, pinfo in changed.modifications.items():
       into:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))
       binary:bool = not m.isTextType(path)
@@ -884,8 +899,8 @@ def log(options:str[] = []):
 #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds})  # TODO determine moves - can we reuse detectMoves(changes)?
     _txt:int = len([m_ for m_ in _mod if m.isTextType(m_)])
     printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
-    if changes_ in options: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
-    if diff_ in options: pass  #  _diff(m, changes)  # needs from revision diff
+    if changes_: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
+    if diff_: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news  # replaces olds for next revision compare
     last = {k: v for k, v in nxts.items()}  # create new reference
 

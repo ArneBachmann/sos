@@ -82,6 +82,7 @@ UTF8:str = "utf_8"  # early used constant, not defined in standard library
 SVN:str = "svn"
 SLASH:str = "/"
 DOT_SYMBOL:str = "\u00b7"
+MULT_SYMBOL:str = "\u00d7"
 CROSS_SYMBOL:str = "\u2716"
 CHECKMARK_SYMBOL:str = "\u2714"
 PLUSMINUS_SYMBOL:str = "\u00b1"

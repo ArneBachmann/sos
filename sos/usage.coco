@@ -76,11 +76,13 @@ COMMANDS:Dict[str,Command] = {
   ),
   "log": Command(Category.Working_with_branches, [],
     "List revisions of current branch",
-    "List all revisions of currently selected branch in chronological order (latest last)"
+    """List all revisions of currently selected branch in chronological order (latest last).
+       The format for each log entry is as follows:
+       [*] r<revision> @<timestamp> (+<added files>/-<removed files>/~<modified files>/T<modified text files>) |<commit message or tag>|"""
   ),
   "status": Command(Category.Repository_handling,
     [
-      Argument("[<branch>][/<revision>]", """Branch and/or revision to show changes of current file state against (if "useChangesCommand" flag is disabled).
+      Argument("[<branch>][/<revision>]", """Branch and/or revision to show changes of file tree against (if "useChangesCommand" flag is disabled).
                                              The argument is ignored (if "useChangesCommand" is enabled)""")
     ],
     "Display file tree changes or repository stats",
@@ -135,7 +137,10 @@ COMMANDS:Dict[str,Command] = {
        In addition, it allows merging differing contents interactively or by rules specified through command-line switches.
        Default operation for files, lines and characters is add and remove"""
   ),
-  "changes": Command(Category.Working_with_files, [],
+  "changes": Command(Category.Working_with_files,
+    [
+      Argument("[<branch>][/<revision>]", """Branch and/or revision to show changes of file tree against""")
+    ],
     "Show inserted, removed, and/or modified files",
     """Checks the file tree for modifications against the last committed revision on the current branch.
        Additions are marked with ADD, deletions with DEL and modifications with MOD.
@@ -381,7 +386,7 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
     "diff": "Ignore white spaces during comparison"  # -iw
   },
   "wrap": {
-    "diff": "Wrap text around terminal size instead of shortening"
+    "diff": "Wrap text around terminal instead of cropping into terminal width"
   },
   "soft": {
     "mv": "Don't move or rename files, only affect the tracking pattern"
@@ -424,8 +429,9 @@ def getTitle(large:bool = True) -> str?:  # https://github.com/pwaller/pyfiglet/
   return "\n".join(_ for _ in Figlet(font = font, width = pure.termWidth).renderText(text).split("\n") if _.replace(" ", "") != "")
 
 def usage(argument:str, version:bool = False, verbose:bool = False):
-  title:str? = getTitle()
-  if title: print(title + "\n")
+  if version:
+    title:str? = getTitle()
+    if title: print(title + "\n")
   print("%s%s%s" % (MARKER, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))
   print("\nUsage:\n  sos <command> [<argument1>, [<argument2>]] [<option1>, [<options...]]")
   if version: sys.exit(0)
@@ -438,10 +444,12 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
     for name, cmd in sorted(ofcategory.items()):
       args:str = "  %s %s  " % (name, " ".join([c.name for c in cmd.arguments]))  # command argument names
       print("%s\n%s" % (args + cmd.short, pure.ajoin(" " * len(args), pure.splitStrip(cmd.long), nl = "\n")))
-      if not verbose: continue  # TODO align commands correctly when in short mode
+      if command is None and not verbose: continue  # TODO align commands correctly when in short mode
+      if cmd.arguments: print("\n  Arguments:")
       maxlen:int = 4 + 2 + max(len(s.name) for s in cmd.arguments) if len(cmd.arguments) > 0 else 0
       for c in cmd.arguments: print(pure.ljust("    %s  " % c.name, maxlen) + c.long)
       matchingoptions:Dict[str, str[]] = {} if cmd is None else {optname: pure.splitStrip(dikt[None]) if None in dikt else [] for optname, dikt in OPTIONS.items()}  # add all text for the generic description
+      if matchingoptions: print("\n  Options:")
       for optname, description in [(optname, dikt[name]) for optname, dikt in OPTIONS.items() if name in dikt]: matchingoptions[optname].extend(pure.splitStrip(description))  # add all lines for the specifc description
       if len(matchingoptions) == 0: continue  # with next command
       maxoptlen:int = max([len(optname) for optname in matchingoptions])
