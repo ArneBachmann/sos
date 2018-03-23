@@ -139,7 +139,7 @@ class Metadata:
 
   def saveBranch(_, branch:int):
     ''' Save all commits to a branch meta data file. '''
-    tryOrIgnore(() -> shutil.copy2(encode(branchFolder(branch, file = metaFile)), encode(branchFolder(branch, metaBack))))  # backup
+    tryOrIgnore(-> shutil.copy2(encode(branchFolder(branch, file = metaFile)), encode(branchFolder(branch, metaBack))))  # backup
     with codecs.open(encode(branchFolder(branch, file = metaFile)), "w", encoding = UTF8) as fd:
       json.dump(list(_.commits.values()), fd, ensure_ascii = False)
 
@@ -242,7 +242,7 @@ class Metadata:
     target:str = revisionFolder(branch, revision, base = _.root)
     try: os.makedirs(encode(target))
     except: pass
-    tryOrIgnore(() -> shutil.copy2(encode(os.path.join(target, metaFile)), encode(os.path.join(target, metaBack))))  # ignore error for first backup
+    tryOrIgnore(-> shutil.copy2(encode(os.path.join(target, metaFile)), encode(os.path.join(target, metaBack))))  # ignore error for first backup
     with codecs.open(encode(os.path.join(target, metaFile)), "w", encoding = UTF8) as fd: json.dump(_.paths, fd, ensure_ascii = False)
 
   def findChanges(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None, dontConsider:FrozenSet[str]? = None, progress:bool = False) -> Tuple[ChangeSet,str?] =
@@ -626,8 +626,8 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     payload:int = 0; overhead:int = 0; original:int = 0  # count used storage per branch
     for dn, ds, fs in os.walk(branchFolder(branch.number)):
       for f in fs:  # TODO count all backup folders as overhead instead? check "onlydeveloped" code for that logic
-        if f == metaFile or f.endswith(BACKUP_SUFFIX): overhead += tryOrDefault(() -> os.stat(encode(os.path.join(dn, f))).st_size, 0)
-        else: payload += tryOrDefault(() -> os.stat(encode(os.path.join(dn, f))).st_size, 0)
+        if f == metaFile or f.endswith(BACKUP_SUFFIX): overhead += tryOrDefault(-> os.stat(encode(os.path.join(dn, f))).st_size, 0)
+        else: payload += tryOrDefault(-> os.stat(encode(os.path.join(dn, f))).st_size, 0)
     pl_amount:float = float(payload) / MEBI; oh_amount:float = float(overhead) / MEBI
     # if pl_amount >= 1100.:   convert to string
     m.loadBranch(branch.number)  # knows commit history
@@ -735,7 +735,7 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
   eol:bool = '--eol' in options  # use remote eol style
   m:Metadata = Metadata()  # TODO same is called inside stop on changes - could return both current and designated branch instead
   currentBranch:int? = m.branch
-  m, branch, revision, changes, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, options, check = False, onlys = onlys, excps = excps)  # don't check for current changes, only parse arguments
+  m, branch, revision, changes_, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, options, check = False, onlys = onlys, excps = excps)  # don't check for current changes, only parse arguments
   if verbose: info(usage.MARKER + "Integrating changes from '%s/r%02d' into file tree..." % (m.branches[branch].name ?? "b%02d" % branch, revision))
 
   # Determine file changes from other branch over current file tree
@@ -747,29 +747,35 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
     considerOnly = onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingUnion),
     dontConsider = excps if not (m.track or m.picky) else onlys ?? untrackingUnion,
     progress = '--progress' in options)  # determine difference of other branch vs. file tree. "addition" means exists now but not in other, and should be removed unless in tracking mode
-  if not (mrg.value & MergeOperation.INSERT.value and changed.additions or (mrg.value & MergeOperation.REMOVE.value and changed.deletions) or changed.modifications):  # no file ops
+  if mrg != MergeOperation.ASK and not changed.modifications and not (mrg.value & MergeOperation.INSERT.value and changed.additions or (mrg.value & MergeOperation.REMOVE.value and changed.deletions)):  # no file ops, TODO ASK handling is clumsy here
     if trackingUnion != trackingPatterns:  # nothing added
       info("No file changes detected, but tracking patterns were merged (run 'sos switch /-1 --meta' to undo)")  # TODO write test to see if this works
     else:
       info("Nothing to update")  # but write back updated branch info below
   else:  # integration required
+    add_all:bool = False; del_all:bool = False; selection:str
     for path, pinfo in changed.deletions.items():  # file-based update. Deletions mark files not present in current file tree -> needs addition!
-      if mrg.value & MergeOperation.INSERT.value: m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # deleted in current file tree: restore from branch to reach target
-      printo(("ADD " if mrg.value & MergeOperation.INSERT.value else "(A) ") + path)  # TODO add ask operation here!
+      selection = "y" if mrg.value & MergeOperation.INSERT.value else "n"  # default for non-ask case
+      if not add_all and mrg == MergeOperation.ASK:
+        selection = user_input(" Restore %r? *[Y]es, [N]o, [A]ll: " % path, "yna", "y")
+        if selection == "a": add_all = True; selection = "y"
+      if add_all or selection == "y": m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # deleted in current file tree: restore from branch to reach target
+      printo(("ADD " if selection == "y" else "(A) ") + path)  # TODO document (A) as "selected not to add by user choice"
     for path, pinfo in changed.additions.items():
       if m.track or m.picky: Exit("This should never happen. Please create an issue report")  # because untracked files of other branch cannot be detected (which is good)
-      if mrg.value & MergeOperation.REMOVE.value: os.unlink(encode(m.root + os.sep + path.replace(SLASH, os.sep)))
-      printo(("DEL " if mrg.value & MergeOperation.REMOVE.value else "(D) ") + path)  # not contained in other branch, but maybe kept
+      selection = "y" if mrg.value & MergeOperation.REMOVE.value else "n"
+      if not del_all and mrg == MergeOperation.ASK:
+        selection = user_input(" Delete %r? *[Y]es, [N]o, [A]ll: " % path, "yna", "y")
+        if selection == "a": del_all = True; selection = "y"
+      if del_all or selection == "y": os.unlink(encode(m.root + os.sep + path.replace(SLASH, os.sep)))
+      printo(("DEL " if selection == "y" else "(D) ") + path)  # not contained in other branch, but maybe kept
     for path, pinfo in changed.modifications.items():
       into:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))
       binary:bool = not m.isTextType(path)
       op:str = "m"  # merge as default for text files, always asks for binary (TODO unless --theirs or --mine)
       if mrg == MergeOperation.ASK or binary:  # TODO this may ask user even if no interaction was asked for
-        printo(("MOD " if not binary else "BIN ") + path)
-        while True:
-          printo(into)  # TODO print mtime, size differences?
-          op = (_utility.input if coco_version >= (1, 3, 1, 21) else input)(" Resolve: *M[I]ne (skip), [T]heirs" + (": " if binary else ", [M]erge: ")).strip().lower()  # TODO set encoding on stdin
-          if op in ("it" if binary else "itm"): break
+        printo(("MOD " if not binary else "BIN ") + path)  # TODO print mtime, size differences?
+        op = user_input(" Resolve %r: *M[I]ne (skip), [T]heirs" % into + (": " if binary else ", [M]erge: "), "it" if binary else "itm", "i")
       if op == "t":
         printo("THR " + path); m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile = into)  # blockwise copy of contents
       elif op == "m":
@@ -962,7 +968,7 @@ def config(arguments:List[str], options:List[str] = []):
     if None in (key, value): Exit("Key or value not specified")
     if key not in (([] if local else CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % ("local " if local else "global", key))  # TODO move defaultbranch to configurable_texts?
     if key in CONFIGURABLE_FLAGS and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())
-    c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (tryOrIgnore(() -> int(value), (E) -> error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?
+    c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (tryOrIgnore(-> int(value), (E) -> error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?
   elif command == "unset":
     if key is None: Exit("No key specified")
     if key not in c.keys(): Exit("Unknown key")  # HINT: Works on local configurations when used with --local

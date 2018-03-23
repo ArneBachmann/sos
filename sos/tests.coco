@@ -193,10 +193,10 @@ class Tests(unittest.TestCase):
     sos.offline(options = ["--strict", "--compress"])  # TODO move compress flag to own test function and check if it actually works
     os.renames(sos.encode("." + os.sep + "file1"), sos.encode("sub" + os.sep + "file1"))
     os.renames(sos.encode("sub" + os.sep + "file2"), sos.encode("." + os.sep + "file2"))
-    out:str = wrapChannels(() -> sos.changes())
+    out:str = wrapChannels(-> sos.changes())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
-    out = wrapChannels(() -> sos.commit())
+    out = wrapChannels(-> sos.commit())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
     _.assertIn("Created new revision r01 (+00/-00/~00/#02)", out)  # TODO why is this not captured?
@@ -215,14 +215,14 @@ class Tests(unittest.TestCase):
   def testNoArgs(_):
     pass   # call "sos" without arguments should simply show help or info about missing arguments
 
-  def testAutoUpgrade(_):
+  def testAutoMetadataUpgrade(_):
     sos.offline()
     with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "r", encoding = sos.UTF8) as fd: repo, branches, config = json.load(fd)
     repo["version"] = None  # lower than any pip version
     branches[:] = [branch[:5] for branch in branches]  # simulate some older state
     del repo["format"]  # simulate pre-1.3.5
     with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "w", encoding = sos.UTF8) as fd: json.dump((repo, branches, config), fd, ensure_ascii = False)
-    out = wrapChannels(() -> sos.status(options = ["--repo"]))
+    out = wrapChannels(-> sos.status(options = ["--repo"]))
     _.assertAllIn(["pre-1.2", "Upgraded repository metadata to match SOS version '2018.1210.3028'", "Upgraded repository metadata to match SOS version '1.3.5'"], out)
 
   def testFastBranching(_):
@@ -251,9 +251,9 @@ class Tests(unittest.TestCase):
     _.createFile(1, "abc")  # modify contents
     os.utime(sos.encode("file1"), (now - 2000, now - 2000))  # make it look like an older version
     sync()
-    out = wrapChannels(() -> sos.changes())
+    out = wrapChannels(-> sos.changes())
     _.assertAllIn(["<older than last revision>", "<older than previously committed>"], out)
-    out = wrapChannels(() -> sos.commit())
+    out = wrapChannels(-> sos.commit())
     _.assertAllIn(["<older than last revision>", "<older than previously committed>"], out)
 
   def testGetParentBranch(_):
@@ -452,13 +452,13 @@ class Tests(unittest.TestCase):
     sos.offline()
     _.createFile(111)
     sos.commit("tag", ["--tag"])
-    out = wrapChannels(() -> sos.log()).replace("\r", "").split("\n")
+    out = wrapChannels(-> sos.log()).replace("\r", "").split("\n")
     _.assertTrue(any("|tag" in line and line.endswith("|TAG") for line in out))
     _.createFile(2)
     try: sos.commit("tag"); _.fail()
     except: pass
     sos.commit("tag-2", ["--tag"])
-    out = wrapChannels(() -> sos.ls(options = ["--tags"])).replace("\r", "")
+    out = wrapChannels(-> sos.ls(options = ["--tags"])).replace("\r", "")
     _.assertIn("TAG tag", out)
 
   def testSwitch(_):
@@ -476,7 +476,7 @@ class Tests(unittest.TestCase):
     sos.switch("test")  # file1-2, remove file3 from file tree
     _.assertFalse(_.existsFile(3))  # removed when switching back to test
     _.createFile("XXX")
-    out = wrapChannels(() -> sos.status()).replace("\r", "")
+    out = wrapChannels(-> sos.status()).replace("\r", "")
     _.assertIn("File tree has changes", out)
     _.assertNotIn("File tree is unchanged", out)
     _.assertIn("  * b00   'test'", out)
@@ -484,7 +484,7 @@ class Tests(unittest.TestCase):
     _.assertIn("(dirty)", out)  # one branch has commits
     _.assertIn("(in sync)", out)  # the other doesn't
     sos.defaults["useChangesCommand"] = False  # because sos.main() is never called
-    out = wrapChannels(() -> sos.status()).replace("\r", "")  # trigger repo info
+    out = wrapChannels(-> sos.status()).replace("\r", "")  # trigger repo info
     _.assertAllIn(["Metadata format", "Content checking:    deactivated", "Data compression:    deactivated", "Repository mode:     simple", "Number of branches:  2"], out)
     sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
     _.createFile(4, "xy")  # generate a file
@@ -495,13 +495,13 @@ class Tests(unittest.TestCase):
     sos.switch("test", ["--force"])  # should restore file1 and remove file3
     _.assertTrue(_.existsFile(1))  # was restored from branch's revision r1
     _.assertFalse(_.existsFile(3))  # was restored from branch's revision r1
-    out = wrapChannels(() -> sos.dump("dumped.sos.zip", options = ["--skip-backup", "--full"])).replace("\r", "")
+    out = wrapChannels(-> sos.dump("dumped.sos.zip", options = ["--skip-backup", "--full"])).replace("\r", "")
     _.assertAllIn(["Dumping revisions"], out)
     _.assertNotIn("Creating backup", out)
-    out = wrapChannels(() -> sos.dump("dumped.sos.zip", options = ["--skip-backup"])).replace("\r", "")
+    out = wrapChannels(-> sos.dump("dumped.sos.zip", options = ["--skip-backup"])).replace("\r", "")
     _.assertIn("Dumping revisions", out)
     _.assertNotIn("Creating backup", out)
-    out = wrapChannels(() -> sos.dump("dumped.sos.zip", options = ["--full"])).replace("\r", "")
+    out = wrapChannels(-> sos.dump("dumped.sos.zip", options = ["--full"])).replace("\r", "")
     _.assertAllIn(["Creating backup"], out)
     _.assertIn("Dumping revisions", out)
 
@@ -532,7 +532,7 @@ class Tests(unittest.TestCase):
     _.assertTrue(_.existsFile(1))
 
     _.createFile(2, "y" * 100)
-#    out = wrapChannels(() -> sos.branch("other"))  # won't comply as there are changes
+#    out = wrapChannels(-> sos.branch("other"))  # won't comply as there are changes
 #    _.assertIn("--force", out)
     sos.branch("other", options = ["--force"])  # automatically including file 2 (as we are in simple mode)
     _.assertTrue(_.existsFile(2))
@@ -560,14 +560,14 @@ class Tests(unittest.TestCase):
     sos.update("mod")  # integrate changes TODO same with ask -> theirs
     _.existsFile("test.txt", b"x" * 5 + b"y" * 5)
     _.createFile("test.txt", "x" * 10)
-    mockInput(["t"], () -> sos.update("mod", ["--ask-lines"]))
+    mockInput(["t"], -> sos.update("mod", ["--ask-lines"]))
     sync()
     _.assertTrue(_.existsFile("test.txt", b"x" * 5 + b"y" * 5))
     _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
     sos.update("mod")  # auto-insert/removes (no intra-line conflict)
     _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)
     sync()
-    mockInput(["t"], () -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
+    mockInput(["t"], -> sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)
     _.assertTrue(_.existsFile("test.txt", b"x" * 5 + b"y" * 5))
 
   def testIsTextType(_):
@@ -588,8 +588,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(b"\n", sos.eoldet(b"a\nb"))
     _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))
     _.assertEqual(b"\r", sos.eoldet(b"\ra\rb"))
-    _.assertAllIn(["Inconsistent", "with "], wrapChannels(() -> _.assertEqual(b"\n", sos.eoldet(b"\r\na\r\nb\n"))))
-    _.assertAllIn(["Inconsistent", "without"], wrapChannels(() -> _.assertEqual(b"\n", sos.eoldet(b"\ra\nnb\n"))))
+    _.assertAllIn(["Inconsistent", "with "], wrapChannels(-> _.assertEqual(b"\n", sos.eoldet(b"\r\na\r\nb\n"))))
+    _.assertAllIn(["Inconsistent", "without"], wrapChannels(-> _.assertEqual(b"\n", sos.eoldet(b"\ra\nnb\n"))))
     _.assertIsNone(sos.eoldet(b""))
     _.assertIsNone(sos.eoldet(b"sdf"))
 
@@ -614,15 +614,15 @@ class Tests(unittest.TestCase):
     # Test interactive merge
     a = b"a\nb\nb\ne"  # block-wise replacement
     b = b"a\nc\ne"
-    _.assertEqual(b, mockInput(["i"], () -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)[0]))
-    _.assertEqual(a, mockInput(["t"], () -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)[0]))
+    _.assertEqual(b, mockInput(["i"], -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)[0]))
+    _.assertEqual(a, mockInput(["t"], -> sos.merge(a, b, mergeOperation = sos.MergeOperation.ASK)[0]))
     a = b"a\nb\ne"  # intra-line merge
-    _.assertEqual(b, mockInput(["i"], () -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)[0]))
-    _.assertEqual(a, mockInput(["t"], () -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)[0]))
+    _.assertEqual(b, mockInput(["i"], -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)[0]))
+    _.assertEqual(a, mockInput(["t"], -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)[0]))
 
   def testMergeEol(_):
     _.assertEqual(b"\r\n", sos.merge(b"a\nb", b"a\r\nb")[1])
-    _.assertIn("Differing EOL-styles", wrapChannels(() -> sos.merge(b"a\nb", b"a\r\nb")))  # expects a warning
+    _.assertIn("Differing EOL-styles", wrapChannels(-> sos.merge(b"a\nb", b"a\r\nb")))  # expects a warning
     _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb")[0])  # when in doubt, use "mine" CR-LF
     _.assertIn(b"a\nb", sos.merge(b"a\nb", b"a\r\nb", eol = True)[0])
     _.assertEqual(b"\n", sos.merge(b"a\nb", b"a\r\nb", eol = True)[1])
@@ -642,7 +642,7 @@ class Tests(unittest.TestCase):
     sos.add(".", "./file?")
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))
-    out = wrapChannels(() -> sos.log([])).replace("\r", "")
+    out = wrapChannels(-> sos.log([])).replace("\r", "")
     _.assertIn("  * r2", out)
     _.createFile(3, prefix = "sub")
     sos.add("sub", "sub/file?")
@@ -683,7 +683,7 @@ class Tests(unittest.TestCase):
     sos.add(".", "./file?")  # add glob tracking pattern
     sos.commit("second")  # versions "file1"
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file
-    out = wrapChannels(() -> sos.status()).replace("\r", "")
+    out = wrapChannels(-> sos.status()).replace("\r", "")
     _.assertIn("  | ./file?", out)
 
     _.createFile(2)  # untracked file "file2"
@@ -731,16 +731,16 @@ class Tests(unittest.TestCase):
     _.createFile("foo")
     sos.add(".", "./file*")  # capture one file
     sos.ls()
-    out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
+    out = sos.safeSplit(wrapChannels(-> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny("TRK file1  (file*)", out)
     _.assertNotInAny("... file1  (file*)", out)
     _.assertInAny("    foo", out)
-    out = sos.safeSplit(wrapChannels(() -> sos.ls(options = ["--patterns"])).replace("\r", ""), "\n")
+    out = sos.safeSplit(wrapChannels(-> sos.ls(options = ["--patterns"])).replace("\r", ""), "\n")
     _.assertInAny("TRK file*", out)
     _.createFile("a", prefix = "sub")
     sos.add("sub", "sub/a")
     sos.ls("sub")
-    _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(() -> sos.ls("sub")).replace("\r", ""), "\n"))
+    _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(-> sos.ls("sub")).replace("\r", ""), "\n"))
 
   def testLineMerge(_):
     _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))
@@ -751,12 +751,12 @@ class Tests(unittest.TestCase):
   def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not
     _.createFile(1)
     sos.offline("master", options = ["--force"])
-    out = wrapChannels(() -> sos.changes(options = ['--progress'])).replace("\r", "").split("\n")
+    out = wrapChannels(-> sos.changes(options = ['--progress'])).replace("\r", "").split("\n")
     _.assertFalse(any("Compression advantage" in line for line in out))  # simple mode should always print this to stdout
     _.assertTrue(_.existsFile(sos.revisionFolder(0, 0, file = "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"), b"x" * 10))
     setRepoFlag("compress", True)  # was plain = uncompressed before
     _.createFile(2)
-    out = wrapChannels(() -> sos.commit("Added file2", options = ['--progress'])).replace("\r", "").split("\n")
+    out = wrapChannels(-> sos.commit("Added file2", options = ['--progress'])).replace("\r", "").split("\n")
     _.assertTrue(any("Compression advantage" in line for line in out))
     _.assertTrue(_.existsFile(sos.revisionFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists
     _.assertFalse(_.existsFile(sos.revisionFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead
@@ -838,15 +838,15 @@ class Tests(unittest.TestCase):
     except SystemExit as E: _.assertEqual(0, E.code)
     try: sos.config(["set", "ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
     except SystemExit as E: _.assertEqual(0, E.code)
-    out = wrapChannels(() -> sos.config(["show"])).replace("\r", "")
+    out = wrapChannels(-> sos.config(["show"])).replace("\r", "")
     _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)
-    out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
+    out = sos.safeSplit(wrapChannels(-> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('    file1', out)
     _.assertInAny('    ign1', out)
     _.assertInAny('    ign2', out)
     _.assertNotIn('DIR sub', out)
     _.assertNotIn('    bar', out)
-    out = wrapChannels(() -> sos.ls(options = ["--recursive"])).replace("\r", "")
+    out = wrapChannels(-> sos.ls(options = ["--recursive"])).replace("\r", "")
     _.assertIn('DIR sub', out)
     _.assertIn('    bar', out)
     try: sos.config(["rm", "foo", "bar"]); _.fail()
@@ -857,7 +857,7 @@ class Tests(unittest.TestCase):
     except SystemExit as E: _.assertEqual(0, E.code)
     try: sos.config(["unset", "ignoresWhitelist"])  # remove ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
-    out = sos.safeSplit(wrapChannels(() -> sos.ls()).replace("\r", ""), "\n")
+    out = sos.safeSplit(wrapChannels(-> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('    ign1', out)
     _.assertInAny('IGN ign2', out)
     _.assertNotInAny('    ign2', out)
@@ -916,7 +916,7 @@ class Tests(unittest.TestCase):
     _.createFile("b.2")
     sos.add(".", "./a.?")
     sos.add(".", "./?.1", negative = True)
-    out = wrapChannels(() -> sos.commit())
+    out = wrapChannels(-> sos.commit())
     _.assertIn("ADD ./a.2", out)
     _.assertNotIn("ADD ./a.1", out)
     _.assertNotIn("ADD ./b.1", out)
@@ -943,8 +943,8 @@ class Tests(unittest.TestCase):
     changes = sos.changes(excps = f{"./file1"})
     _.assertEqual(1, len(changes.modifications))  # only file2
     _.assertTrue("./file2" in changes.modifications)
-    _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
-    _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(() -> sos.diff(onlys = f{"./file2"})))
+    _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))
+    _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))
 
   def testDiff(_):
     try: sos.config(["set", "texttype", "file1"])  # manually mark this file as "textual"
@@ -958,10 +958,10 @@ class Tests(unittest.TestCase):
     sos.commit()
     _.createFile(1, "foobar")
     _.createFile(3)
-    out = wrapChannels(() -> sos.diff("/-2"))  # compare with r1 (second counting from last which is r2)
+    out = wrapChannels(-> sos.diff("/-2"))  # compare with r1 (second counting from last which is r2)
     _.assertIn("ADD ./file3", out)
     _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "- | 0 |xxxxxxxxxx|", "+ | 0 |foobar|"], out)
-    _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(() -> sos.diff("/-2", onlys = f{"./file2"})))
+    _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(-> sos.diff("/-2", onlys = f{"./file2"})))
 
   def testReorderRenameActions(_):
     result:Tuple[str,str] = sos.reorderRenameActions([("123", "312"), ("312", "132"), ("321", "123")], exitOnConflict = False)
@@ -1019,9 +1019,21 @@ class Tests(unittest.TestCase):
     _.createFile("1a1b1")
     _.createFile("1a1b2")
     sos.add(".", "?a?b*")
-    _.assertIn("not unique", wrapChannels(() -> sos.move(".", "?a?b*", ".", "z?z?")))  # should raise error due to same target name
+    _.assertIn("not unique", wrapChannels(-> sos.move(".", "?a?b*", ".", "z?z?")))  # should raise error due to same target name
     # TODO only rename if actually any files are versioned? or simply what is alife?
     # TODO add test if two single question marks will be moved into adjacent characters
+
+  def testAskUpdate(_):
+    _.createFile(1)
+    sos.offline()  # branch 0: only file1
+    sos.branch()
+    os.unlink("file1")
+    _.createFile(2)
+    sos.commit()  # branch 1: only file2
+    sos.switch("0/")
+    mockInput(["y", "y"], -> sos.update("1/", ["--ask"]))
+    _.assertFalse(_.existsFile(1))
+    _.assertTrue(_.existsFile(2))
 
   def testHashCollision(_):
     sos.offline()

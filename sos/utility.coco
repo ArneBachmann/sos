@@ -120,8 +120,8 @@ data GlobBlock2(isLiteral:bool, content:str, matches:str)  # matching file patte
 
 
 # Functions
-def printo(s:str = "", nl:str = "\n"): tryOrDefault(() -> sys.stdout.buffer ?? sys.stdout, sys.stdout).write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')); sys.stdout.flush()  # PEP528 compatibility
-def printe(s:str = "", nl:str = "\n"): tryOrDefault(() -> sys.stderr.buffer ?? sys.stderr, sys.stderr).write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')); sys.stderr.flush()
+def printo(s:str = "", nl:str = "\n"): tryOrDefault(-> sys.stdout.buffer ?? sys.stdout, sys.stdout).write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')); sys.stdout.flush()  # PEP528 compatibility
+def printe(s:str = "", nl:str = "\n"): tryOrDefault(-> sys.stderr.buffer ?? sys.stderr, sys.stderr).write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')); sys.stderr.flush()
 def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writing filenames  # PEP 529 compatibility
 def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of reading filenames
 try:
@@ -138,11 +138,11 @@ except:
     except UnicodeError: pass
     "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
 
-def tryOrDefault(func:() -> Any, default:Any) -> Any:
+def tryOrDefault(func:-> Any, default:Any) -> Any:
   try: return func()
   except: return default
 
-def tryOrIgnore(func:() -> Any, onError:(Exception) -> None = (_) -> None) -> None:  # handle with care!
+def tryOrIgnore(func:-> Any, onError:(Exception) -> None = (_) -> None) -> None:  # handle with care!
   try: return func()
   except Exception as E: onError(E)
 
@@ -257,7 +257,16 @@ def detectMoves(changes:ChangeSet) -> Dict[str,Tuple[str,PathInfo]] =
         break  # deletions loop, continue with next addition
   moves
 
+def user_input(text:str, choices:Iterable[str], default:str = None, selection:str = "") -> str =
+  ''' Default can be a selection from choice and allows empty input. '''
+  while True:
+    selection = input(text).strip().lower()
+    if selection != "" and selection in choices: break
+    if selection == "" and default is not None: selection = default; break
+  selection
+
 def user_block_input(output:List[str]):
+  ''' Side-effect appending to input list. '''
   sep:str = input("Enter end-of-text marker (default: <empty line>: "); line:str = sep
   while True:
     line = input("> ")
@@ -386,11 +395,10 @@ def lineMerge(othr:str, into:str, mergeOperation:MergeOperation = MergeOperation
         printo("- " + (" " * i) + block.replaces.lines[0])
         printo("+ " + (" " * i) + block.lines[0])
         printo(pure.ajoin("+ ", into))
-        while True:
-          op:str = input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()[:1]
-          if op in "tb": out.extend(block.lines); break
-          if op in "ib": out.extend(block.replaces.lines); break
-          if op == "m":  user_block_input(out); break
+        op:str = user_input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ", "tbim")
+        if op in "tb": out.extend(block.lines); break
+        if op in "ib": out.extend(block.replaces.lines); break
+        if op == "m":  user_block_input(out); break
       else:  # non-interactive
         if   mergeOperation == MergeOperation.REMOVE: pass
         elif mergeOperation == MergeOperation.BOTH: out.extend(block.lines)
