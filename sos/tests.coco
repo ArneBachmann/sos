@@ -588,8 +588,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(b"\n", sos.eoldet(b"a\nb"))
     _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))
     _.assertEqual(b"\r", sos.eoldet(b"\ra\rb"))
-    _.assertAllIn(["Inconsistent", "with "], wrapChannels(-> _.assertEqual(b"\n", sos.eoldet(b"\r\na\r\nb\n"))))
-    _.assertAllIn(["Inconsistent", "without"], wrapChannels(-> _.assertEqual(b"\n", sos.eoldet(b"\ra\nnb\n"))))
+    _.assertAllIn(["Inconsistent", "with "], wrapChannels(() -> _.assertEqual(b"\n", sos.eoldet(b"\r\na\r\nb\n"))))
+    _.assertAllIn(["Inconsistent", "without"], wrapChannels(() -> _.assertEqual(b"\n", sos.eoldet(b"\ra\nnb\n"))))
     _.assertIsNone(sos.eoldet(b""))
     _.assertIsNone(sos.eoldet(b"sdf"))
 
