@@ -753,29 +753,32 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
     else:
       info("Nothing to update")  # but write back updated branch info below
   else:  # integration required
-    add_all:bool = False; del_all:bool = False; selection:str
+    add_all:str?; del_all:str; selection:str
+    if changed.deletions.items(): printo("Additions:")
     for path, pinfo in changed.deletions.items():  # file-based update. Deletions mark files not present in current file tree -> needs addition!
       selection = "y" if mrg.value & MergeOperation.INSERT.value else "n"  # default for non-ask case
-      if not add_all and mrg == MergeOperation.ASK:
-        selection = user_input(" Restore %r? *[Y]es, [N]o, [A]ll: " % path, "yna", "y")
-        if selection == "a": add_all = True; selection = "y"
-      if add_all or selection == "y": m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # deleted in current file tree: restore from branch to reach target
-      printo(("ADD " if selection == "y" else "(A) ") + path)  # TODO document (A) as "selected not to add by user choice"
+      if add_all is None and mrg == MergeOperation.ASK:
+        selection = user_input("  Restore %r? *[Y]es, [N]o, yes to [A]ll, n[O] to all: " % path, "yna", "y")
+        if selection in "ao": add_all = "y" if selection == "a" else "n"; selection = add_all
+      if "y" in (add_all, selection): m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # deleted in current file tree: restore from branch to reach target
+      printo(("ADD " if "y" in (add_all, selection) else "(A) ") + path)  # TODO document (A) as "selected not to add by user choice"
+    if changed.additions.items(): printo("Deletions:")
     for path, pinfo in changed.additions.items():
       if m.track or m.picky: Exit("This should never happen. Please create an issue report")  # because untracked files of other branch cannot be detected (which is good)
       selection = "y" if mrg.value & MergeOperation.REMOVE.value else "n"
-      if not del_all and mrg == MergeOperation.ASK:
-        selection = user_input(" Delete %r? *[Y]es, [N]o, [A]ll: " % path, "yna", "y")
-        if selection == "a": del_all = True; selection = "y"
-      if del_all or selection == "y": os.unlink(encode(m.root + os.sep + path.replace(SLASH, os.sep)))
-      printo(("DEL " if selection == "y" else "(D) ") + path)  # not contained in other branch, but maybe kept
+      if del_all is None and mrg == MergeOperation.ASK:
+        selection = user_input("  Delete %r? *[Y]es, [N]o, yes to [A]ll, n[O] to all: " % path, "yna", "y")
+        if selection in "ao": del_all = "y" if selection == "a" else "n"; selection = del_all
+      if "y" in (del_all, selection): os.unlink(encode(m.root + os.sep + path.replace(SLASH, os.sep)))
+      printo(("DEL " if "y" in (del_all, selection) else "(D) ") + path)  # not contained in other branch, but maybe kept
+    if changed.modifications.items(): printo("Modifications:")
     for path, pinfo in changed.modifications.items():
       into:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))
       binary:bool = not m.isTextType(path)
       op:str = "m"  # merge as default for text files, always asks for binary (TODO unless --theirs or --mine)
       if mrg == MergeOperation.ASK or binary:  # TODO this may ask user even if no interaction was asked for
         printo(("MOD " if not binary else "BIN ") + path)  # TODO print mtime, size differences?
-        op = user_input(" Resolve %r: *M[I]ne (skip), [T]heirs" % into + (": " if binary else ", [M]erge: "), "it" if binary else "itm", "i")
+        op = user_input("  Resolve %r: *M[I]ne (skip), [T]heirs" % into + (": " if binary else ", [M]erge: "), "it" if binary else "itm", "i")
       if op == "t":
         printo("THR " + path); m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile = into)  # blockwise copy of contents
       elif op == "m":

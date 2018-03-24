@@ -1025,15 +1025,25 @@ class Tests(unittest.TestCase):
 
   def testAskUpdate(_):
     _.createFile(1)
+    _.createFile(3)
+    _.createFile(5)
     sos.offline()  # branch 0: only file1
     sos.branch()
     os.unlink("file1")
+    os.unlink("file3")
+    os.unlink("file5")
     _.createFile(2)
+    _.createFile(4)
+    _.createFile(6)
     sos.commit()  # branch 1: only file2
     sos.switch("0/")
-    mockInput(["y", "y"], -> sos.update("1/", ["--ask"]))
+    mockInput(["y", "a", "y", "a"], -> sos.update("1/", ["--ask"]))
     _.assertFalse(_.existsFile(1))
+    _.assertFalse(_.existsFile(3))
+    _.assertFalse(_.existsFile(5))
     _.assertTrue(_.existsFile(2))
+    _.assertTrue(_.existsFile(4))
+    _.assertTrue(_.existsFile(6))
 
   def testHashCollision(_):
     sos.offline()
