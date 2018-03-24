@@ -326,12 +326,12 @@ def merge(
   if diffOnly: return (blocks, nl)
 
   # now perform merge operations depending on detected blocks
-  output[:] = []  # clean list of strings
+  output[:] = []; add_all:str?; del_all:str?; selection:str  # clean list of strings
   for block in blocks:
     if block.tipe == MergeBlockType.KEEP:
       output.extend(block.lines)
-    elif block.tipe == MergeBlockType.INSERT and not(mergeOperation.value & MergeOperation.REMOVE.value)\
-      or block.tipe == MergeBlockType.REMOVE and    (mergeOperation.value & MergeOperation.INSERT.value):
+    elif (block.tipe == MergeBlockType.INSERT and not(mergeOperation.value & MergeOperation.REMOVE.value))\
+      or (block.tipe == MergeBlockType.REMOVE and    (mergeOperation.value & MergeOperation.INSERT.value)):  # will add line despite remove if --add-line was selected
       output.extend(block.lines)
     elif block.tipe == MergeBlockType.REPLACE:  # complete block replacement
       if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner
@@ -349,6 +349,16 @@ def merge(
         if   mergeOperation == MergeOperation.REMOVE: pass
         elif mergeOperation == MergeOperation.BOTH: output.extend(block.lines)
         elif mergeOperation == MergeOperation.INSERT: output.extend(list(block.replaces.lines) + list(block.lines))  # TODO optionally allow insertion BEFORE or AFTER original (order of these both lines)
+    elif block.tipe in (MergeBlockType.INSERT, MergeBlockType.REMOVE) and mergeOperation == MergeOperation.ASK:  # user - interactive insert/remove section
+      if (block.tipe == MergeBlockType.INSERT and add_all is None)\
+      or (block.tipe == MergeOperation.REMOVE and del_akk is None):  # condition for asking
+        selection = user_input(pure.ajoin("+ " if block.tipe == MergeBlockType.INSERT else "- ", block.lines) + "\n  Accept? *[Y]es, [N]o, yes to [A]ll %s, n[O] to all: " % "insertions" if block.tipe == MergeBlockType.INSERT else "deletions", "ynao", "y")
+        if selection in "ao":
+          if block.tipe == MergeBlockType.INSERT: add_all = "y" if selection == "a" else "n"; selection = add_all
+          else:                                   del_all = "y" if selection == "a" else "n"; selection = del_all  # REMOVE case
+      if (block.tipe == MergeBlockType.INSERT and "y" in (add_all, selection))\
+      or (                                        "n" in (del_all, selection)):  # REMOVE case
+        output.extend(block.lines)
   debug("Merge output: " + "; ".join(output))
   ((nl ?? b"\n").join([line.encode(encoding) for line in output]), nl)  # returning bytes
   # TODO handle check for more/less lines in found -/+ blocks to find common section and splitting prefix/suffix out
