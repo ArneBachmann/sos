@@ -9,17 +9,17 @@ RELEASE = "1.5.3"
 print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 if 'build' in sys.argv:
-  print("Transpiling Coconut files to Python...")
-  cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 1000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
-
-  if "--mypy" in sys.argv:
-    try: shutil.rmtree(".mypy_cache/")
-    except: pass
-  assert 0 == os.system("coconut%s %s %s -l -t 3.4 -j sys sos%s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--force" if "--force" in sys.argv else "", " --mypy --ignore-missing-imports --warn-incomplete-stub --warn-redundant-casts" if "--mypy" in sys.argv else ""))  #  or useChanges
+  if os.environ.get("CI", "False").lower() != "true":
+    print("Transpiling Coconut files to Python...")
+    cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 1000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
+    if "--mypy" in sys.argv:
+      try: shutil.rmtree(".mypy_cache/")
+      except: pass
+    assert 0 == os.system("coconut%s %s %s -l -t 3.4 -j sys sos%s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--force" if "--force" in sys.argv else "", " --mypy --ignore-missing-imports --warn-incomplete-stub --warn-redundant-casts" if "--mypy" in sys.argv else ""))  #  or useChanges
   if "--mypy" in sys.argv:  sys.argv.remove('--mypy')
   if "--force" in sys.argv: sys.argv.remove('--force')
 
-  if os.path.exists(".git"):
+  if os.path.exists(".git"):  # must be local development, but ignored
     print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")
     try:
       so, se = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE).communicate()  # use tag or hash
@@ -27,7 +27,7 @@ if 'build' in sys.argv:
       if "\x0d" in extra: extra = extra.split("\x0d")[1]
       print("Found Git hash %s" % extra)
     except: extra = "svn"
-  else: extra = "svn"
+  else: extra = "svn"  # in case this is checked out and built not from Github
   lt = time.localtime()
   version = (lt.tm_year, (10 + lt.tm_mon) * 100 + lt.tm_mday, (10 + lt.tm_hour) * 100 + lt.tm_min)  # NO don't generate new version when using --dev option (to allow "pip install -e .") - was actually a mis-installation
   versionString = '.'.join(map(str, version))

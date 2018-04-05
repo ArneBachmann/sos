@@ -643,6 +643,14 @@ class Tests(unittest.TestCase):
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))
     out = wrapChannels(-> sos.log([])).replace("\r", "")
+    _.assertIn("    r0", out)  # because number of log lines was limited
+    _.assertIn("    r1", out)
+    _.assertIn("  * r2", out)
+    try: sos.config(["set", "logLines", "1"], options = ["--local"])
+    except SystemExit as E: _.assertEqual(0, E.code)
+    out = wrapChannels(-> sos.log([])).replace("\r", "")
+    _.assertNotIn("    r0", out)  # because number of log lines was limited
+    _.assertNotIn("    r1", out)
     _.assertIn("  * r2", out)
     _.createFile(3, prefix = "sub")
     sos.add("sub", "sub/file?")
