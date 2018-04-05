@@ -51,7 +51,7 @@ SOS supports three different file handling models that you may use to your likin
 - Straightforward and simplified semantics for common VCS operations (`branch`, `commit`, integrate changes)
 
 ### Limitations ###
-- Designed for use by single user, network synchronization is a non-goal. Don't attempt to use SOS in a shared location, concurrent access to the repository may corrupt your data, as there is currently no locking in place (could be augmented, but it's a non-goal too)
+- Designed for use by single user, network synchronization is a non-goal. Don't attempt to use SOS in a shared location, concurrent access to the repository may corrupt your data, as there is currently no locking in place (could be augmented, but it's currently a non-goal, too)
 - Has a small user base as of now, therefore no reliable reports of compatibility and operational capability except for the automatic unit tests run on Travis CI and AppVeyor
 
 ### Compatibility ###
@@ -86,7 +86,7 @@ SOS supports three different file handling models that you may use to your likin
     - [Enhancement 202](https://github.com/ArneBachmann/sos/issues/202) Now using the `wcwidth` library to determine visible width of unicode strings (untested)
     - [Feature 102](https://github.com/ArneBachmann/sos/issues/102) Option to list tracking patterns, and list (tracked) files recursively
     - [Feature 157, 200, 204](https://github.com/ArneBachmann/sos/issues/157) Experimental support for incremental dumps
-    - Downloads so far: 1930
+    - Downloads so far: 3150
 - Version 1.4, released on 2018-02-17:
     - [Bug 167](https://github.com/ArneBachmann/sos/issues/167) Accidentally crawling file tree and all revisions on `sos status`
     - [Bug 190](https://github.com/ArneBachmann/sos/issues/190) Changes not computed in `sos online`

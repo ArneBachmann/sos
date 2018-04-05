@@ -2,19 +2,39 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Utiliy functions
-import bz2, codecs, difflib, hashlib, logging, math, os, re, sys, time; START_TIME = time.time()  # early time tracking
+import hashlib, logging, os, sys, time; START_TIME = time.time()  # early time tracking
 
 try: from typing import Any, Dict, FrozenSet, Generic, IO, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass
-from coconut.convenience import version as _coco_version  # Compute version-number for version-dependent features
-_coco_ver:List[str] = _coco_version("num").split(".")[:4]
-coco_version:Tuple[int,int,int,int] = (int(_coco_ver[0]), int(_coco_ver[1]), int(_coco_ver[2].split("-")[0] if "-" in _coco_ver[2] else _coco_ver[2]), int(_coco_ver[2].split("-")[1].split("_dev")[1]) if "-" in _coco_ver[2] else 0)
 
 try: import enum
 except: raise Exception("SOS requires the enum module (Python 3.4+). You may try to manually install it via 'pip install enum34' or use 'pip install -U sos-vcs[backport]'")
-if coco_version < (1, 3, 1, 23): TYPE_CHECKING:bool = False
-try: import sos.pure as pure
-except: import pure
+try: import sos.pure as pure; from sos.values import *
+except: import pure; from values import *
+
+
+# Lazy imports for quicker initialization
+class bz2:
+  def __getattribute__(_, key):
+    global bz2
+    import bz2  # overrides global reference
+    return bz2.__getattribute__(key)
+bz2 = bz2()
+
+class codecs:
+  def __getattribute__(_, key):
+    global codecs
+    import codecs  # overrides global reference
+    return codecs.__getattribute__(key)
+codecs = codecs()
+
+class difflib:
+  def __getattribute__(_, key):
+    global difflib
+    import difflib  # overrides global reference
+    return difflib.__getattribute__(key)
+difflib = difflib()
+
 
 verbose:bool = '--verbose' in sys.argv or '-v' in sys.argv
 debug_:bool = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv
@@ -28,7 +48,7 @@ class Accessor(dict):
     try: return _[name]
     except: return dict.__getattribute__(_, name)
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # available since coconut 1.3.1.21 (?)
   Number = TypeVar("Number", int, float)
   class Counter(Generic[Number]):
     ''' A simple counter. Can be augmented to return the last value instead. '''
@@ -88,9 +108,11 @@ CHECKMARK_SYMBOL:str = "\u2714"
 PLUSMINUS_SYMBOL:str = "\u00b1"
 MOVE_SYMBOL:str = "\u21cc"  # \U0001F5C0"  # HINT second one is very unlikely to be in any console font
 METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats
-vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs"}
-vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None}
+vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs", "_darcs": "darcs", "_MTN": "monotone", ".git/GL_COMMIT_EDIT_MSG": "gl"}
+vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None, "darcs": None, "monotone": None}
+vcsCommits:Dict[str,Tuple[bool,str?]] = {SVN: (True, None), "git": (False, None), "bzr": (True, None), "hg": (True, None), "fossil": (True, "--no-warnings"), "csv": (True, None), "darcs": (False, "--all"), "monotone": (False, None)}  # bool: tracked? (otherwise picky), str:arguments to "commit" TODO CVS has different per-file operation
 NL_NAMES:Dict[bytes,str] = {None: "<No newline>", b"\r\n": "<CR+LF>", b"\n\r": "<LF+CR>", b"\n": "<LF>", b"\r": "<CR>"}
+MAX_COMMAND_LINE:Dict[str,int] = {"win32": 8191, "linux2": 4096, None: 1023}  # https://stackoverflow.com/questions/3205027/maximum-length-of-command-line-string
 defaults:Accessor = Accessor({
     "strict": False, "track": False, "picky": False, "compress": False, "useChangesCommand": False, "useUnicodeFont": sys.platform != "win32",
     "logLines": 20,
@@ -106,17 +128,6 @@ defaults:Accessor = Accessor({
 # Enums
 MergeOperation = enum.Enum("MergeOperation", {"INSERT": 1, "REMOVE": 2, "BOTH": 3, "ASK": 4})  # insert remote changes into current, remove remote deletions from current, do both (replicates remote state), or ask per block
 MergeBlockType = enum.Enum("MergeBlockType", "KEEP INSERT REMOVE REPLACE MOVE")  # modify = intra-line changes, replace = full block replacement
-
-
-# Value types
-data BranchInfo(number:int, ctime:int, name:str? = None, inSync:bool = False, tracked:List[str] = [], untracked:List[str] = [], parent:int? = None, revision:int? = None)  # tracked is a list on purpose, as serialization to JSON needs effort and frequent access is not taking place
-data CommitInfo(number:int, ctime:int, message:str? = None)
-data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
-data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo], moves:Dict[str,Tuple[str,PathInfo]])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
-data Range(tipe:MergeBlockType, indexes:int[])  # MergeBlockType[1,2,4], line number, length  # TODO use enum
-data MergeBlock(tipe:MergeBlockType, lines:List[str], line:int, replaces:MergeBlock? = None, changes:Range? = None)
-data GlobBlock(isLiteral:bool, content:str, index:int)  # for file pattern rename/move matching
-data GlobBlock2(isLiteral:bool, content:str, matches:str)  # matching file pattern and input filename for translation
 
 
 # Functions
@@ -147,7 +158,7 @@ def tryOrIgnore(func:-> Any, onError:(Exception) -> None = (_) -> None) -> None:
   except Exception as E: onError(E)
 
 def removePath(key:str, value:str) -> str =
-  ''' Cleanup of user-specified global file patterns. '''  # TODO
+  ''' Cleanup of user-specified global file patterns. '''  # TODO improve
   value if value in GLOBAL_LISTS or SLASH not in value else value[value.rindex(SLASH)+1:]
 
 def dictUpdate(dikt:Dict[Any,Any], by:Dict[Any,Any]) -> Dict[Any,Any]: d:Dict[Any,Any] = {}; d.update(dikt); d.update(by); return d
@@ -185,6 +196,12 @@ def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None)
 
 def Exit(message:str = "", code = 1): printe("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else "")); sys.exit(code)
 
+def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator:str = " ", process:-> str = -> '"%s"' % _) -> str =
+  ''' Returns a packed string, destructively consuming entries from the provided list. Does similar to xargs. getconf ARG_MAX or xargs --show-limits. '''
+  if len(prefix + separator + (strings[0] |> process)) > length: raise Exception("Cannot possibly strings pack into specified length")
+  while len(strings) > 0 and len(prefix + separator + (strings[0] |> process)) <= length: prefix += separator + (strings.pop(0) |> process)
+  prefix
+
 def exception(E):
   ''' Report an exception to the user to enable useful bug reporting. '''
   printo(str(E))
@@ -213,22 +230,18 @@ def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str
 
 def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
   ''' Utility to find any entries of a dictionary in a list to return the dictionaries value. '''
-  for k, v in map.items():
-    if k in params: return v
+  for k, v in map.items(): if k in params: return v
   default
 
 def strftime(timestamp:int? = None) -> str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp / 1000. if timestamp is not None else None))
 
 def detectAndLoad(filename:str? = None, content:bytes? = None, ignoreWhitespace:bool = False) -> Tuple[str,bytes,str[]] =
   lines:str[] = []
-  if filename is not None:
-    with open(encode(filename), "rb") as fd: content = fd.read()
+  if filename is not None: with open(encode(filename), "rb") as fd: content = fd.read()
   encoding:str = detectEncoding(content) ?? sys.getdefaultencoding()
   eol:bytes? = eoldet(content)
-  if filename is not None:
-    with codecs.open(encode(filename), encoding = encoding) as fd2: lines = safeSplit(fd2.read(), (eol ?? b"\n").decode(encoding))
-  elif content is not None:
-    lines = safeSplit(content.decode(encoding), (eol ?? b"\n").decode(encoding))
+  if filename is not None: with codecs.open(encode(filename), encoding = encoding) as fd2: lines = safeSplit(fd2.read(), (eol ?? b"\n").decode(encoding))
+  elif content is not None: lines = safeSplit(content.decode(encoding), (eol ?? b"\n").decode(encoding))
   else: return (sys.getdefaultencoding(), b"\n", [])
   if ignoreWhitespace: lines[:] = [line.replace("\t", "  ").strip() for line in lines]
   (encoding, eol, lines)
@@ -427,7 +440,7 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
   vcs:Tuple[str?,str?] = (None, None)
   while not os.path.exists(encode(os.path.join(path, metaFolder))):
     contents:Set[str] = set(os.listdir(path))
-    vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type from dot folder
+    vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents or (SLASH in folder and os.path.exists(os.path.join(os.getcwd(), folder.replace(SLASH, os.sep))))]  # determine VCS type from existence of dot folder
     choice:str? = None
     if len(vcss) > 1:
       choice = SVN if SVN in vcss else vcss[0]  # SVN is preferred
@@ -524,9 +537,7 @@ def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -
       except: continue  # target not found in sources: good!
     if clean: break
     last -= 1  # we know that the last entry in the list has the least conflicts, so we can disregard it in the next iteration
-  if exitOnConflict:
-    for i in range(1, len(actions)):
-      if sources[i] in targets[:i]: Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))
+  if exitOnConflict: for i in range(1, len(actions)): if sources[i] in targets[:i]: Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))
   list(zip(sources, targets))  # convert to list to avoid generators
 
 def relativize(root:str, filepath:str) -> Tuple[str,str] =

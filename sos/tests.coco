@@ -80,14 +80,10 @@ def wrapChannels(func: -> Any) -> str =
   buf.read()
 
 def mockInput(datas:str[], func: -> Any) -> Any:
-  if sos.coco_version < (1, 3, 1, 21):
-    import builtins
-    with mock.patch("builtins.input", side_effect = datas): return func()
-  else:
-    try:  # via python sos/tests.py
-      with mock.patch("sos._utility.input", side_effect = datas): return func()
-    except:  # via setup.py
-      with mock.patch("sos.utility.input", side_effect = datas): return func()
+  try:  # via python sos/tests.py
+    with mock.patch("sos._utility.input", side_effect = datas): return func()
+  except:  # via setup.py
+    with mock.patch("sos.utility.input", side_effect = datas): return func()
 
 def setRepoFlag(name:str, value:bool):
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
@@ -187,6 +183,10 @@ class Tests(unittest.TestCase):
     _.assertTrue(os.path.exists(sos.revisionFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))
     # TODO test moves
 
+  def testFitStrings(_):
+    a:List[str] = ["a", "a" * 6, "a" * 15]
+    _.assertEqual('pre "a" "aaaaaa"', sos.fitStrings(a, "pre", length = 20))
+    _.assertEqual('pre "aaaaaaaaaaaaaaa"', sos.fitStrings(a, "pre", length = 25))
   def testMoves(_):
     _.createFile(1, "1")
     _.createFile(2, "2", "sub")

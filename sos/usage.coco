@@ -60,7 +60,7 @@ COMMANDS:Dict[str,Command] = {
     ],
     "Perform repository dump into an archive file",
     """The archive will contain only the metadata folder, not the file tree.
-       After unzipping the archive, the file tree can be easily restored to the latest revision with "sos switch " """
+       After unzipping the archive, the file tree can be easily restored to the latest revision with "sos switch /" """
   ),
   "help": Command(Category.Further_commands,
     [
@@ -246,6 +246,12 @@ COMMANDS:Dict[str,Command] = {
        The optional argument is either the name of a parameter to display as the only output,
        or a parameter type to enumerate all valid SOS parameters for the specified configuration type"""
    ),
+  "publish": Command(Category.Configuration, [],
+    "Commit the SOS branch to the underlying VCS",
+    """This command uses the underlying VCS's "add" and "commit" commands to create a new revision with the changes made in the current SOS branch.
+       The SOS branch will consequently be marked as clean (removing the dirty flag).
+       In simple repository mode, the selection of files to commit is interactively, while in track and picky mode all files tracked or picked are committed."""
+  ),
 }
 
 OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) -> description
@@ -411,7 +417,10 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
   },
   "sos": {
     None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""
-  }
+  },
+  "n": {
+    "log": """Maximum number of entries to show"""
+  },
 }
 
 
@@ -433,10 +442,10 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
     title:str? = getTitle()
     if title: print(title + "\n")
   print("%s%s%s" % (MARKER, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))
-  print("\nUsage:\n  sos <command> [<argument1>, [<argument2>]] [<option1>, [<options...]]")
   if version: sys.exit(0)
   category:Category? = CategoryAbbrev.get(argument, None)  # convert shorthand for category
   command:str? = argument if category is None else None
+  if command is None: print("\nUsage:\n  sos <command> [<argument1>, [<argument2>]] [<option1>, [<options...]]")
   for _value, cat in sorted([(_.value, _) for _ in list(Category)]) if category is None else [(None, category)]:  # over one or all categories
     ofcategory:Dict[str,Command] = {command_: values for command_, values in COMMANDS.items() if values.category == cat and (command is None or command_ == command)}  # select commands from chosen category
     if len(ofcategory) == 0: continue

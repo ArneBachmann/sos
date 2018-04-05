@@ -23,7 +23,7 @@ def conditionalIntersection(a:FrozenSet[str]?, b:FrozenSet[str]) -> FrozenSet[st
 
 def getTermWidth() -> int =
   try: import termwidth
-  except: return 80
+  except: return 80  # HINT could be factored out, or even increased for most modern systems
   termwidth.getTermWidth()[0]
 
 # Global variable
