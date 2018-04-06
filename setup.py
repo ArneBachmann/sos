@@ -114,6 +114,7 @@ setup(
   package_data = {"": ["../LICENSE", "../README.md", "../README.rst", "*.coco"]},
   include_package_data = False,  # if True, will *NOT* package the data!
   zip_safe = False,  # TODO re-add and test extras section for backport = enum34
+  extras_require = { ':python_version < "3.5"': 'typing >= 3.5.3' },
   entry_points = {
     'console_scripts': [
       'sos=sos.sos:main'  # Subversion offline solution
