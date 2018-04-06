@@ -3,7 +3,7 @@
 
 # Standard modules
 import codecs, fnmatch, json, logging, mimetypes, os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # TODO this looks just wrong, but is currently required
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # TODO this looks just wrong, but is currently required (check again, why)
 try:  # try needed as paths differ when installed via pip TODO investigate further
   import sos.usage as usage
   import sos.version as version

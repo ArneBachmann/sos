@@ -27,21 +27,17 @@ environment:
     - PYTHON_VERSION: 3.3
       platform: x86
       NOMYPY: true
-      BACKPORT: true
     - PYTHON_VERSION: 3.3
       platform: x64
       NOMYPY: true
-      BACKPORT: true
 matrix:
   allow_failures:
     - PYTHON_VERSION: 3.3
       platform: x86
       NOMYPY: true
-      BACKPORT: true
     - PYTHON_VERSION: 3.3
       platform: x64  # PyYAML dependency doesn't run on x64 for some reason
       NOMYPY: true
-      BACKPORT: true
 init:
   - "set PY_VER=%PYTHON_VERSION:.=%"
   - "set PYTHON=C:\\PYTHON%PY_VER%"
