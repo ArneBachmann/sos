@@ -464,7 +464,7 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
       maxoptlen:int = max([len(optname) for optname in matchingoptions])
       for optname, descriptions in sorted(matchingoptions.items()):
         if len(descriptions) == 0: continue
-        print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + 2), descriptions[1:], nl = "\n") if len(descriptions) > 1 else ""))
+        print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl = "\n") if len(descriptions) > 1 else ""))
   if command is None:
     print("\nCommon options:")
     genericOptions:Dict[str,str] = {k: v[None] for k, v in OPTIONS.items() if None in v}

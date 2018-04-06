@@ -136,6 +136,20 @@ class Tests(unittest.TestCase):
     a = sos.Accessor({"a": 1})
     _.assertEqual((1, 1), (a["a"], a.a))
 
+  def testIndexing(_):
+    m = sos.Metadata()
+    m.commits = {}
+    _.assertEqual(1, m.correctNegativeIndexing(1))
+    _.assertEqual(9999999999999999, m.correctNegativeIndexing(9999999999999999))
+    _.assertEqual(0, m.correctNegativeIndexing(0))  # zero always returns zero, even no commits present
+    try: m.correctNegativeIndexing(-1); _.fail()
+    except SystemExit as E: _.assertEqual(1, E.code)
+    m.commits = {0: sos.CommitInfo(0, 0), 1: sos.CommitInfo(1, 0)}
+    _.assertEqual(1, m.correctNegativeIndexing(-1))  # zero always returns zero, even no commits present
+    _.assertEqual(0, m.correctNegativeIndexing(-2))  # zero always returns zero, even no commits present
+    try: m.correctNegativeIndexing(-3); _.fail()
+    except SystemExit as E: _.assertEqual(1, E.code)
+
   def testRestoreFile(_):
     m = sos.Metadata()
     os.makedirs(sos.revisionFolder(0, 0))
@@ -912,7 +926,13 @@ class Tests(unittest.TestCase):
   def testUsage(_):
     try: sos.usage(); _.fail()  # TODO expect sys.exit(0)
     except: pass
-    try: sos.usage(short = True); _.fail()
+    try: sos.usage("help"); _.fail()  # TODO expect sys.exit(0)
+    except: pass
+    try: sos.usage("help", verbose = True); _.fail()  # TODO expect sys.exit(0)
+    except: pass
+    try: sos.usage(version = True); _.fail()
+    except: pass
+    try: sos.usage(version = True); _.fail()
     except: pass
 
   def testOnlyExcept(_):

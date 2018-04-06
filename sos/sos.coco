@@ -41,11 +41,6 @@ def loadConfig() -> configr.Configr =  # Accessor when using defaults only
 def saveConfig(config:configr.Configr) -> Tuple[str?, Exception?] =
   config.saveSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))  # saves global config, not local one
 
-def correctNegativeIndexing(m, revision:int) -> int =
-  revision = revision if revision >= 0 else (max(m.commits) if m.commits else m.getHighestRevision(m.branch)) + 1 + revision  # negative indexing TODO evaluates to 0 for -1 on empty branch which won't be recognized as error
-  if revision < 0 or (m.commits and revision > max(m.commits)): Exit("Unknown revision r%02d" % revision)
-  revision
-
 
 # Main data class
 class Metadata:
@@ -70,11 +65,17 @@ class Metadata:
     _.paths:Dict[str,PathInfo] = {}  # utf-8 encoded relative, normalized file system paths
     _.commit:int? = None  # current revision number
 
-    if Metadata.singleton is None:  # only load once
+    if Metadata.singleton is None:  # load configuration only once per runtime
       Metadata.singleton = configr.Configr(data = _.repoConf, defaults = loadConfig())  # load global configuration with defaults behind the local configuration
     _.c:configr.Configr = Metadata.singleton
 
   def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
+
+  def correctNegativeIndexing(_, revision:int) -> int =
+    ''' As the na_e says, this deter_ines the correct positive revision nu_ber for negative indexing (-1 being last, -2 being second last). '''
+    revision = revision if revision >= 0 else (max(_.commits) if _.commits else _.getHighestRevision(_.branch) ?? -1) + 1 + revision  # negative indexing
+    if revision < 0 or (_.commits and revision > max(_.commits)): Exit("Unknown revision r%02d" % revision)
+    revision
 
   def listChanges(_, changed:ChangeSet, commitTime:float? = None):
     ''' List changes. If commitTime (in ms) is defined, also check timestamps of modified files for plausibility (if mtime older than last commit, note so). '''
@@ -531,7 +532,7 @@ def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = No
   branch, revision = m.parseRevisionString(argument)
   if branch not in m.branches: Exit("Unknown branch")
   m.loadBranch(branch)  # knows commits
-  revision = correctNegativeIndexing(m, revision)  # m.branches[branch].revision if not m.commits else (revision if revision >= 0 else max(m.commits) + 1 + revision)  # negative indexing
+  revision = m.correctNegativeIndexing(revision)  # m.branches[branch].revision if not m.commits else (revision if revision >= 0 else max(m.commits) + 1 + revision)  # negative indexing
   if verbose: info(usage.MARKER + "Changes of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changed, msg = m.findChanges(
@@ -578,7 +579,7 @@ def diff(argument:str = "", options:str[] = [], onlys:FrozenSet[str]? = None, ex
   branch, revision = m.parseRevisionString(argument)  # if nothing given, use last commit
   if branch not in m.branches: Exit("Unknown branch")
   m.loadBranch(branch)  # knows commits
-  revision = correctNegativeIndexing(m, revision)  #  m.branches[branch].revision if not m.commits else (revision if revision >= 0 else max(m.commits) + 1 + revision)  # negative indexing
+  revision = m.correctNegativeIndexing(revision)  #  m.branches[branch].revision if not m.commits else (revision if revision >= 0 else max(m.commits) + 1 + revision)  # negative indexing
   if verbose: info(usage.MARKER + "Textual differences of file tree vs. revision '%s/r%02d'" % (m.branches[branch].name ?? "b%02d" % branch, revision))
   m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision
   changed, msg = m.findChanges(
@@ -699,7 +700,7 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
   if argument is not None:  # branch/revision specified
     m.loadBranch(branch)  # knows commits of target branch
     maxi = max(m.commits) if m.commits else m.branches[m.branch].revision
-    revision = correctNegativeIndexing(m, revision)
+    revision = m.correctNegativeIndexing(revision)
     return (m, branch, revision, changed, strict, force, m.getTrackingPatterns(branch), m.getTrackingPatterns(branch, negative = True))
   (m, m.branch, maxi + (1 if commit else 0), changed, strict, force, trackingPatterns, untrackingPatterns)
 

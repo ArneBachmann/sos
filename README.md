@@ -4,13 +4,14 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
 [![Code coverage badge](https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master)](https://coveralls.io/github/ArneBachmann/sos?branch=master)
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
+[![Gitter chat](https://img.shields.io/badge/chat-on%20gitter-5AB999.svg?logo=gitter-white)](https://gitter.im/sos-vcs/Lobby)
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
 - Read the documentation on the [official website](https://sos-vcs.net), chat with the author and others [on Gitter](https://gitter.im/sos-vcs/Lobby), file issues and requests [on Github](https://github.com/ArneBachmann/sos/issues), fork the code repository [on Github](https://github.com/ArneBachmann/sos)
 - [Buy the developer a coffee](https://PayPal.Me/ArneBachmann/) to show your appreciation!
 
 ### From the author ###
-> I've been developing this software continuously over the course of the last months in my spare time, and it has been turned out great so far. I cannot, however, continue at this fast pace without the support of a lively community, or by getting funding for the effort that I put into SOS besides my day job and being there for my family. Bug reports, feature requests and contributions are welcome, granted there's enough time to process them. Please support SOS in any way suiting you, to make it our no. 1 personal productivity tool!
+> I've been developing this software continuously over the course of the last months in my spare time, and it has been turned out great so far. I cannot, however, continue at this pace without the support of a lively community, or getting some kind of funding for the effort that I put into SOS besides my day job and being there for my family. Bug reports, feature requests and contributions are welcome, granted there's enough time to process them. Please support SOS in any way suiting you, to make it our primary personal productivity tool!
 
 ### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)

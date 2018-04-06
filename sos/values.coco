@@ -2,8 +2,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 data BranchInfo(
-    number:int,  # the branch's number, corresponding to the Metadata.branches map key
-    ctime:int,  # timestamp of creation in ms
+    number:int,  # the branch's number, starting with zero, corresponding to the Metadata.branches map key
+    ctime:int,  # timestamp of creation in rounded ms
     name:str? = None,  # optional branch name
     inSync:bool = False,  # marker for modifications since branching
     tracked:List[str] = [],  # tracked file patterns. on purpose as a list (instead of set), because easier for JSON and there is no frequent in-memory access
@@ -11,7 +11,13 @@ data BranchInfo(
     parent:int? = None,  # if not None, this is the parent branch branched from
     revision:int? = None  # if not None, this is the parent branch's revision branched from
   )
-data CommitInfo(number:int, ctime:int, message:str? = None)
+
+data CommitInfo(
+    number:int,  # then commit's number, starting with zero, corresponding to the Metadata.commits map key
+    ctime:int,  # timestamp of creation in rounded ms
+    message:str? = None  # optional commit message (or tag name)
+  )
+
 data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
 data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo], moves:Dict[str,Tuple[str,PathInfo]])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
 data Range(tipe:MergeBlockType, indexes:int[])  # MergeBlockType[1,2,4], line number, length  # TODO use enum
