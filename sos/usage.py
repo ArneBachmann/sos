@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x6a53ecee
+# __coconut_hash__ = 0xd05b93
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -160,7 +160,7 @@ def usage(argument: 'str', version: 'bool'=False, verbose: 'bool'=False):  # lin
             for optname, descriptions in sorted(matchingoptions.items()):  # line 465
                 if len(descriptions) == 0:  # line 466
                     continue  # line 466
-                print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl="\n") if len(descriptions) > 1 else ""))  # line 467
+                print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen + (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl="\n") if len(descriptions) > 1 else ""))  # line 467
     if command is None:  # line 468
         print("\nCommon options:")  # line 469
         genericOptions = {k: v[None] for k, v in OPTIONS.items() if None in v}  # type: Dict[str, str]  # line 470
