@@ -4,7 +4,7 @@
 # Utiliy functions
 import hashlib, logging, os, sys, time; START_TIME = time.time()  # early time tracking
 
-try: from typing import Any, Dict, FrozenSet, Generic, IO, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
+try: from typing import Any, AnyStr, Dict, FrozenSet, Generic, IO, Iterable, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass
 
 try: import enum
@@ -13,27 +13,25 @@ try: import sos.pure as pure; from sos.values import *
 except: import pure; from values import *
 
 
-# Lazy imports for quicker initialization
-class bz2:
-  def __getattribute__(_, key):
-    global bz2
-    import bz2  # overrides global reference
-    return bz2.__getattribute__(key)
-bz2 = bz2()
+# Lazy imports for quicker initialization TODO make mypy pass
+bz2:Any; codecs:Any; difflib:Any
+class bz2: def __getattribute__(_, key):
+  global bz2
+  import bz2
+  return bz2.__getattribute__(key)
+bz2:object = bz2()
 
-class codecs:
-  def __getattribute__(_, key):
-    global codecs
-    import codecs  # overrides global reference
-    return codecs.__getattribute__(key)
-codecs = codecs()
+class codecs: def __getattribute__(_, key):
+  global codecs
+  import codecs
+  return codecs.__getattribute__(key)
+codecs:object = codecs()
 
-class difflib:
-  def __getattribute__(_, key):
-    global difflib
-    import difflib  # overrides global reference
-    return difflib.__getattribute__(key)
-difflib = difflib()
+class difflib: def __getattribute__(_, key):
+  global difflib
+  import difflib
+  return difflib.__getattribute__(key)
+difflib:object = difflib()
 
 
 verbose:bool = '--verbose' in sys.argv or '-v' in sys.argv
@@ -94,9 +92,7 @@ metaFolder:str = ".sos"
 DUMP_FILE:str = metaFolder + ".zip"
 metaFile:str = ".meta"
 metaBack:str = metaFile + BACKUP_SUFFIX
-KIBI:int = 1 << 10
-MEBI:int = 1 << 20
-GIBI:int = 1 << 30
+KIBI:int = 1 << 10; MEBI:int = 1 << 20; GIBI:int = 1 << 30
 bufSize:int = MEBI
 UTF8:str = "utf_8"  # early used constant, not defined in standard library
 SVN:str = "svn"
@@ -107,7 +103,7 @@ CROSS_SYMBOL:str = "\u2716"
 CHECKMARK_SYMBOL:str = "\u2714"
 PLUSMINUS_SYMBOL:str = "\u00b1"
 MOVE_SYMBOL:str = "\u21cc"  # \U0001F5C0"  # HINT second one is very unlikely to be in any console font
-METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats
+METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats (was undefined, "1" is the first versioned version after that)
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs", "_darcs": "darcs", "_MTN": "monotone", ".git/GL_COMMIT_EDIT_MSG": "gl"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None, "darcs": None, "monotone": None}
 vcsCommits:Dict[str,Tuple[bool,str?]] = {SVN: (True, None), "git": (False, None), "bzr": (True, None), "hg": (True, None), "fossil": (True, "--no-warnings"), "csv": (True, None), "darcs": (False, "--all"), "monotone": (False, None)}  # bool: tracked? (otherwise picky), str:arguments to "commit" TODO CVS has different per-file operation
@@ -138,22 +134,21 @@ def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of readin
 try:
   import chardet  # https://github.com/chardet/chardet
   def detectEncoding(binary:bytes) -> str = chardet.detect(binary)["encoding"]
-except:
-  def detectEncoding(binary:bytes) -> str =  # Guess the encoding
-    ''' Fallback if chardet library missing. '''
-    try: binary.decode(UTF8); return UTF8
-    except UnicodeError: pass
-    try: binary.decode("utf_16"); return "utf_16"
-    except UnicodeError: pass
-    try: binary.decode("cp1252"); return "cp1252"
-    except UnicodeError: pass
-    "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
+except: def detectEncoding(binary:bytes) -> str =  # Guess the encoding
+  ''' Fallback if chardet library missing. '''
+  try: binary.decode(UTF8); return UTF8
+  except UnicodeError: pass
+  try: binary.decode("utf_16"); return "utf_16"
+  except UnicodeError: pass
+  try: binary.decode("cp1252"); return "cp1252"
+  except UnicodeError: pass
+  "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
 
 def tryOrDefault(func:-> Any, default:Any) -> Any:
   try: return func()
   except: return default
 
-def tryOrIgnore(func:-> Any, onError:(Exception) -> None = (_) -> None) -> None:  # handle with care!
+def tryOrIgnore(func:-> Any, onError:(Exception) -> None = (_) -> None) -> Any:  # handle with care!
   try: return func()
   except Exception as E: onError(E)
 
@@ -179,7 +174,7 @@ def eoldet(file:bytes) -> bytes? =
   None  # no new line contained, cannot determine
 
 if TYPE_CHECKING:
-  Splittable = TypeVar("Splittable", str, bytes)  # TODO isn't that the same as AnyStr?
+  Splittable = TypeVar("Splittable", AnyStr)
   def safeSplit(s:Splittable, d:Splittable? = None) -> List[Splittable]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 else:
   def safeSplit(s, d = None): return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
@@ -263,8 +258,7 @@ else:
 def detectMoves(changes:ChangeSet) -> Dict[str,Tuple[str,PathInfo]] =
   ''' Compute renames/removes for a changeset. '''
   moves:Dict[str,Tuple[str,PathInfo]] = {}
-  for path, info in changes.additions.items():
-    for dpath, dinfo in changes.deletions.items():
+  for path, info in changes.additions.items(): for dpath, dinfo in changes.deletions.items():
       if info.size == dinfo.size and info.mtime == dinfo.mtime and info.hash == dinfo.hash:  # was moved TODO check either mtime or hash?
         moves[path] = (dpath, info)  # store new data and original name, but don't remove add/del
         break  # deletions loop, continue with next addition
@@ -311,8 +305,7 @@ def merge(
   output:List[str] = list(difflib.Differ().compare(othr, curr))  # from generator expression
   blocks:List[MergeBlock] = []  # merged result in blocks
   tmp:List[str] = []  # block lines
-  last:str = " "; no:int; line:str
-  offset:int = 0  # into file offset for remark lines
+  last:str = " "; no:int; line:str; offset:int = 0  # "into"-file offset for remark lines
   for no, line in enumerate(output + ["X"]):  # EOF marker (difflib's output will never be "X" alone)
     if line[0] == last: tmp.append(line[2:]); continue  # continue filling current block, no matter what type of block it is
     if line == "X" and len(tmp) == 0: break  # break if nothing left to do, otherwise perform operation for stored block
@@ -333,7 +326,7 @@ def merge(
     elif last == "?": offset += 1  # marker for intra-line change comment HINT was earlier part of the MergeBlock
     last = line[0]
     tmp[:] = [line[2:]]  # only keep current line for next block
-  # TODO add code to detect block moves here
+  # TODO add code to detect block moved blocks here
   nl:bytes = othreol if eol else (curreol ?? othreol)  # no default newline, to mark "no newline"
   debug("Diff blocks: " + repr(blocks))
   if diffOnly: return (blocks, nl)
@@ -341,8 +334,7 @@ def merge(
   # now perform merge operations depending on detected blocks
   output[:] = []; add_all:str?; del_all:str?; selection:str  # clean list of strings
   for block in blocks:
-    if block.tipe == MergeBlockType.KEEP:
-      output.extend(block.lines)
+    if block.tipe == MergeBlockType.KEEP: output.extend(block.lines)
     elif (block.tipe == MergeBlockType.INSERT and not(mergeOperation.value & MergeOperation.REMOVE.value))\
       or (block.tipe == MergeBlockType.REMOVE and    (mergeOperation.value & MergeOperation.INSERT.value)):  # will add line despite remove if --add-line was selected
       output.extend(block.lines)
@@ -364,7 +356,7 @@ def merge(
         elif mergeOperation == MergeOperation.INSERT: output.extend(list(block.replaces.lines) + list(block.lines))  # TODO optionally allow insertion BEFORE or AFTER original (order of these both lines)
     elif block.tipe in (MergeBlockType.INSERT, MergeBlockType.REMOVE) and mergeOperation == MergeOperation.ASK:  # user - interactive insert/remove section
       if (block.tipe == MergeBlockType.INSERT and add_all is None)\
-      or (block.tipe == MergeOperation.REMOVE and del_akk is None):  # condition for asking
+      or (block.tipe == MergeOperation.REMOVE and del_all is None):  # condition for asking
         selection = user_input(pure.ajoin("+ " if block.tipe == MergeBlockType.INSERT else "- ", block.lines) + "\n  Accept? *[Y]es, [N]o, yes to [A]ll %s, n[O] to all: " % "insertions" if block.tipe == MergeBlockType.INSERT else "deletions", "ynao", "y")
         if selection in "ao":
           if block.tipe == MergeBlockType.INSERT: add_all = "y" if selection == "a" else "n"; selection = add_all
@@ -495,9 +487,8 @@ def convertGlobFiles(filenames:str[], oldPattern:GlobBlock[], newPattern:GlobBlo
   pairs:List[Tuple[str,str]] = []
   for filename in filenames:
     literals:List[GlobBlock] = [l for l in oldPattern if l.isLiteral]  # source literals
-    nextliteral:int = 0
+    nextliteral:int = 0; index:int = 0
     parsedOld:List[GlobBlock2] = []
-    index:int = 0
     for part in oldPattern:  # match everything in the old filename
       if part.isLiteral: parsedOld.append(GlobBlock2(True, part.content, part.content)); index += len(part.content); nextliteral += 1
       elif part.content.startswith("?"): parsedOld.append(GlobBlock2(False, part.content, filename[index:index + len(part.content)])); index += len(part.content)

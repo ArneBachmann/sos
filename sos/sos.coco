@@ -2,7 +2,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Standard modules
-import codecs, fnmatch, json, logging, mimetypes, os, sys
+import codecs, fnmatch, json, logging, mimetypes, os, sys  # only essential modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # TODO this looks just wrong, but is currently required (check again, why)
 try:  # try needed as paths differ when installed via pip TODO investigate further
   import sos.usage as usage
@@ -17,16 +17,16 @@ except:
   from pure import *
   import utility as _utility
 
-# External dependencies
+# Dependencies
 import configr
 
 
 # Lazy imports for quicker initialization
-class shutil:
-  def __getattribute__(_, key):
-    global shutil
-    import shutil  # overrides global reference
-    return shutil.__getattribute__(key)
+shutil:Any
+class shutil: def __getattribute__(_, key):
+  global shutil
+  import shutil  # overrides global reference
+  return shutil.__getattribute__(key)
 shutil = shutil()
 
 
@@ -424,8 +424,7 @@ class Metadata:
   def readOrCopyVersionedFile(_, branch:int, revision:int, nameHash:str, toFile:str? = None) -> bytes? =
     ''' Return file contents, or copy contents into file path provided. '''
     source:str = _.findRevision(branch, revision, nameHash)[1]  # revisionFolder(_.getParentBranch(branch, revision), _.findRevision(branch, revision, nameHash)[0], base = _.root, file = nameHash)
-    try:
-      with openIt(source, "r", _.compress) as fd:
+    try: with openIt(source, "r", _.compress) as fd:
         if toFile is None: return fd.read()  # read bytes into memory and return
         with open(encode(toFile), "wb") as to:
           while True:
@@ -464,7 +463,7 @@ class Metadata:
 def offline(name:str? = None, initialMessage:str? = None, options:str[] = []):
   ''' Initial command to start working offline. '''
   if os.path.exists(encode(metaFolder)):
-    if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over.\nUse 'sos online' to check for dirty branches, or\nWipe existing offline branches with 'sos offline --force'")
+    if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over.\nUse 'sos online' to check for out-of-sync branches, or\nWipe existing offline branches with 'sos offline --force'")
     try:
       for entry in os.listdir(metaFolder):
         resource = metaFolder + os.sep + entry
@@ -491,7 +490,7 @@ def online(options:str[] = []):
   m:Metadata = Metadata()
   strict:bool = '--strict' in options or m.strict
   m.loadBranches()
-  if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (dirty) branches.\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit dirty branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions")
+  if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (modified) branches.\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions")
   m.loadBranch(m.branch)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
   if options.count("--force") < 2:
@@ -601,13 +600,13 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   changed = dataCopy(ChangeSet, changed, moves = detectMoves(changed))
   m.paths = {k: v for k, v in changed.additions.items()}  # copy to avoid wrong file numbers report below
   m.paths.update(changed.modifications)  # update pathset to changeset only
-  m.paths.update({k: dataCopy(PathInfo, v, size = None, hash = None) for k, v in changed.deletions.items()})
+  m.paths.update <| {k: dataCopy(PathInfo, v, size = None, hash = None) for k, v in changed.deletions.items()}
   m.saveCommit(m.branch, revision)  # revision has already been incremented
   m.commits[revision] = CommitInfo(number = revision, ctime = int(time.time() * 1000), message = argument)  # comment can be None
   m.saveBranch(m.branch)
   m.loadBranches()  # TODO is it necessary to load again?
   if m.picky: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
-  else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch dirty
+  else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch modified
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
   m.saveBranches()
   printo(usage.MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changed.additions) - len(changed.moves), len(changed.deletions) - len(changed.moves), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(changed.modifications), MOVE_SYMBOL if m.c.useUnicodeFont else "#", len(changed.moves)))
@@ -655,7 +654,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
       m.loadCommit(m.branch, commit_)
       for pinfo in m.paths.values(): original += pinfo.size ?? 0
     maxi = max(m.commits) if m.commits else m.branches[branch.number].revision
-    printo("  %s b%02d%s @%s (%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.inSync else "dirty", len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "", (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
+    printo("  %s b%02d%s @%s (%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % ("'%s'" % branch.name)) if branch.name else "", strftime(branch.ctime), "in sync" if branch.inSync else "modified", len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "", (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
   if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):
     info("\nTracked file patterns:")  # TODO print matching untracking patterns side-by-side
     printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))
@@ -926,7 +925,7 @@ def log(options:str[] = []):
   #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds})  # TODO determine moves - can we reuse detectMoves(changes)?
       _txt:int = len([m_ for m_ in _mod if m.isTextType(m_)])
       printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ("*" if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
-      if changes_: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}))  # TODO moves detection?
+      if changes_: m.listChanges <| ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {})  # TODO moves detection?
       if diff_: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news  # replaces olds for next revision compare
     last = {k: v for k, v in nxts.items()}  # create new reference
@@ -969,19 +968,19 @@ def dump(argument:str, options:str[] = []):
       for filename in filenames:
         abspath:str = os.path.join(dirpath, filename)
         relpath:str = os.path.join(metaFolder, os.path.relpath(abspath, repopath)).replace(os.sep, "/")
-        totalsize += os.stat(encode(abspath)).st_size
-        show:str? = indicator.getIndicator() if progress else None
+        totalsize +=  os.stat(encode(abspath)).st_size
+        show:str? =   indicator.getIndicator() if progress else None
         if relpath.endswith(BACKUP_SUFFIX): continue  # don't backup backups
         if not delta or relpath.endswith(metaFile) or relpath not in entries:  # always update metadata, otherwise only add new revision files
           if show: printo("\r" + pure.ljust("Dumping %s @%.2f MiB/s %s" % (show, totalsize / (MEBI * (time.time() - start_time)), filename)), nl = "")
           _zip.write(abspath, relpath)  # write entry into archive
-    if delta: _zip.comment = ("Delta dump from %r" % strftime()).encode(UTF8)
+    if delta: _zip.comment = encode(UTF8) <| ("Delta dump from %r" % strftime())
   info("\r" + pure.ljust(usage.MARKER + "Finished dumping %s repository @%.2f MiB/s." % ("differential" if delta else "entire", totalsize / (MEBI * (time.time() - start_time)))))  # clean line
 
 def publish(options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Write changes made to the branch into one commit of the underlying VCS. TODO add option to non-permanently add files for VCSs that track by default. '''
   m:Metadata  # = Metadata()
-  if not (m.track or m.picky): Exit("Not implemented for simple repository mode yet")  # TODO manual file picking mode
+  if not (m.track or m.picky): Exit("Not implemented for simple repository mode yet")  # TODO add manual file picking mode (add by extension, recursive, ... see issue for that)
   m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options, onlys = onlys, excps = excps)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # get highest commit number
   m.computeSequentialPathSet(m.branch, maxi)  # load all commits up to specified revision
@@ -989,6 +988,7 @@ def publish(options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[st
   # fitStrings(m.paths, prefix = "%s add")
 
 def config(arguments:List[str], options:List[str] = []):
+  command:str; key:str; value:str; v:str
   command, key, value = (arguments + [None] * 2)[:3]
   if command is None: usage.usage("help", verbose = True)
   if command not in ["set", "unset", "show", "list", "add", "rm"]: Exit("Unknown config command")
@@ -1023,10 +1023,10 @@ def config(arguments:List[str], options:List[str] = []):
     elif key == "lists": printo(", ".join(CONFIGURABLE_LISTS))
     elif key == "texts": printo(", ".join([_ for _ in defaults.keys() if _ not in (CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS)]))
     else:
-      out:Dict[int,str] = {3: "[default]", 2: "[global] ", 1: "[local]  "}
+      out:Dict[int,str] = {3: "[default]", 2: "[global] ", 1: "[local]  "}  # in contrast to Git, we don't need (nor want) to support a "system" config scope
       c = m.c  # always use full configuration chain
       try:  # attempt single key
-        assert key is not None; c[key]
+        assert key is not None; c[key]  # force exception
         l:bool = key in c.keys(); g:bool = key in c.__defaults.keys()
         printo("%s %s %r" % (key.rjust(20), out[3] if not (l or g) else (out[1] if l else out[2]), c[key]))
       except:  # normal value listing

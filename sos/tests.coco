@@ -197,6 +197,20 @@ class Tests(unittest.TestCase):
     _.assertTrue(os.path.exists(sos.revisionFolder(0, 1, file = "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))
     # TODO test moves
 
+  def testDumpSorting(_):
+    m:Metadata = sos.Metadata()
+    _.createFile(1)
+    sos.offline()
+    _.createFile(2)
+    _.createFile(3)
+    sos.commit()
+    _.createFile(4)
+    _.createFile(5)
+    sos.commit()
+    out = [__.replace(os.getcwd() + os.sep + sos.metaFolder + os.sep, "").strip() for __ in wrapChannels(-> sos.dump("x." + sos.DUMP_FILE)).replace("\r", "").split("\n")]
+    _.assertTrue(out.index("b0%sr2" % os.sep) > out.index("b0%sr1" % os.sep))
+    _.assertTrue(out.index("b0%sr1" % os.sep) > out.index("b0%sr0" % os.sep))
+
   def testFitStrings(_):
     a:List[str] = ["a", "a" * 6, "a" * 15]
     _.assertEqual('pre "a" "aaaaaa"', sos.fitStrings(a, "pre", length = 20))
@@ -495,7 +509,7 @@ class Tests(unittest.TestCase):
     _.assertNotIn("File tree is unchanged", out)
     _.assertIn("  * b00   'test'", out)
     _.assertIn("    b01 'second'", out)
-    _.assertIn("(dirty)", out)  # one branch has commits
+    _.assertIn("(modified)", out)  # one branch has commits
     _.assertIn("(in sync)", out)  # the other doesn't
     sos.defaults["useChangesCommand"] = False  # because sos.main() is never called
     out = wrapChannels(-> sos.status()).replace("\r", "")  # trigger repo info
@@ -880,8 +894,8 @@ class Tests(unittest.TestCase):
     try: sos.config(["unset", "ignoresWhitelist"])  # remove ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
     out = sos.safeSplit(wrapChannels(-> sos.ls()).replace("\r", ""), "\n")
-    _.assertInAny('    ign1', out)
-    _.assertInAny('IGN ign2', out)
+    _.assertInAny(   '    ign1', out)
+    _.assertInAny(   'IGN ign2', out)
     _.assertNotInAny('    ign2', out)
 
   def testWhitelist(_):
