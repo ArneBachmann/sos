@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xf76862ef
+# __coconut_hash__ = 0x82aba6c1
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -316,12 +316,12 @@ class Metadata:  # line 46
         Only if both branch and revision are *not* None, write modified/added files to the specified revision folder (thus creating a new revision)
         checkContent: also computes file content hashes
         inverse: retain original state (size, mtime, hash) instead of updated one
-        considerOnly: set of tracking patterns. None for simple mode. For update operation, consider union of other and current branch
+        considerOnly: set of tracking patterns. None for all (in simple mode). For update operation, consider union of other and current branch
         dontConsider: set of tracking patterns to not consider in changes (always overrides considerOnly)
         progress: Show file names during processing
         returns: (ChangeSet = the state of file tree *differences*, unless "inverse" is True -> then return original data, message)
     '''  # line 271
-        import collections  # line 272
+        import collections  # used only in this method  # line 272
         write = branch is not None and revision is not None  # line 273
         if write:  # line 274
             try:  # line 275
@@ -1333,118 +1333,119 @@ def move(relPath: 'str', pattern: 'str', newRelPath: 'str', newPattern: 'str', o
     patterns[patterns.index(pattern)] = newPattern  # line 1085
     m.saveBranches()  # line 1086
 
-def parse(root: 'str', cwd: 'str', cmd: 'str'):  # line 1088
+def parse(vcs: 'str', cwd: 'str', cmd: 'str'):  # line 1088
     ''' Main operation. root is underlying VCS base dir. main() has already chdir'ed into SOS root folder, cwd is original working directory for add, rm, mv. '''  # line 1089
     debug("Parsing command-line arguments...")  # line 1090
-    try:  # line 1091
-        onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative information for changes, commit, diff, switch, update  # line 1092
-        command = sys.argv[1].strip() if len(sys.argv) > 1 else ""  # line 1093
-        arguments = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]  # type: List[_coconut.typing.Optional[str]]  # line 1094
-        options = [c.strip() for c in sys.argv[2:] if c.startswith("--")]  # line 1095
-        debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))  # line 1096
-        if command[:1] in "amr":  # line 1097
-            relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "."))  # line 1097
-        if command[:1] == "m":  # line 1098
-            if len(arguments) < 2:  # line 1099
-                Exit("Need a second file pattern argument as target for move command")  # line 1099
-            newRelPath, newPattern = relativize(root, os.path.join(cwd, arguments[1]))  # line 1100
-        arguments[:] = (arguments + [None] * 3)[:3]  # line 1101
-        if command[:1] == "a":  # addnot  # line 1102
-            add(relPath, pattern, options, negative="n" in command)  # addnot  # line 1102
-        elif command[:1] == "b":  # line 1103
-            branch(arguments[0], arguments[1], options)  # line 1103
-        elif command[:3] == "com":  # line 1104
-            commit(arguments[0], options, onlys, excps)  # line 1104
-        elif command[:2] == "ch":  # "changes" (legacy)  # line 1105
-            changes(arguments[0], options, onlys, excps)  # "changes" (legacy)  # line 1105
-        elif command[:2] == "ci":  # line 1106
-            commit(arguments[0], options, onlys, excps)  # line 1106
-        elif command[:3] == 'con':  # line 1107
-            config(arguments, options)  # line 1107
-        elif command[:2] == "de":  # line 1108
-            destroy(arguments[0], options)  # line 1108
-        elif command[:2] == "di":  # line 1109
-            diff(arguments[0], options, onlys, excps)  # line 1109
-        elif command[:2] == "du":  # line 1110
-            dump(arguments[0], options)  # line 1110
-        elif command[:1] == "h":  # line 1111
-            usage.usage(arguments[0], verbose=verbose)  # line 1111
-        elif command[:2] == "lo":  # line 1112
-            log(options)  # line 1112
-        elif command[:2] == "li":  # line 1113
-            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1113
-        elif command[:2] == "ls":  # line 1114
+    root = os.getcwd()  # line 1091
+    try:  # line 1092
+        onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)  # line 1093
+        command = sys.argv[1].strip() if len(sys.argv) > 1 else ""  # line 1094
+        arguments = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]  # type: List[_coconut.typing.Optional[str]]  # line 1095
+        options = [c.strip() for c in sys.argv[2:] if c.startswith("--")]  # line 1096
+        debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))  # line 1097
+        if command[:1] in "amr":  # line 1098
+            relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "."))  # line 1098
+        if command[:1] == "m":  # line 1099
+            if len(arguments) < 2:  # line 1100
+                Exit("Need a second file pattern argument as target for move command")  # line 1100
+            newRelPath, newPattern = relativize(root, os.path.join(cwd, arguments[1]))  # line 1101
+        arguments[:] = (arguments + [None] * 3)[:3]  # line 1102
+        if command[:1] == "a":  # addnot  # line 1103
+            add(relPath, pattern, options, negative="n" in command)  # addnot  # line 1103
+        elif command[:1] == "b":  # line 1104
+            branch(arguments[0], arguments[1], options)  # line 1104
+        elif command[:3] == "com":  # line 1105
+            commit(arguments[0], options, onlys, excps)  # line 1105
+        elif command[:2] == "ch":  # "changes" (legacy)  # line 1106
+            changes(arguments[0], options, onlys, excps)  # "changes" (legacy)  # line 1106
+        elif command[:2] == "ci":  # line 1107
+            commit(arguments[0], options, onlys, excps)  # line 1107
+        elif command[:3] == 'con':  # line 1108
+            config(arguments, options)  # line 1108
+        elif command[:2] == "de":  # line 1109
+            destroy(arguments[0], options)  # line 1109
+        elif command[:2] == "di":  # line 1110
+            diff(arguments[0], options, onlys, excps)  # line 1110
+        elif command[:2] == "du":  # line 1111
+            dump(arguments[0], options)  # line 1111
+        elif command[:1] == "h":  # line 1112
+            usage.usage(arguments[0], verbose=verbose)  # line 1112
+        elif command[:2] == "lo":  # line 1113
+            log(options)  # line 1113
+        elif command[:2] == "li":  # line 1114
             ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1114
-        elif command[:1] == "m":  # mvnot  # line 1115
-            move(relPath, pattern, newRelPath, newPattern, options, negative="n" in command)  # mvnot  # line 1115
-        elif command[:2] == "of":  # line 1116
-            offline(arguments[0], arguments[1], options)  # line 1116
-        elif command[:2] == "on":  # line 1117
-            online(options)  # line 1117
-        elif command[:1] == "p":  # line 1118
-            publish()  # line 1118
-        elif command[:1] == "r":  # rmnot  # line 1119
-            remove(relPath, pattern, negative="n" in command)  # rmnot  # line 1119
-        elif command[:2] == "st":  # line 1120
-            status(arguments[0], cwd, cmd, options, onlys, excps)  # line 1120
-        elif command[:2] == "sw":  # line 1121
-            switch(arguments[0], options, onlys, excps)  # line 1121
-        elif command[:1] == "u":  # line 1122
-            update(arguments[0], options, onlys, excps)  # line 1122
-        elif command[:1] == "v":  # line 1123
-            usage.usage(arguments[0], version=True)  # line 1123
-        else:  # line 1124
-            Exit("Unknown command '%s'" % command)  # line 1124
-        Exit(code=0)  # regular exit  # line 1125
-    except (Exception, RuntimeError) as E:  # line 1126
-        exception(E)  # line 1127
-        Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing")  # line 1128
+        elif command[:2] == "ls":  # line 1115
+            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1115
+        elif command[:1] == "m":  # mvnot  # line 1116
+            move(relPath, pattern, newRelPath, newPattern, options, negative="n" in command)  # mvnot  # line 1116
+        elif command[:2] == "of":  # line 1117
+            offline(arguments[0], arguments[1], options)  # line 1117
+        elif command[:2] == "on":  # line 1118
+            online(options)  # line 1118
+        elif command[:1] == "p":  # line 1119
+            publish()  # line 1119
+        elif command[:1] == "r":  # rmnot  # line 1120
+            remove(relPath, pattern, negative="n" in command)  # rmnot  # line 1120
+        elif command[:2] == "st":  # line 1121
+            status(arguments[0], cwd, cmd, options, onlys, excps)  # line 1121
+        elif command[:2] == "sw":  # line 1122
+            switch(arguments[0], options, onlys, excps)  # line 1122
+        elif command[:1] == "u":  # line 1123
+            update(arguments[0], options, onlys, excps)  # line 1123
+        elif command[:1] == "v":  # line 1124
+            usage.usage(arguments[0], version=True)  # line 1124
+        else:  # line 1125
+            Exit("Unknown command '%s'" % command)  # line 1125
+        Exit(code=0)  # regular exit  # line 1126
+    except (Exception, RuntimeError) as E:  # line 1127
+        exception(E)  # line 1128
+        Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing")  # line 1129
 
-def main():  # line 1130
-    global debug, info, warn, error  # to modify logger  # line 1131
-    logging.basicConfig(level=level, stream=sys.stderr, format=("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))  # line 1132
-    _log = Logger(logging.getLogger(__name__))  # line 1133
-    debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1133
-    for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv):  # clean up program arguments  # line 1134
-        sys.argv.remove(option)  # clean up program arguments  # line 1134
-    if '--help' in sys.argv or len(sys.argv) < 2:  # line 1135
-        usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose=verbose)  # line 1135
-    command = sys.argv[1] if len(sys.argv) > 1 else None  # type: _coconut.typing.Optional[str]  # line 1136
-    root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command  # line 1137
-    debug("Found root folders for SOS | VCS:  %s | %s" % (("-" if root is None else root), ("-" if vcs is None else vcs)))  # line 1138
-    defaults["defaultbranch"] = (lambda _coconut_none_coalesce_item: "default" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(vcsBranches.get(cmd, vcsBranches[SVN]))  # sets dynamic default with SVN fallback  # line 1139
-    defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback  # line 1140
-    if force_sos or root is not None or (("" if command is None else command))[:2] == "of" or (("" if command is None else command))[:1] in "hv":  # in offline mode or just going offline TODO what about git config?  # line 1141
-        cwd = os.getcwd()  # line 1142
-        os.chdir(cwd if command[:2] == "of" else (cwd if root is None else root))  # line 1143
-        parse(vcs, cwd, cmd)  # line 1144
-    elif force_vcs or cmd is not None:  # online mode - delegate to VCS  # line 1145
-        info("%s: Running '%s %s'" % (usage.COMMAND.upper(), cmd, " ".join(sys.argv[1:])))  # line 1146
-        import subprocess  # only required in this section  # line 1147
-        process = subprocess.Popen([cmd] + sys.argv[1:], shell=False, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)  # line 1148
-        inp = ""  # type: str  # line 1149
-        while True:  # line 1150
-            so, se = process.communicate(input=inp)  # line 1151
-            if process.returncode is not None:  # line 1152
-                break  # line 1152
-            inp = sys.stdin.read()  # line 1153
-        if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")  # line 1154
-            if root is None:  # line 1155
-                Exit("Cannot determine VCS root folder: Unable to mark repository as synchronized and will show a warning when leaving offline mode")  # line 1155
-            m = Metadata(root)  # type: Metadata  # line 1156
-            m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync=True)  # mark as committed  # line 1157
-            m.saveBranches()  # line 1158
-    else:  # line 1159
-        Exit("No offline repository present, and unable to detect VCS file tree")  # line 1159
+def main():  # line 1131
+    global debug, info, warn, error  # to modify logger  # line 1132
+    logging.basicConfig(level=level, stream=sys.stderr, format=("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))  # line 1133
+    _log = Logger(logging.getLogger(__name__))  # line 1134
+    debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1134
+    for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv):  # clean up program arguments  # line 1135
+        sys.argv.remove(option)  # clean up program arguments  # line 1135
+    if '--help' in sys.argv or len(sys.argv) < 2:  # line 1136
+        usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose=verbose)  # line 1136
+    command = sys.argv[1] if len(sys.argv) > 1 else None  # type: _coconut.typing.Optional[str]  # line 1137
+    root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command  # line 1138
+    debug("Found root folders for SOS | VCS:  %s | %s" % (("-" if root is None else root), ("-" if vcs is None else vcs)))  # line 1139
+    defaults["defaultbranch"] = (lambda _coconut_none_coalesce_item: "default" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(vcsBranches.get(cmd, vcsBranches[SVN]))  # sets dynamic default with SVN fallback  # line 1140
+    defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback  # line 1141
+    if force_sos or root is not None or (("" if command is None else command))[:2] == "of" or (("" if command is None else command))[:1] in "hv":  # in offline mode or just going offline TODO what about git config?  # line 1142
+        cwd = os.getcwd()  # line 1143
+        os.chdir(cwd if command[:2] == "of" else (cwd if root is None else root))  # line 1144
+        parse(vcs, cwd, cmd)  # line 1145
+    elif force_vcs or cmd is not None:  # online mode - delegate to VCS  # line 1146
+        info("%s: Running '%s %s'" % (usage.COMMAND.upper(), cmd, " ".join(sys.argv[1:])))  # line 1147
+        import subprocess  # only required in this section  # line 1148
+        process = subprocess.Popen([cmd] + sys.argv[1:], shell=False, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)  # line 1149
+        inp = ""  # type: str  # line 1150
+        while True:  # line 1151
+            so, se = process.communicate(input=inp)  # line 1152
+            if process.returncode is not None:  # line 1153
+                break  # line 1153
+            inp = sys.stdin.read()  # line 1154
+        if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")  # line 1155
+            if root is None:  # line 1156
+                Exit("Cannot determine VCS root folder: Unable to mark repository as synchronized and will show a warning when leaving offline mode")  # line 1156
+            m = Metadata(root)  # type: Metadata  # line 1157
+            m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync=True)  # mark as committed  # line 1158
+            m.saveBranches()  # line 1159
+    else:  # line 1160
+        Exit("No offline repository present, and unable to detect VCS file tree")  # line 1160
 
 
 # Main part
-force_sos = '--sos' in sys.argv  # type: bool  # line 1163
-force_vcs = '--vcs' in sys.argv  # type: bool  # line 1164
-verbose = '--verbose' in sys.argv or '-v' in sys.argv  # type: bool  # imported from utility, and only modified here  # line 1165
-debug_ = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv  # type: bool  # line 1166
-level = logging.DEBUG if '--debug' in sys.argv else logging.INFO  # type: int  # line 1167
-_log = Logger(logging.getLogger(__name__))  # line 1168
-debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1168
-if __name__ == '__main__':  # line 1169
-    main()  # line 1169
+force_sos = '--sos' in sys.argv  # type: bool  # line 1164
+force_vcs = '--vcs' in sys.argv  # type: bool  # line 1165
+verbose = '--verbose' in sys.argv or '-v' in sys.argv  # type: bool  # imported from utility, and only modified here  # line 1166
+debug_ = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv  # type: bool  # line 1167
+level = logging.DEBUG if '--debug' in sys.argv else logging.INFO  # type: int  # line 1168
+_log = Logger(logging.getLogger(__name__))  # line 1169
+debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1169
+if __name__ == '__main__':  # line 1170
+    main()  # line 1170

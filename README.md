@@ -184,6 +184,7 @@ Use the commands `sos add <pattern>` or `sos rm <pattern>` to add or remove file
 
 ## Configuration Options ##
 These options can be set or unset by the user and apply either globally for all offline operations the user performs from that moment on, or locally to one repository only (using the `--local` option flag).
+There is currently no `--system` scope (like Git supports), for SOS has been designed mainly as a single-user tool.
 Some of these options can be defined on a per-repository basis already during offline repository creation (e.g. `sos offline --track --strict --compress`), others can only be set in a persistant fashion (e.g. `sos config set texttype "*.xsd"`), or after repository creation (e.g. `sos config set texttype "*.xsd;*.xml" --local`).
 
 ### Configuration Commands ###

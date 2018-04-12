@@ -532,13 +532,13 @@ def reorderRenameActions(actions:Tuple[str,str][], exitOnConflict:bool = True) -
   list(zip(sources, targets))  # convert to list to avoid generators
 
 def relativize(root:str, filepath:str) -> Tuple[str,str] =
-  ''' Determine OS-independent relative folder path, and relative pattern path. '''
+  ''' Determine OS-independent relative folder path, and relative pattern path. Always expects a file and determines its folder's relative path. '''
   relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)
   relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)
 
-def parseOnlyOptions(root:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?] =
-  ''' Returns set of --only arguments, and set or --except arguments. '''
-  cwd:str = os.getcwd()
+def parseOnlyOptions(cwd:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?] =
+  ''' Returns (root-normalized) set of --only arguments, and set or --except arguments. '''
+  root:str = os.getcwd()
   onlys:List[str] = []; excps:List[str] = []; index:int = 0  # zero necessary as last start position
   while True:
     try:
@@ -555,4 +555,5 @@ def parseOnlyOptions(root:str, options:List[str]) -> Tuple[FrozenSet[str]?, Froz
       del options[index]
       del options[index - 1]
     except: break
-  (frozenset(relativize(root, o)[1] for o in onlys) if onlys else None, frozenset(relativize(root, e)[1] for e in excps) if excps else None)
+  ( frozenset(oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(".." + SLASH)) if onlys else None,
+    frozenset(ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(".." + SLASH)) if excps else None )  # avoids out-of-repo paths

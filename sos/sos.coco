@@ -264,12 +264,12 @@ class Metadata:
         Only if both branch and revision are *not* None, write modified/added files to the specified revision folder (thus creating a new revision)
         checkContent: also computes file content hashes
         inverse: retain original state (size, mtime, hash) instead of updated one
-        considerOnly: set of tracking patterns. None for simple mode. For update operation, consider union of other and current branch
+        considerOnly: set of tracking patterns. None for all (in simple mode). For update operation, consider union of other and current branch
         dontConsider: set of tracking patterns to not consider in changes (always overrides considerOnly)
         progress: Show file names during processing
         returns: (ChangeSet = the state of file tree *differences*, unless "inverse" is True -> then return original data, message)
     '''
-    import collections
+    import collections  # used only in this method
     write = branch is not None and revision is not None
     if write:
       try: os.makedirs(encode(revisionFolder(branch, revision, base = _.root)))
@@ -1085,11 +1085,12 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   patterns[patterns.index(pattern)] = newPattern
   m.saveBranches()
 
-def parse(root:str, cwd:str, cmd:str):
+def parse(vcs:str, cwd:str, cmd:str):
   ''' Main operation. root is underlying VCS base dir. main() has already chdir'ed into SOS root folder, cwd is original working directory for add, rm, mv. '''
   debug("Parsing command-line arguments...")
+  root = os.getcwd()
   try:
-    onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative information for changes, commit, diff, switch, update
+    onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
     arguments:List[str?] = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]
     options =   [c.strip() for c in sys.argv[2:] if c.startswith("--")]

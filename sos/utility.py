@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x76c40a4e
+# __coconut_hash__ = 0x75637492
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -748,13 +748,13 @@ def reorderRenameActions(actions: '_coconut.typing.Sequence[Tuple[str, str]]', e
     return _coconut_tail_call(list, zip(sources, targets))  # convert to list to avoid generators  # line 532
 
 def relativize(root: 'str', filepath: 'str') -> 'Tuple[str, str]':  # line 534
-    ''' Determine OS-independent relative folder path, and relative pattern path. '''  # line 535
+    ''' Determine OS-independent relative folder path, and relative pattern path. Always expects a file and determines its folder's relative path. '''  # line 535
     relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)  # line 536
     return relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)  # line 537
 
-def parseOnlyOptions(root: 'str', options: 'List[str]') -> 'Tuple[_coconut.typing.Optional[FrozenSet[str]], _coconut.typing.Optional[FrozenSet[str]]]':  # line 539
-    ''' Returns set of --only arguments, and set or --except arguments. '''  # line 540
-    cwd = os.getcwd()  # type: str  # line 541
+def parseOnlyOptions(cwd: 'str', options: 'List[str]') -> 'Tuple[_coconut.typing.Optional[FrozenSet[str]], _coconut.typing.Optional[FrozenSet[str]]]':  # line 539
+    ''' Returns (root-normalized) set of --only arguments, and set or --except arguments. '''  # line 540
+    root = os.getcwd()  # type: str  # line 541
     onlys = []  # type: List[str]  # zero necessary as last start position  # line 542
     excps = []  # type: List[str]  # zero necessary as last start position  # line 542
     index = 0  # type: int  # zero necessary as last start position  # line 542
@@ -775,4 +775,4 @@ def parseOnlyOptions(root: 'str', options: 'List[str]') -> 'Tuple[_coconut.typin
             del options[index - 1]  # line 556
         except:  # line 557
             break  # line 557
-    return (frozenset((relativize(root, o)[1] for o in onlys)) if onlys else None, frozenset((relativize(root, e)[1] for e in excps)) if excps else None)  # line 558
+    return (frozenset((oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(".." + SLASH))) if onlys else None, frozenset((ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(".." + SLASH))) if excps else None)  # avoids out-of-repo paths  # line 558
