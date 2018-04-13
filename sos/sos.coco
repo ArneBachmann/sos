@@ -402,12 +402,6 @@ class Metadata:
   def getHighestRevision(_, branch:int) -> int? =
     ''' Find highest revision of a branch, even if current branch has no commits. '''
     m:Metadata = Metadata()
-#    while branch is not None:
-#      m.loadBranch(other)
-#      if not _.commits:
-#        if _.branches[branch].parent is None: return None
-#        return _.branches[branch].revision  # branch point revision must be correct
-#      return max(_.commits)
     other:int? = branch
     while other is not None:
       m.loadBranch(other)
@@ -731,10 +725,10 @@ def switch(argument:str, options:List[str] = [], onlys:FrozenSet[str]? = None, e
       info("No changes to current file tree")
     else:  # integration required
       for path, pinfo in todos.deletions.items():
-        m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # is deleted in current file tree: restore from branch to reach target
+        m.restoreFile(path, branch, revision, pinfo, ensurePath = True)  # is deleted in current file tree: restore from branch to reach target state
         printo("ADD " + path)
       for path, pinfo in todos.additions.items():
-        os.unlink(encode(os.path.join(m.root, path.replace(SLASH, os.sep))))  # is added in current file tree: remove from branch to reach target
+        os.unlink(encode(os.path.join(m.root, path.replace(SLASH, os.sep))))  # is added in current file tree: remove from branch to reach target state
         printo("DEL " + path)
       for path, pinfo in todos.modifications.items():
         m.restoreFile(path, branch, revision, pinfo)  # is modified in current file tree: restore from branch to reach target
@@ -899,7 +893,7 @@ def log(options:str[] = []):
   ''' List previous commits on current branch. '''
   changes_:bool = "--changes" in options
   diff_:bool = "--diff" in options
-  number_:int? = tryOrDefault(-> options[options.index("-n") + 1], None)
+  number_:int? = tryOrDefault(-> int(sys.argv[sys.argv.index("-n") + 1]), None)
   m:Metadata = Metadata()
   m.loadBranch(m.branch)  # knows commit history
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
@@ -1092,8 +1086,8 @@ def parse(vcs:str, cwd:str, cmd:str):
   try:
     onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
-    arguments:List[str?] = [c.strip() for c in sys.argv[2:] if not c.startswith("--")]
-    options =   [c.strip() for c in sys.argv[2:] if c.startswith("--")]
+    arguments:List[str?] = [c.strip() for c in sys.argv[2:] if not (c.startswith("-") and (len(c) == 2 or c[1] == "-"))]
+    options = [c.strip() for c in sys.argv[2:] if c.startswith("-") and (len(c) == 2 or c[1] == "-")]  # options with arguments have to be parsed from sys.argv
     debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))
     if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "." ))
     if command[:1] == "m":

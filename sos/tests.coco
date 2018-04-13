@@ -670,8 +670,12 @@ class Tests(unittest.TestCase):
     sos.add(".", "./file?")
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))
-    out = wrapChannels(-> sos.log([])).replace("\r", "")
-    _.assertIn("    r0", out)  # because number of log lines was limited
+    out = wrapChannels(-> sos.log()).replace("\r", "")
+    _.assertIn("    r0", out)
+    sys.argv.extend(["-n", "2"])
+    out = wrapChannels(-> sos.log()).replace("\r", "")
+    sys.argv.pop(); sys.argv.pop()
+    _.assertNotIn("    r0", out)  # because number of log lines was limited by argument
     _.assertIn("    r1", out)
     _.assertIn("  * r2", out)
     try: sos.config(["set", "logLines", "1"], options = ["--local"])
@@ -986,7 +990,9 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(changes.modifications))  # only file2
     _.assertTrue("./file2" in changes.modifications)
     _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))
-    _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))
+    _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))  # MOD vs. DIF
+    _.assertAllIn(["MOD ./file1", "DIF ./file1"], wrapChannels(-> sos.diff(excepts = f{"./file2"})))  # MOD vs. DIF
+    _.assertAllIn("DIF ./file2", wrapChannels(-> sos.diff(excepts = f{"./file2"})))
 
   def testDiff(_):
     try: sos.config(["set", "texttype", "file1"])  # manually mark this file as "textual"
