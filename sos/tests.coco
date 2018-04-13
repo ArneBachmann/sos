@@ -992,7 +992,7 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))  # MOD vs. DIF
     _.assertIn("MOD ./file1", wrapChannels(-> sos.diff(excps = f{"./file2"})))  # MOD vs. DIF
-    _.assertAllIn("DIF ./file2", wrapChannels(-> sos.diff(excps = f{"./file2"})))
+    _.assertIn("DIF ./file2", wrapChannels(-> sos.diff(excps = f{"./file2"})))
 
   def testDiff(_):
     try: sos.config(["set", "texttype", "file1"])  # manually mark this file as "textual"
