@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xccfb6a55
+# __coconut_hash__ = 0x92dfc7e
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -1334,8 +1334,8 @@ def parse(vcs: 'str', cwd: 'str', cmd: 'str'):  # line 1082
     try:  # line 1086
         onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)  # line 1087
         command = sys.argv[1].strip() if len(sys.argv) > 1 else ""  # line 1088
-        arguments = [c.strip() for c in sys.argv[2:] if not c.startswith("-")]  # type: List[_coconut.typing.Optional[str]]  # line 1089
-        options = [c.strip() for c in sys.argv[2:] if c.startswith("-")]  # options with arguments have to be parsed from sys.argv  # line 1090
+        arguments = [c.strip() for c in sys.argv[2:] if not (c.startswith("-") and (len(c) == 2 or c[1] == "-"))]  # type: List[_coconut.typing.Optional[str]]  # line 1089
+        options = [c.strip() for c in sys.argv[2:] if c.startswith("-") and (len(c) == 2 or c[1] == "-")]  # options with arguments have to be parsed from sys.argv  # line 1090
         debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))  # line 1091
         if command[:1] in "amr":  # line 1092
             relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "."))  # line 1092

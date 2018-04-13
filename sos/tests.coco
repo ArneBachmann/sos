@@ -991,7 +991,7 @@ class Tests(unittest.TestCase):
     _.assertTrue("./file2" in changes.modifications)
     _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(-> sos.diff(onlys = f{"./file2"})))  # MOD vs. DIF
-    _.assertAllIn(["MOD ./file1", "DIF ./file1"], wrapChannels(-> sos.diff(excepts = f{"./file2"})))  # MOD vs. DIF
+    _.assertAllIn(["MOD ./file1", "DIF ./file1"], wrapChannels(-> sos.diff(excps = f{"./file2"})))  # MOD vs. DIF
     _.assertAllIn("DIF ./file2", wrapChannels(-> sos.diff(excepts = f{"./file2"})))
 
   def testDiff(_):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xe6ffc511
+# __coconut_hash__ = 0x72adee34
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -1173,7 +1173,7 @@ class Tests(unittest.TestCase):  # line 98
         _.assertTrue("./file2" in changes.modifications)  # line 991
         _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(lambda _=None: sos.diff(onlys=_coconut.frozenset(("./file2",)))))  # line 992
         _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(lambda _=None: sos.diff(onlys=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 993
-        _.assertAllIn(["MOD ./file1", "DIF ./file1"], wrapChannels(lambda _=None: sos.diff(excepts=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 994
+        _.assertAllIn(["MOD ./file1", "DIF ./file1"], wrapChannels(lambda _=None: sos.diff(excps=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 994
         _.assertAllIn("DIF ./file2", wrapChannels(lambda _=None: sos.diff(excepts=_coconut.frozenset(("./file2",)))))  # line 995
 
     def testDiff(_):  # line 997
