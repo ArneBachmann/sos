@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 .sos/
+tests.py,cover
 __pycache__/
 *.py[cod]
 *$py.class
