@@ -246,7 +246,10 @@ COMMANDS:Dict[str,Command] = {
        The optional argument is either the name of a parameter to display as the only output,
        or a parameter type to enumerate all valid SOS parameters for the specified configuration type"""
    ),
-  "publish": Command(Category.Configuration, [],
+  "publish": Command(Category.Configuration,
+    [
+      Argument("[<message>]", "Commit message")
+    ],
     "Commit the SOS branch to the underlying VCS",
     """This command uses the underlying VCS's "add" and "commit" commands to create a new revision with the changes made in the current SOS branch.
        The SOS branch will consequently be marked as clean (removing the dirty flag).

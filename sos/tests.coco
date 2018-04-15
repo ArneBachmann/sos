@@ -507,8 +507,8 @@ class Tests(unittest.TestCase):
     out = wrapChannels(-> sos.status()).replace("\r", "")
     _.assertIn("File tree has changes", out)
     _.assertNotIn("File tree is unchanged", out)
-    _.assertIn("  * b00   'test'", out)
-    _.assertIn("    b01 'second'", out)
+    _.assertIn("  * b0   'test'", out)
+    _.assertIn("    b1 'second'", out)
     _.assertIn("(modified)", out)  # one branch has commits
     _.assertIn("(in sync)", out)  # the other doesn't
     sos.defaults["useChangesCommand"] = False  # because sos.main() is never called
@@ -1016,6 +1016,9 @@ class Tests(unittest.TestCase):
     _.assertEqual([("312", "132"), ("123", "312"), ("321", "123")], result)
     try: sos.reorderRenameActions([("123", "312"), ("312", "123")], exitOnConflict = True); _.fail()
     except: pass
+
+  def testPublish(_):
+    pass  # TODO how to test without modifying anything underlying? probably use --test flag or similar?
 
   def testMove(_):
     sos.offline(options = ["--strict", "--track"])
