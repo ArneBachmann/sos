@@ -56,7 +56,7 @@ SOS supports three different file handling models that you may use to your likin
 - Has a small user base as of now, therefore no reliable reports of compatibility and operational capability except for the automatic unit tests run on Travis CI and AppVeyor
 
 ### Compatibility ###
-- SOS runs on any Python 3.4 distribution or higher, including some versions of PyPy. Python 2 is not supported anymore due to library issues, although SOS's programming language *Coconut* is generally able to transpile to valid Python 2 source code. Use `pip install sos-vcs[backport]` to attemüt running SOS on Python 3.3 or earlier
+- SOS runs on any Python 3.4 distribution or higher, including some versions of PyPy. Python 2 is not supported anymore due to library issues, although SOS's programming language *Coconut* is generally able to transpile to valid Python 2 source code. Use `pip install sos-vcs[backport]` to attemÃ¼t running SOS on Python 3.3 or earlier
 - SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
 - Filename encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
@@ -184,7 +184,7 @@ Use the commands `sos add <pattern>` or `sos rm <pattern>` to add or remove file
 
 ## Configuration Options ##
 These options can be set or unset by the user and apply either globally for all offline operations the user performs from that moment on, or locally to one repository only (using the `--local` option flag).
-There is currently no `--system` scope (like Git supports), for SOS has been designed mainly as a single-user tool.
+There is currently no `--system` scope ([like Git supports](https://dzone.com/articles/oh-git-configurations-lets-simplify?edition=371199)), because SOS has been designed mainly as a single-user tool and we don't want to patronize users.
 Some of these options can be defined on a per-repository basis already during offline repository creation (e.g. `sos offline --track --strict --compress`), others can only be set in a persistant fashion (e.g. `sos config set texttype "*.xsd"`), or after repository creation (e.g. `sos config set texttype "*.xsd;*.xml" --local`).
 
 ### Configuration Commands ###

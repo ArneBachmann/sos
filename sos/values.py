@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x48fe486d
+# __coconut_hash__ = 0x2f304b7d
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -21,59 +21,73 @@ _coconut_sys.path.remove(_coconut_file_path)
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-class BranchInfo(_coconut_NamedTuple("BranchInfo", [("number", 'int'), ("ctime", 'int'), ("name", '_coconut.typing.Optional[str]'), ("inSync", 'bool'), ("tracked", 'List[str]'), ("untracked", 'List[str]'), ("parent", '_coconut.typing.Optional[int]'), ("revision", '_coconut.typing.Optional[int]')])):  # line 4
-    __slots__ = ()  # line 4
-    __ne__ = _coconut.object.__ne__  # line 4
-    def __eq__(self, other):  # line 4
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # line 4
-    def __new__(_cls, number, ctime, name=None, inSync=False, tracked=[], untracked=[], parent=None, revision=None):  # line 4
-        return _coconut.tuple.__new__(_cls, (number, ctime, name, inSync, tracked, untracked, parent, revision))  # line 4
+from typing import Dict  # line 4
+from typing import List  # line 4
+try:  # line 5
+    import enum  # line 5
+except:  # line 6
+    raise Exception("SOS requires the enum module (Python 3.4+). You may try to manually install it via 'pip install enum34' or use 'pip install -U sos-vcs[backport]'")  # line 6
 
 
-class CommitInfo(_coconut_NamedTuple("CommitInfo", [("number", 'int'), ("ctime", 'int'), ("message", '_coconut.typing.Optional[str]')])):  # line 15
+# Enums
+MergeOperation = enum.Enum("MergeOperation", {"INSERT": 1, "REMOVE": 2, "BOTH": 3, "ASK": 4})  # insert remote changes into current, remove remote deletions from current, do both (replicates remote state), or ask per block  # line 10
+MergeBlockType = enum.Enum("MergeBlockType", "KEEP INSERT REMOVE REPLACE MOVE")  # modify = intra-line changes, replace = full block replacement  # line 11
+
+
+# Value types
+class BranchInfo(_coconut_NamedTuple("BranchInfo", [("number", 'int'), ("ctime", 'int'), ("name", '_coconut.typing.Optional[str]'), ("inSync", 'bool'), ("tracked", 'List[str]'), ("untracked", 'List[str]'), ("parent", '_coconut.typing.Optional[int]'), ("revision", '_coconut.typing.Optional[int]')])):  # line 15
     __slots__ = ()  # line 15
     __ne__ = _coconut.object.__ne__  # line 15
     def __eq__(self, other):  # line 15
         return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # line 15
-    def __new__(_cls, number, ctime, message=None):  # line 15
-        return _coconut.tuple.__new__(_cls, (number, ctime, message))  # line 15
+    def __new__(_cls, number, ctime, name=None, inSync=False, tracked=[], untracked=[], parent=None, revision=None):  # line 15
+        return _coconut.tuple.__new__(_cls, (number, ctime, name, inSync, tracked, untracked, parent, revision))  # line 15
 
 
-class PathInfo(_coconut_NamedTuple("PathInfo", [("nameHash", 'str'), ("size", '_coconut.typing.Optional[int]'), ("mtime", 'int'), ("hash", '_coconut.typing.Optional[str]')])):  # size == None means deleted in this revision  # line 21
-    __slots__ = ()  # size == None means deleted in this revision  # line 21
-    __ne__ = _coconut.object.__ne__  # size == None means deleted in this revision  # line 21
-    def __eq__(self, other):  # size == None means deleted in this revision  # line 21
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # size == None means deleted in this revision  # line 21
+class CommitInfo(_coconut_NamedTuple("CommitInfo", [("number", 'int'), ("ctime", 'int'), ("message", '_coconut.typing.Optional[str]')])):  # line 26
+    __slots__ = ()  # line 26
+    __ne__ = _coconut.object.__ne__  # line 26
+    def __eq__(self, other):  # line 26
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # line 26
+    def __new__(_cls, number, ctime, message=None):  # line 26
+        return _coconut.tuple.__new__(_cls, (number, ctime, message))  # line 26
+
+
+class PathInfo(_coconut_NamedTuple("PathInfo", [("nameHash", 'str'), ("size", '_coconut.typing.Optional[int]'), ("mtime", 'int'), ("hash", '_coconut.typing.Optional[str]')])):  # size == None means deleted in this revision  # line 32
+    __slots__ = ()  # size == None means deleted in this revision  # line 32
+    __ne__ = _coconut.object.__ne__  # size == None means deleted in this revision  # line 32
+    def __eq__(self, other):  # size == None means deleted in this revision  # line 32
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # size == None means deleted in this revision  # line 32
 # size == None means deleted in this revision
-class ChangeSet(_coconut_NamedTuple("ChangeSet", [("additions", 'Dict[str, PathInfo]'), ("deletions", 'Dict[str, PathInfo]'), ("modifications", 'Dict[str, PathInfo]'), ("moves", 'Dict[str, Tuple[str, PathInfo]]')])):  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 22
-    __slots__ = ()  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 22
-    __ne__ = _coconut.object.__ne__  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 22
-    def __eq__(self, other):  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 22
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 22
+class ChangeSet(_coconut_NamedTuple("ChangeSet", [("additions", 'Dict[str, PathInfo]'), ("deletions", 'Dict[str, PathInfo]'), ("modifications", 'Dict[str, PathInfo]'), ("moves", 'Dict[str, Tuple[str, PathInfo]]')])):  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 33
+    __slots__ = ()  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 33
+    __ne__ = _coconut.object.__ne__  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 33
+    def __eq__(self, other):  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 33
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 33
 # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
-class Range(_coconut_NamedTuple("Range", [("tipe", 'MergeBlockType'), ("indexes", '_coconut.typing.Sequence[int]')])):  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 23
-    __slots__ = ()  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 23
-    __ne__ = _coconut.object.__ne__  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 23
-    def __eq__(self, other):  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 23
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 23
+class Range(_coconut_NamedTuple("Range", [("tipe", 'MergeBlockType'), ("indexes", '_coconut.typing.Sequence[int]')])):  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 34
+    __slots__ = ()  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 34
+    __ne__ = _coconut.object.__ne__  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 34
+    def __eq__(self, other):  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 34
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # MergeBlockType[1,2,4], line number, length  # TODO use enum  # line 34
 # MergeBlockType[1,2,4], line number, length  # TODO use enum
-class MergeBlock(_coconut_NamedTuple("MergeBlock", [("tipe", 'MergeBlockType'), ("lines", 'List[str]'), ("line", 'int'), ("replaces", '_coconut.typing.Optional[MergeBlock]'), ("changes", '_coconut.typing.Optional[Range]')])):  # line 24
-    __slots__ = ()  # line 24
-    __ne__ = _coconut.object.__ne__  # line 24
-    def __eq__(self, other):  # line 24
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # line 24
-    def __new__(_cls, tipe, lines, line, replaces=None, changes=None):  # line 24
-        return _coconut.tuple.__new__(_cls, (tipe, lines, line, replaces, changes))  # line 24
+class MergeBlock(_coconut_NamedTuple("MergeBlock", [("tipe", 'MergeBlockType'), ("lines", 'List[str]'), ("line", 'int'), ("replaces", '_coconut.typing.Optional[MergeBlock]'), ("changes", '_coconut.typing.Optional[Range]')])):  # line 35
+    __slots__ = ()  # line 35
+    __ne__ = _coconut.object.__ne__  # line 35
+    def __eq__(self, other):  # line 35
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # line 35
+    def __new__(_cls, tipe, lines, line, replaces=None, changes=None):  # line 35
+        return _coconut.tuple.__new__(_cls, (tipe, lines, line, replaces, changes))  # line 35
 
-class GlobBlock(_coconut_NamedTuple("GlobBlock", [("isLiteral", 'bool'), ("content", 'str'), ("index", 'int')])):  # for file pattern rename/move matching  # line 25
-    __slots__ = ()  # for file pattern rename/move matching  # line 25
-    __ne__ = _coconut.object.__ne__  # for file pattern rename/move matching  # line 25
-    def __eq__(self, other):  # for file pattern rename/move matching  # line 25
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # for file pattern rename/move matching  # line 25
+class GlobBlock(_coconut_NamedTuple("GlobBlock", [("isLiteral", 'bool'), ("content", 'str'), ("index", 'int')])):  # for file pattern rename/move matching  # line 36
+    __slots__ = ()  # for file pattern rename/move matching  # line 36
+    __ne__ = _coconut.object.__ne__  # for file pattern rename/move matching  # line 36
+    def __eq__(self, other):  # for file pattern rename/move matching  # line 36
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # for file pattern rename/move matching  # line 36
 # for file pattern rename/move matching
-class GlobBlock2(_coconut_NamedTuple("GlobBlock2", [("isLiteral", 'bool'), ("content", 'str'), ("matches", 'str')])):  # matching file pattern and input filename for translation  # line 26
-    __slots__ = ()  # matching file pattern and input filename for translation  # line 26
-    __ne__ = _coconut.object.__ne__  # matching file pattern and input filename for translation  # line 26
-    def __eq__(self, other):  # matching file pattern and input filename for translation  # line 26
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # matching file pattern and input filename for translation  # line 26
+class GlobBlock2(_coconut_NamedTuple("GlobBlock2", [("isLiteral", 'bool'), ("content", 'str'), ("matches", 'str')])):  # matching file pattern and input filename for translation  # line 37
+    __slots__ = ()  # matching file pattern and input filename for translation  # line 37
+    __ne__ = _coconut.object.__ne__  # matching file pattern and input filename for translation  # line 37
+    def __eq__(self, other):  # matching file pattern and input filename for translation  # line 37
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # matching file pattern and input filename for translation  # line 37
 # matching file pattern and input filename for translation

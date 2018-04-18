@@ -5,6 +5,7 @@ import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
 RELEASE = "1.5.3"
+COMPATIBILITY_LEVEL = "3.4"
 
 print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
@@ -15,7 +16,7 @@ if 'build' in sys.argv:
     if "--mypy" in sys.argv:
       try: shutil.rmtree(".mypy_cache/")
       except: pass
-    assert 0 == os.system("coconut%s %s %s -l -t 3.4 -j sys sos%s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--force" if "--force" in sys.argv else "", " --mypy --ignore-missing-imports --warn-incomplete-stub --warn-redundant-casts" if "--mypy" in sys.argv else ""))  #  or useChanges
+    assert 0 == os.system("coconut%s %s %s -l -t %s -j sys sos%s" % (cmd, "-p" if not "--mypy" in sys.argv else "", "--force" if "--force" in sys.argv else "", COMPATIBILITY_LEVEL, (" --mypy --ignore-missing-imports --warn-incomplete-stub --warn-redundant-casts --python-version %s" % COMPATIBILITY_LEVEL) if "--mypy" in sys.argv else ""))  #  or useChanges
   if "--mypy" in sys.argv:  sys.argv.remove('--mypy')
   if "--force" in sys.argv: sys.argv.remove('--force')
 

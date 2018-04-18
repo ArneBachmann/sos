@@ -426,6 +426,7 @@ class Metadata:
             if len(buffer) < bufSize: break
           return None
     except Exception as E: warn("Cannot read versioned file: %r (%d:%d:%s)" % (E, branch, revision, nameHash))
+    None
 
   def restoreFile(_, relPath:str?, branch:int, revision:int, pinfo:PathInfo, ensurePath:bool = False) -> bytes? =
     ''' Recreate file for given revision, or return binary contents if path is None. '''
@@ -462,10 +463,10 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = []):
         else: os.unlink(encode(resource))
     except: Exit("Cannot reliably remove previous repository contents. Please remove .sos folder manually prior to going offline")
   m:Metadata = Metadata(offline = True)
+  if '--strict'   in options or m.c.strict:   m.strict =   True   # always hash contents
   if '--compress' in options or m.c.compress: m.compress = True  # plain file copies instead of compressed ones
   if '--picky'    in options or m.c.picky:    m.picky =    True   # Git-like
   elif '--track'  in options or m.c.track:    m.track =    True   # Svn-like
-  if '--strict'   in options or m.c.strict:   m.strict =   True   # always hash contents
   title:str? = usage.getTitle()
   if title: printo(title)
   if verbose: info(usage.MARKER + "Going offline...")
@@ -641,7 +642,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     pl_amount:float = float(payload) / MEBI; oh_amount:float = float(overhead) / MEBI
     # if pl_amount >= 1100.:   convert to string
     m.loadBranch(branch.number)  # knows commit history
-    for commit_ in range(max(m.commits) if m.commits else 0):
+    for commit_ in range(1 + max(m.commits) if m.commits else 0):
       m.loadCommit(m.branch, commit_)
       for pinfo in m.paths.values(): original += pinfo.size ?? 0
     maxi = max(m.commits) if m.commits else m.branches[branch.number].revision
@@ -969,25 +970,25 @@ def dump(argument:str, options:str[] = []):
   info("\r" + pure.ljust(usage.MARKER + "Finished dumping %s repository @%.2f MiB/s." % ("differential" if delta else "entire", totalsize / (MEBI * (time.time() - start_time)))))  # clean line
 
 def publish(message:str?, cmd:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
-  ''' Write changes made to the branch into one commit of the underlying VCS. TODO add option to non-permanently add files for VCSs that track by default. '''
+  ''' Write changes made to the branch into one commit of the underlying VCS without further checks. '''
   m:Metadata = Metadata()
   if not (m.track or m.picky): Exit("Not implemented for simple repository mode yet")  # TODO add manual file picking mode (add by extension, recursive, ... see issue for that)
   m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options, onlys = onlys, excps = excps)
   maxi:int? = m.getHighestRevision(branch)
   if maxi is None: Exit("No revision to publish on current (or any parent-) branch")
   m.computeSequentialPathSet(branch, maxi)  # load all commits up to specified revision
-  # TODO only add changed files!
+  # HINT logic to only add changed files vs. originating file state - would require in-depth underlying VCS knowledge, probably out of scope, or assume commit 0 as base (that's what we currently do)
   import subprocess  # only required in this section
-  # TODO stash/rollback when Git? or implement global mechanism?
-  # TODO discuss only commit changes from r1.. forward, or everything in repo
+  # HINT stash/rollback for Git? or implement a global mechanism? Actually there's nothing to backup, as nothing is really changedon the FS
+  # TODO discuss: only commit changes from r1.. onward vs. r0?, or attempt to add everything in repo, even if unchanged? the problem is that for different branches we might need to switch also underlying branches
   for path, pinfo in m.paths.items():
-    command:str = fitStrings(m.paths, prefix = "%s add" % cmd)
+    command:str = fitStrings(list(m.paths.keys()), prefix = "%s add" % cmd)  # considering maximum command-line length, filename quoting, and spaces
 #    returncode:int = subprocess.Popen(command, shell = False).wait()
-    returncode:int = 0; printo(command, shell = False)
-    if returncode != 0: Exit("Error adding files from SOS revision to underlying VCS. Leaving in inconsistent %s state" % cmd)  # TODO use VCS name, not command
+    returncode:int = 0; printo(command)  #, shell = False)  # TODO
+    if returncode != 0: Exit("Error adding files from SOS revision to underlying VCS. Leaving in inconsistent %s state" % vcsNames[cmd])
   tracked:bool; commitArgs:str?; tracked, commitArgs = vcsCommits[cmd]
   #returncode = subprocess.Popen('%s commit -m "%s" %s' % (cmd, message ?? "Committed from SOS branch/revision %s/r%02d on %s" % (strftime(now)).replace("\"", "\\\""), _.branches[branch].name ?? ("b%d" % _.branch), revision, commitArgs ?? "")).wait()  # TODO quote-escaping on Windows
-  printo('%s commit -m "%s" %s' % (cmd, message ?? "Committed from SOS branch/revision %s/r%02d on %s" % (strftime(now)).replace("\"", "\\\""), _.branches[branch].name ?? ("b%d" % _.branch), revision, commitArgs ?? ""))  # TODO quote-escaping on Windows
+  printo('%s commit -m "%s" %s' % (cmd, message ?? "Committed from SOS branch/revision %s/r%02d on %s" % (m.branches[branch].name ?? ("b%d" % m.branch), revision, strftime()).replace("\"", "\\\""), commitArgs ?? ""))  # TODO quote-escaping on Windows
   if returncode != 0: Exit("Error committing files from SOS revision to underlying VCS. Please check current %s state" % cmd)
   if tracked: printo("Please note that all the files added in this commit will continue to be tracked by the underlying VCS")
 
@@ -1140,7 +1141,7 @@ def main():
   if '--help' in sys.argv or len(sys.argv) < 2: usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose = verbose)
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
-  debug("Found root folders for SOS | VCS:  %s | %s" % (root ?? "-", vcs ?? "-"))
+  debug("Detected SOS root folder: %s\nDetected VCS root folder: %s" % (root ?? "-", vcs ?? "-"))
   defaults["defaultbranch"] = vcsBranches.get(cmd, vcsBranches[SVN]) ?? "default"  # sets dynamic default with SVN fallback
   defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback
   if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] in "hv":  # in offline mode or just going offline TODO what about git config?

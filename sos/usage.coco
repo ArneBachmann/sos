@@ -41,7 +41,7 @@ data Command(category:Category, arguments:List[Argument], short:str, long:str)
 COMMANDS:Dict[str,Command] = {
   "offline": Command(Category.Repository_handling,
     [
-      Argument("[<name>", "Name of the initial branch to use. Default: determined by the type of the underlying VCS"),
+      Argument("[<branch-name>", "Name of the initial branch to use. Default: determined by the type of the underlying VCS"),
       Argument("[<message>]]", "Initial commit message. Default: A timestamp")
     ],
     "Prepare working offline with SOS, creating an initial branch from the current file tree",
@@ -303,7 +303,7 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
     "log": "Display textual diff for each revision"
   },
   "repo": {
-    "status": """List branches and display repository status (independent of "useChangesCommand" flag)"""
+    "status": """List branches and display repository status (regardless of "useChangesCommand" flag)"""
   },
   "stay": {
     "branch": "Perform branch operation, but don't switch to newly created branch"
@@ -458,16 +458,22 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
       print("%s\n%s" % (args + cmd.short, pure.ajoin(" " * len(args), pure.splitStrip(cmd.long), nl = "\n")))
       if command is None and not verbose: continue  # TODO align commands correctly when in short mode
       if cmd.arguments: print("\n  Arguments:")
-      maxlen:int = 4 + 2 + max(len(s.name) for s in cmd.arguments) if len(cmd.arguments) > 0 else 0
-      for c in cmd.arguments: print(pure.ljust("    %s  " % c.name, maxlen) + c.long)
-      matchingoptions:Dict[str, str[]] = {} if cmd is None else {optname: pure.splitStrip(dikt[None]) if None in dikt else [] for optname, dikt in OPTIONS.items()}  # add all text for the generic description
-      if matchingoptions: print("\n  Options:")
-      for optname, description in [(optname, dikt[name]) for optname, dikt in OPTIONS.items() if name in dikt]: matchingoptions[optname].extend(pure.splitStrip(description))  # add all lines for the specifc description
-      if len(matchingoptions) == 0: continue  # with next command
-      maxoptlen:int = max([len(optname) for optname in matchingoptions])
-      for optname, descriptions in sorted(matchingoptions.items()):
-        if len(descriptions) == 0: continue
-        print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen +  (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl = "\n") if len(descriptions) > 1 else ""))
+      maxlen:int = 4 + 2 + max(len(s.name) for s in cmd.arguments) if len(cmd.arguments) > 0 else 0  # argument name length max plus indentation
+      for c in cmd.arguments: print(pure.ljust("    %s  " % c.name, maxlen) + ("\n" + pure.ljust(width = maxlen)).join(pure.splitStrip(c.long)))
+      matchingoptions:List[Tuple[str, str[]]] = [(optname, pure.splitStrip(description)) for optname, description in [(optname, dikt[name]) for optname, dikt in OPTIONS.items() if name in dikt]]
+      if matchingoptions:
+        print("\n  Options:")
+        maxoptlen:int = max([len(optname) for optname, __ in matchingoptions])
+        for optname, descriptions in sorted(matchingoptions):
+          if len(descriptions) == 0: continue
+          print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen +  (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl = "\n") if len(descriptions) > 1 else ""))
+      matchingoptions = [] if cmd is None else [(optname, pure.splitStrip(dikt[None]) if None in dikt else []) for optname, dikt in OPTIONS.items()]  # add all text for the generic description
+      if matchingoptions:
+        print("\n  Common options:")
+        maxoptlen = max([len(optname) for optname, __ in matchingoptions])
+        for optname, descriptions in sorted(matchingoptions):
+          if len(descriptions) == 0: continue
+          print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen +  (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl = "\n") if len(descriptions) > 1 else ""))
   if command is None:
     print("\nCommon options:")
     genericOptions:Dict[str,str] = {k: v[None] for k, v in OPTIONS.items() if None in v}

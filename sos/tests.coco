@@ -6,7 +6,7 @@ from io import BytesIO, BufferedRandom, TextIOWrapper
 
 try:
   if TYPE_CHECKING:  # true only during compilation/mypy run
-    from typing import *
+    from typing import Any, Dict, FrozenSet, List, Set, Union
     mock:Any  # to avoid mypy complaint
 except: pass
 
