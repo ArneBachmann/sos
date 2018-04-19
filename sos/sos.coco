@@ -966,7 +966,7 @@ def dump(argument:str, options:str[] = []):
         if not delta or relpath.endswith(metaFile) or relpath not in entries:  # always update metadata, otherwise only add new revision files
           if show: printo("\r" + pure.ljust("Dumping %s @%.2f MiB/s %s" % (show, totalsize / (MEBI * (time.time() - start_time)), filename)), nl = "")
           _zip.write(abspath, relpath)  # write entry into archive
-    if delta: _zip.comment = encode(UTF8) <| ("Delta dump from %r" % strftime())
+    if delta: _zip.comment = ("Delta dump from %r" % strftime()).encode(UTF8)
   info("\r" + pure.ljust(usage.MARKER + "Finished dumping %s repository @%.2f MiB/s." % ("differential" if delta else "entire", totalsize / (MEBI * (time.time() - start_time)))))  # clean line
 
 def publish(message:str?, cmd:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):

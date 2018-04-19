@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x5def651f
+# __coconut_hash__ = 0x85d7bef8
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -1166,7 +1166,7 @@ def dump(argument: 'str', options: '_coconut.typing.Sequence[str]'=[]):  # line 
                         printo("\r" + pure.ljust("Dumping %s @%.2f MiB/s %s" % (show, totalsize / (MEBI * (time.time() - start_time)), filename)), nl="")  # line 967
                     _zip.write(abspath, relpath)  # write entry into archive  # line 968
         if delta:  # line 969
-            _zip.comment = (encode(UTF8))(("Delta dump from %r" % strftime()))  # line 969
+            _zip.comment = ("Delta dump from %r" % strftime()).encode(UTF8)  # line 969
     info("\r" + pure.ljust(usage.MARKER + "Finished dumping %s repository @%.2f MiB/s." % ("differential" if delta else "entire", totalsize / (MEBI * (time.time() - start_time)))))  # clean line  # line 970
 
 def publish(message: '_coconut.typing.Optional[str]', cmd: 'str', options: '_coconut.typing.Sequence[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None):  # line 972
