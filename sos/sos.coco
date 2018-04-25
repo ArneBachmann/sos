@@ -555,8 +555,8 @@ def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitesp
       elif block.tipe == MergeBlockType.REMOVE:
         for no, line in enumerate(block.lines):          printo(wrap("+++ %%0%dd |%%s|" % linemax % (no + block.line, line)))
       elif block.tipe == MergeBlockType.REPLACE:
-        for no, line in enumerate(block.replaces.lines): printo(wrap("- | %%0%dd |%%s|" % linemax % (no + block.replaces.line, line)))
-        for no, line in enumerate(block.lines):          printo(wrap("+ | %%0%dd |%%s|" % linemax % (no + block.line, line)))
+        for no, line in enumerate(block.replaces.lines): printo(wrap("-~- %%0%dd |%%s|" % linemax % (no + block.replaces.line, line)))
+        for no, line in enumerate(block.lines):          printo(wrap("+~+ %%0%dd |%%s|" % linemax % (no + block.line, line)))
 #      elif block.tipe == MergeBlockType.KEEP: pass  # TODO allow to show kept stuff, or a part of pre-post lines
 #      elif block.tipe == MergeBlockType.MOVE:  # intra-line modifications
       if block.tipe != MergeBlockType.KEEP: printo()
@@ -854,7 +854,7 @@ def ls(folder:str? = None, options:str[] = []):
   if '--all' in options: folder = m.root  # always start at SOS repo root with --all
   recursive:bool = '--recursive' in options or '-r' in options or '--all' in options
   patterns:bool = '--patterns' in options or '-p' in options
-  DOT:str = (DOT_SYMBOL if m.c.useUnicodeFont else " ") * 3
+  DOT:str = (DOT_SYMBOL if m.c.useUnicodeFont else " ") * 3  # TODO or "."?
   if verbose: info(usage.MARKER + "Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))
   relPath:str = relativize(m.root, os.path.join(folder, "-"))[0]
   if relPath.startswith(os.pardir): Exit("Cannot list contents of folder outside offline repository")
@@ -972,25 +972,26 @@ def dump(argument:str, options:str[] = []):
 def publish(message:str?, cmd:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Write changes made to the branch into one commit of the underlying VCS without further checks. '''
   m:Metadata = Metadata()
-  if not (m.track or m.picky): Exit("Not implemented for simple repository mode yet")  # TODO add manual file picking mode (add by extension, recursive, ... see issue for that)
+  if not (m.track or m.picky): Exit("Not implemented for simple repository mode yet")  # TODO add manual file picking mode instead (add by extension, recursive, ... see issue for details)
   m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options, onlys = onlys, excps = excps)
   maxi:int? = m.getHighestRevision(branch)
-  if maxi is None: Exit("No revision to publish on current (or any parent-) branch")
+  if maxi is None: Exit("No revision to publish on current branch (or any of its parents after fast-branching)")
   m.computeSequentialPathSet(branch, maxi)  # load all commits up to specified revision
-  # HINT logic to only add changed files vs. originating file state - would require in-depth underlying VCS knowledge, probably out of scope, or assume commit 0 as base (that's what we currently do)
-  import subprocess  # only required in this section
-  # HINT stash/rollback for Git? or implement a global mechanism? Actually there's nothing to backup, as nothing is really changedon the FS
+  # HINT logic to only add changed files vs. originating file state - would require in-depth underlying VCS knowledge. We currentöy assume commit 0 as base
   # TODO discuss: only commit changes from r1.. onward vs. r0?, or attempt to add everything in repo, even if unchanged? the problem is that for different branches we might need to switch also underlying branches
-  for path, pinfo in m.paths.items():
-    command:str = fitStrings(list(m.paths.keys()), prefix = "%s add" % cmd)  # considering maximum command-line length, filename quoting, and spaces
-#    returncode:int = subprocess.Popen(command, shell = False).wait()
-    returncode:int = 0; printo(command)  #, shell = False)  # TODO
-    if returncode != 0: Exit("Error adding files from SOS revision to underlying VCS. Leaving in inconsistent %s state" % vcsNames[cmd])
+  import subprocess  # only required in this section
+  # HINT stash/rollback for Git? or implement a global mechanism to revert?
+  files:str[] = list(m.paths.keys())
+  while files:
+    command:str = fitStrings(files, prefix = "%s add" % cmd, process = -> '"%s"' % _.replace("\"", "\\\""))  # considering maximum command-line length, filename quoting, and spaces
+    returncode:int = subprocess.Popen(command, shell = False).wait()
+#    returncode:int = 0; debug(command)
+    if returncode != 0: Exit("Error adding files from SOS revision to underlying VCS. Leaving %s in potentially inconsistent state" % vcsNames[cmd])
   tracked:bool; commitArgs:str?; tracked, commitArgs = vcsCommits[cmd]
-  #returncode = subprocess.Popen('%s commit -m "%s" %s' % (cmd, message ?? "Committed from SOS branch/revision %s/r%02d on %s" % (strftime(now)).replace("\"", "\\\""), _.branches[branch].name ?? ("b%d" % _.branch), revision, commitArgs ?? "")).wait()  # TODO quote-escaping on Windows
-  printo('%s commit -m "%s" %s' % (cmd, message ?? "Committed from SOS branch/revision %s/r%02d on %s" % (m.branches[branch].name ?? ("b%d" % m.branch), revision, strftime()).replace("\"", "\\\""), commitArgs ?? ""))  # TODO quote-escaping on Windows
+  returncode = subprocess.Popen(('%s commit -m "%s" %s' % (cmd, message ?? ("Committed from SOS %s/r%02d on %s" % (m.branches[branch].name ?? ("b%d" % m.branch), revision, strftime())).replace("\"", "\\\""), commitArgs ?? "")))  # TODO quote-escaping on Windows
+#  debug(('%s commit -m "%s" %s' % (cmd, message ?? ("Committed from SOS %s/r%02d on %s" % (m.branches[branch].name ?? ("b%d" % m.branch), revision, strftime())).replace("\"", "\\\""), commitArgs ?? "")))
   if returncode != 0: Exit("Error committing files from SOS revision to underlying VCS. Please check current %s state" % cmd)
-  if tracked: printo("Please note that all the files added in this commit will continue to be tracked by the underlying VCS")
+  if tracked: warn("Please note that all the files added in this commit will continue to be tracked by the underlying VCS")
 
 def config(arguments:List[str], options:List[str] = []):
   command:str; key:str; value:str; v:str
@@ -1144,7 +1145,7 @@ def main():
   debug("Detected SOS root folder: %s\nDetected VCS root folder: %s" % (root ?? "-", vcs ?? "-"))
   defaults["defaultbranch"] = vcsBranches.get(cmd, vcsBranches[SVN]) ?? "default"  # sets dynamic default with SVN fallback
   defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback
-  if force_sos or root is not None or (command ?? "")[:2] == "of" or (command ?? "")[:1] in "hv":  # in offline mode or just going offline TODO what about git config?
+  if (not force_vcs or force_sos) and (root is not None or (command ?? "")[:2] == "of" or (command ?? "_")[:1] in "hv"):  # in offline mode or just going offline TODO what about git config?
     cwd = os.getcwd()
     os.chdir(cwd if command[:2] == "of" else root ?? cwd)
     parse(vcs, cwd, cmd)

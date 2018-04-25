@@ -56,7 +56,7 @@ SOS supports three different file handling models that you may use to your likin
 - Has a small user base as of now, therefore no reliable reports of compatibility and operational capability except for the automatic unit tests run on Travis CI and AppVeyor
 
 ### Compatibility ###
-- SOS runs on any Python 3.4 distribution or higher, including some versions of PyPy. Python 2 is not supported anymore due to library issues, although SOS's programming language *Coconut* is generally able to transpile to valid Python 2 source code. Use `pip install sos-vcs[backport]` to attemÃ¼t running SOS on Python 3.3 or earlier
+- SOS runs on any Python 3.4 distribution or higher, including some versions of PyPy. Python 2 is not supported anymore due to library issues, although SOS's programming language *Coconut* is generally able to transpile to valid Python 2 source code. Use `pip install sos-vcs[backport]` to attempt running SOS on Python 3.3 or earlier
 - SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
 - Filename encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 

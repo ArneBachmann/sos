@@ -42,7 +42,7 @@ COMMANDS:Dict[str,Command] = {
   "offline": Command(Category.Repository_handling,
     [
       Argument("[<branch-name>", "Name of the initial branch to use. Default: determined by the type of the underlying VCS"),
-      Argument("[<message>]]", "Initial commit message. Default: A timestamp")
+      Argument("[<message>] ]", "Initial commit message. Default: A timestamp")
     ],
     "Prepare working offline with SOS, creating an initial branch from the current file tree",
     """Creates the offline repository metadata in a folder ".sos/" relative to the current working directory.
@@ -64,7 +64,9 @@ COMMANDS:Dict[str,Command] = {
   ),
   "help": Command(Category.Further_commands,
     [
-      Argument("[<command> | <category>]", """Name of command or command category to get help for. Category is one out of "repo", "branches", "files", "patterns", or "other".""")
+      Argument("[<command> | <category>]", """Name of command or command category to get help for.
+                                              Command is one out of everything shown per "sos help".
+                                              Category is one out of "repo", "branches", "files", "patterns", or "other".""")
     ],
     "Display usage and background information",
     """ The help command provides a compact usage and interface guide to SOS.
@@ -91,8 +93,8 @@ COMMANDS:Dict[str,Command] = {
    ),
   "branch": Command(Category.Working_with_branches,
     [
-      Argument("[<name>]", "Name of the new branch to create"),
-      Argument("[<message>]", "Initial commit message for the new branch")
+      Argument("[<name>", "Name of the new branch to create"),
+      Argument("[<message>] ]", "Initial commit message for the new branch")
     ],
     "Create a new branch",
     """Create a new branch and switch to work on it.

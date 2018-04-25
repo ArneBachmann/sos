@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xbe778104
+# __coconut_hash__ = 0x1834478
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -177,8 +177,8 @@ DOT_SYMBOL = "\u00b7"  # type: str  # line 98
 MULT_SYMBOL = "\u00d7"  # type: str  # line 99
 CROSS_SYMBOL = "\u2716"  # type: str  # line 100
 CHECKMARK_SYMBOL = "\u2714"  # type: str  # line 101
-PLUSMINUS_SYMBOL = "\u00b1"  # type: str  # line 102
-MOVE_SYMBOL = "\u21cc"  # type: str  # \U0001F5C0"  # HINT second one is very unlikely to be in any console font  # line 103
+PLUSMINUS_SYMBOL = "\u00b1"  # type: str  # alternative for "~"  # line 102
+MOVE_SYMBOL = "\u21cc"  # type: str  # alternative for "#". or use \U0001F5C0", which is very unlikely to be in any console font  # line 103
 METADATA_FORMAT = 1  # type: int  # counter for incompatible consecutive formats (was undefined, "1" is the first versioned version after that)  # line 104
 vcsFolders = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs", "_darcs": "darcs", "_MTN": "monotone", ".git/GL_COMMIT_EDIT_MSG": "gl"}  # type: Dict[str, str]  # line 105
 vcsBranches = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None, "darcs": None, "monotone": None}  # type: Dict[str, _coconut.typing.Optional[str]]  # line 106
@@ -615,20 +615,20 @@ def findSosVcsBase() -> 'Tuple[_coconut.typing.Optional[str], _coconut.typing.Op
             return (path, vcs[0], vcs[1])  # already detected vcs base and command  # line 440
         sos = path  # line 441
         while True:  # continue search for VCS base  # line 442
-            new = os.path.dirname(path)  # get parent path  # line 443
-            if new == path:  # no VCS folder found  # line 444
-                return (sos, None, None)  # no VCS folder found  # line 444
-            path = new  # line 445
-            contents = set(os.listdir(path))  # line 446
-            vcss = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type  # line 447
-            choice = None  # line 448
-            if len(vcss) > 1:  # line 449
-                choice = SVN if SVN in vcss else vcss[0]  # line 450
-                warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))  # line 451
-            elif len(vcss) > 0:  # line 452
-                choice = vcss[0]  # line 452
-            if choice:  # line 453
-                return (sos, path, choice)  # line 453
+            contents = set(os.listdir(path))  # line 443
+            vcss = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type  # line 444
+            choice = None  # line 445
+            if len(vcss) > 1:  # line 446
+                choice = SVN if SVN in vcss else vcss[0]  # line 447
+                warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))  # line 448
+            elif len(vcss) > 0:  # line 449
+                choice = vcss[0]  # line 449
+            if choice:  # line 450
+                return (sos, path, choice)  # line 450
+            new = os.path.dirname(path)  # get parent path  # line 451
+            if new == path:  # no VCS folder found  # line 452
+                return (sos, None, None)  # no VCS folder found  # line 452
+            path = new  # line 453
     return (None, vcs[0], vcs[1])  # line 454
 
 def tokenizeGlobPattern(pattern: 'str') -> 'List[GlobBlock]':  # line 456

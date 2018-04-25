@@ -99,8 +99,8 @@ DOT_SYMBOL:str = "\u00b7"
 MULT_SYMBOL:str = "\u00d7"
 CROSS_SYMBOL:str = "\u2716"
 CHECKMARK_SYMBOL:str = "\u2714"
-PLUSMINUS_SYMBOL:str = "\u00b1"
-MOVE_SYMBOL:str = "\u21cc"  # \U0001F5C0"  # HINT second one is very unlikely to be in any console font
+PLUSMINUS_SYMBOL:str = "\u00b1"  # alternative for "~"
+MOVE_SYMBOL:str = "\u21cc"  # alternative for "#". or use \U0001F5C0", which is very unlikely to be in any console font
 METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats (was undefined, "1" is the first versioned version after that)
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs", "_darcs": "darcs", "_MTN": "monotone", ".git/GL_COMMIT_EDIT_MSG": "gl"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None, "darcs": None, "monotone": None}
@@ -185,8 +185,8 @@ def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None)
 
 def Exit(message:str = "", code = 1): printe("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else "")); sys.exit(code)
 
-def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator:str = " ", process:-> str = -> '"%s"' % _) -> str =
-  ''' Returns a packed string, destructively consuming entries from the provided list. Does similar to xargs. getconf ARG_MAX or xargs --show-limits. '''
+def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator:str = " ", process: -> str = -> '"%s"' % _) -> str =
+  ''' Returns a packed string, destructively consuming entries from the provided list. Does similar as xargs. getconf ARG_MAX or xargs --show-limits. '''
   if len(prefix + separator + (strings[0] |> process)) > length: raise Exception("Cannot possibly strings pack into specified length")
   while len(strings) > 0 and len(prefix + separator + (strings[0] |> process)) <= length: prefix += separator + (strings.pop(0) |> process)
   prefix
@@ -440,9 +440,6 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
     if vcs[0]: return (path, vcs[0], vcs[1])  # already detected vcs base and command
     sos = path
     while True:  # continue search for VCS base
-      new = os.path.dirname(path)  # get parent path
-      if new == path: return (sos, None, None)  # no VCS folder found
-      path = new
       contents = set(os.listdir(path))
       vcss = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type
       choice = None
@@ -451,6 +448,9 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
         warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))
       elif len(vcss) > 0: choice = vcss[0]
       if choice: return (sos, path, choice)
+      new = os.path.dirname(path)  # get parent path
+      if new == path: return (sos, None, None)  # no VCS folder found
+      path = new
   (None, vcs[0], vcs[1])
 
 def tokenizeGlobPattern(pattern:str) -> List[GlobBlock] =

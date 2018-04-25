@@ -880,6 +880,8 @@ class Tests(unittest.TestCase):
     except SystemExit as E: _.assertEqual(0, E.code)
     out = wrapChannels(-> sos.config(["show"])).replace("\r", "")
     _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)
+    out = wrapChannels(-> sos.config(["show", "ignores"])).replace("\r", "")
+    _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)
     out = sos.safeSplit(wrapChannels(-> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('    file1', out)
     _.assertInAny('    ign1', out)
@@ -1008,7 +1010,7 @@ class Tests(unittest.TestCase):
     _.createFile(3)
     out = wrapChannels(-> sos.diff("/-2"))  # compare with r1 (second counting from last which is r2)
     _.assertIn("ADD ./file3", out)
-    _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "- | 0 |xxxxxxxxxx|", "+ | 0 |foobar|"], out)
+    _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "-~- 0 |xxxxxxxxxx|", "+~+ 0 |foobar|"], out)
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(-> sos.diff("/-2", onlys = f{"./file2"})))
 
   def testReorderRenameActions(_):

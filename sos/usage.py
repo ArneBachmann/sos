@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xf0610e6
+# __coconut_hash__ = 0x351ecac4
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -61,16 +61,18 @@ class Command(_coconut_NamedTuple("Command", [("category", 'Category'), ("argume
 
 
 
-COMMANDS = {"offline": Command(Category.Repository_handling, [Argument("[<branch-name>", "Name of the initial branch to use. Default: determined by the type of the underlying VCS"), Argument("[<message>]]", "Initial commit message. Default: A timestamp")], "Prepare working offline with SOS, creating an initial branch from the current file tree", """Creates the offline repository metadata in a folder ".sos/" relative to the current working directory.
+COMMANDS = {"offline": Command(Category.Repository_handling, [Argument("[<branch-name>", "Name of the initial branch to use. Default: determined by the type of the underlying VCS"), Argument("[<message>] ]", "Initial commit message. Default: A timestamp")], "Prepare working offline with SOS, creating an initial branch from the current file tree", """Creates the offline repository metadata in a folder ".sos/" relative to the current working directory.
        The existence of this metadata folder marks the root for the offline SOS repository"""), "online": Command(Category.Repository_handling, [], "Finish working online, removing the SOS repository's metadata folder", """The user is warned if any branches remain that have not been committed/pushed to the underlying VCS.
        If not, or using the "--force"  option, the "./sos" folder is removed entirely.
        SOS will serve again only as a pass-through command for the original underlying VCS in that folder"""), "dump": Command(Category.Repository_handling, [Argument("[<path>/]<name[.sos.zip]>", "File name for the exported repository archive dump")], "Perform repository dump into an archive file", """The archive will contain only the metadata folder, not the file tree.
-       After unzipping the archive, the file tree can be easily restored to the latest revision with "sos switch /" """), "help": Command(Category.Further_commands, [Argument("[<command> | <category>]", """Name of command or command category to get help for. Category is one out of "repo", "branches", "files", "patterns", or "other".""")], "Display usage and background information", """ The help command provides a compact usage and interface guide to SOS.
+       After unzipping the archive, the file tree can be easily restored to the latest revision with "sos switch /" """), "help": Command(Category.Further_commands, [Argument("[<command> | <category>]", """Name of command or command category to get help for.
+                                              Command is one out of everything shown per "sos help".
+                                              Category is one out of "repo", "branches", "files", "patterns", or "other".""")], "Display usage and background information", """ The help command provides a compact usage and interface guide to SOS.
         For further information, read the online help at https://sos-vcs.net"""), "version": Command(Category.Further_commands, [], "Display SOS version and packing information", """Show information about the SOS source revision, plus the version identifier of the PyPI package and Git commit status"""), "log": Command(Category.Working_with_branches, [], "List revisions of current branch", """List all revisions of currently selected branch in chronological order (latest last).
        The format for each log entry is as follows:
        [*] r<revision> @<timestamp> (+<added files>/-<removed files>/~<modified files>/T<modified text files>) |<commit message or tag>|"""), "status": Command(Category.Repository_handling, [Argument("[<branch>][/<revision>]", """Branch and/or revision to show changes of file tree against (if "useChangesCommand" flag is disabled).
                                              The argument is ignored (if "useChangesCommand" is enabled)""")], "Display file tree changes or repository stats", """Display changed filepaths vs. last committed or specified revision on current or specified branch (if "useChangesCommand" flag is disabled).
-       Display repository stats and settings (is "useChangesCommand" flag is enabled)"""), "branch": Command(Category.Working_with_branches, [Argument("[<name>]", "Name of the new branch to create"), Argument("[<message>]", "Initial commit message for the new branch")], "Create a new branch", """Create a new branch and switch to work on it.
+       Display repository stats and settings (is "useChangesCommand" flag is enabled)"""), "branch": Command(Category.Working_with_branches, [Argument("[<name>", "Name of the new branch to create"), Argument("[<message>] ]", "Initial commit message for the new branch")], "Create a new branch", """Create a new branch and switch to work on it.
        Default: Use current file tree as basis, using automatically generated branch name and initial commit message."""), "destroy": Command(Category.Working_with_branches, [Argument("[<branch>]", "Name or index of the branch")], "Remove branch", """The current or specified branch will be removed entirely from the SOS metadata. There will be a backup, however, that can be restored manually"""), "switch": Command(Category.Working_with_branches, [Argument("[<branch>][/<revision>]", "Branch and/or revision to switch to")], "Switch to another branch", """Replace file tree contents by specified revision of current or specified other branch.
        This command will warn the user about changes in the file tree vs. the last committed revision on the current branch.
        After switching, all changes done to the file tree will be compared to the (new) current branch's latest committed revision"""), "ls": Command(Category.Working_with_files, [Argument("[<folder path>]", "Path to list")], "List files, display tracking status, and show changes", """Lists file in current or specified folder, showing modification status, and matching tracking patterns (if in track or picky mode)"""), "commit": Command(Category.Working_with_files, [Argument("[<message>]", "Message to store with the revision. Can be used to refer to the revision, and is also shown in the " "log" " command")], "Create a new revision", """Using the current file tree, create and persist a new revision of the current branch to the repository"""), "update": Command(Category.Working_with_files, [Argument("[<branch>][/<revision>]", "Branch and/or revision")], "Integrate work from another branch into the file tree", """Similarly to switch, this command updates the current file tree to the state of another revision, usually from another branch."
@@ -102,77 +104,77 @@ OPTIONS = {"sos": {None: """Pass command and options to SOS, even when not offli
                   Cannot be changed via user interface after repository creation.
                   Most commands, however, support a "--strict" option nevertheless"""}, "force": {None: """Executes potentially harmful operations, telling SOS that you really intend to perform that command.
              Most commands: Ignore uncommitted branches, continue to remove SOS repository metadata folders """, "offline": """If already in offline mode, remove offline repository first before creating empty offline repository anew""", "online": """Ignore uncommitted branches, continue to remove SOS repository metadata folder""", "destroy": """Ignore dirty branches (those with changes not committed back to the underlying VCS) and continue with branch destruction""", "switch": """Override safety check to break switching when file tree contains modifications"""}, "full": {"dump": """Force a full repository dump instead of a differential export"""}, "skip-backup": {"dump": "Don't create a backup of a previous dump archive before dumping the repository" ""}, "changes": {"log": "List differential changeset for each revision"}, "diff": {"log": "Display textual diff for each revision"}, "repo": {"status": """List branches and display repository status (regardless of "useChangesCommand" flag)"""}, "stay": {"branch": "Perform branch operation, but don't switch to newly created branch"}, "last": {"branch": "Use last revision instead of current file tree as basis for new branch. Doesn't affect current file tree"}, "fast": {"branch": "Use the experimental fast branch method. Always implies --last"}, "meta": {"switch": "Only switch the branch's file tracking patterns when switching the branch. Won't update any files"}, "progress": {None: """Display file names during file tree traversal, show processing speed, and show compression advantage, if the "compress" flag is enabled"""}, "log": {None: """Configures the Python logging module to include source details like log level, timestamp, module, and line number with the logged messages"""}, "verbose": {None: "Enable more verbose user output"}, "debug": {None: "Enable logging of internal details (intended for developers only)"}, "only <tracked pattern>": {None: """Restrict operation to specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update" """}, "except <tracked pattern>": {None: """Avoid operation for specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update" """}, "patterns": {"ls": "Only show tracking patterns"}, "tags": {"ls": "List all repository tags (has nothing to do with file or filepattern listing)"}, "recursive": {"ls": "Recursively list also files in sub-folders"}, "r": {"ls": "Recursively list also files in sub-folders"}, "all": {"ls": "Recursively list all files, starting from repository root", "log": """Show all commits since creation of the branch.
-              Default is only showing the last "logLines" entries"""}, "a": {"ls": "Recursively list all files, starting from repository root"}, "tag": {"commit": "Store the commit message as a tag that can be used instead of numeric revisions"}, "add": {"switch": "Only add new files"}, "add-lines": {"switch": "Only add inserted lines"}, "add-chars": {"switch": "Only add new characters"}, "rm": {"switch": "Only remove vanished files"}, "rm-lines": {"switch": "Only remove deleted lines"}, "rm-chars": {"switch": "Only remove vanished characters"}, "ask": {"switch": "Ask how to proceed with modified files"}, "ask-lines": {"switch": "Ask how to proceed with modified lines"}, "ask-chars": {"switch": "Ask how to proceed with modified characters"}, "eol": {"switch": "Use EOL style from the integrated file instead. Default: EOL style of current file"}, "ignore-whitespace": {"diff": "Ignore white spaces during comparison"}, "wrap": {"diff": "Wrap text around terminal instead of cropping into terminal width"}, "soft": {"mv": "Don't move or rename files, only affect the tracking pattern"}, "local": {"config set": "Persist configuration setting in local repository, not in user-global settings store"}, "local": {"config unset": "Persist configuration setting in local repository, not in user-global settings store"}, "local": {"config add": "Persist configuration setting in local repository, not in user-global settings store"}, "local": {"config rm": "Persist configuration setting in local repository, not in user-global settings store"}, "local": {"config show": "Only show configuration settings persisted in local repository, not from user-global settings store"}, "prune": {"config rm": "Remove a list-type parameter together with the last entry"}, "sos": {None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""}, "n": {"log": """Maximum number of entries to show"""}}  # type: Dict[str, Dict[_coconut.typing.Optional[str], str]]  # line 260
+              Default is only showing the last "logLines" entries"""}, "a": {"ls": "Recursively list all files, starting from repository root"}, "tag": {"commit": "Store the commit message as a tag that can be used instead of numeric revisions"}, "add": {"switch": "Only add new files"}, "add-lines": {"switch": "Only add inserted lines"}, "add-chars": {"switch": "Only add new characters"}, "rm": {"switch": "Only remove vanished files"}, "rm-lines": {"switch": "Only remove deleted lines"}, "rm-chars": {"switch": "Only remove vanished characters"}, "ask": {"switch": "Ask how to proceed with modified files"}, "ask-lines": {"switch": "Ask how to proceed with modified lines"}, "ask-chars": {"switch": "Ask how to proceed with modified characters"}, "eol": {"switch": "Use EOL style from the integrated file instead. Default: EOL style of current file"}, "ignore-whitespace": {"diff": "Ignore white spaces during comparison"}, "wrap": {"diff": "Wrap text around terminal instead of cropping into terminal width"}, "soft": {"mv": "Don't move or rename files, only affect the tracking pattern"}, "local": {"config set": "Persist configuration setting in local repository, not in user-global settings store"}, "local": {"config unset": "Persist configuration setting in local repository, not in user-global settings store"}, "local": {"config add": "Persist configuration setting in local repository, not in user-global settings store"}, "local": {"config rm": "Persist configuration setting in local repository, not in user-global settings store"}, "local": {"config show": "Only show configuration settings persisted in local repository, not from user-global settings store"}, "prune": {"config rm": "Remove a list-type parameter together with the last entry"}, "sos": {None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""}, "n": {"log": """Maximum number of entries to show"""}}  # type: Dict[str, Dict[_coconut.typing.Optional[str], str]]  # line 262
 
 
-def getTitleFont(text: 'str', width: 'int') -> 'Tuple[str, str]':  # line 430
-    ''' Finds best fitting font for termimal window width, falling back to SOS marker if nothing fits current terminal width. Returns (actual text, selected Figlet font). '''  # line 431
-    x = sorted((t for t in [(max((len(_) for _ in Figlet(font=f, width=999).renderText(text).split("\n"))), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width))  # type: List[Tuple[int, str]]  # line 432
-    if len(x) == 0:  # replace by shortest text  # line 433
-        text = MARKER  # replace by shortest text  # line 433
-    return (text, sorted((t for t in [(max((len(_) for _ in Figlet(font=f, width=999).renderText(text).split("\n"))), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width))[-1][1])  # line 434
+def getTitleFont(text: 'str', width: 'int') -> 'Tuple[str, str]':  # line 432
+    ''' Finds best fitting font for termimal window width, falling back to SOS marker if nothing fits current terminal width. Returns (actual text, selected Figlet font). '''  # line 433
+    x = sorted((t for t in [(max((len(_) for _ in Figlet(font=f, width=999).renderText(text).split("\n"))), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width))  # type: List[Tuple[int, str]]  # line 434
+    if len(x) == 0:  # replace by shortest text  # line 435
+        text = MARKER  # replace by shortest text  # line 435
+    return (text, sorted((t for t in [(max((len(_) for _ in Figlet(font=f, width=999).renderText(text).split("\n"))), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width))[-1][1])  # line 436
 
-@_coconut_tco  # https://github.com/pwaller/pyfiglet/blob/master/doc/figfont.txt  # line 436
-def getTitle(large: 'bool'=True) -> '_coconut.typing.Optional[str]':  # https://github.com/pwaller/pyfiglet/blob/master/doc/figfont.txt  # line 436
-    ''' Large: use ascii-art. '''  # line 437
-    if not large:  # line 438
-        return APP  # line 438
-    if not Figlet:  # line 439
-        return None  # line 439
-    text, font = getTitleFont(APP, width=pure.termWidth)  # line 440
-    return _coconut_tail_call("\n".join, (_ for _ in Figlet(font=font, width=pure.termWidth).renderText(text).split("\n") if _.replace(" ", "") != ""))  # line 441
+@_coconut_tco  # https://github.com/pwaller/pyfiglet/blob/master/doc/figfont.txt  # line 438
+def getTitle(large: 'bool'=True) -> '_coconut.typing.Optional[str]':  # https://github.com/pwaller/pyfiglet/blob/master/doc/figfont.txt  # line 438
+    ''' Large: use ascii-art. '''  # line 439
+    if not large:  # line 440
+        return APP  # line 440
+    if not Figlet:  # line 441
+        return None  # line 441
+    text, font = getTitleFont(APP, width=pure.termWidth)  # line 442
+    return _coconut_tail_call("\n".join, (_ for _ in Figlet(font=font, width=pure.termWidth).renderText(text).split("\n") if _.replace(" ", "") != ""))  # line 443
 
-def usage(argument: 'str', version: 'bool'=False, verbose: 'bool'=False):  # line 443
-    if version:  # line 444
-        title = getTitle()  # type: _coconut.typing.Optional[str]  # line 445
-        if title:  # line 446
-            print(title + "\n")  # line 446
-    print("%s%s%s" % (MARKER, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))  # line 447
-    if version:  # line 448
-        sys.exit(0)  # line 448
-    category = CategoryAbbrev.get(argument, None)  # type: _coconut.typing.Optional[Category]  # convert shorthand for category  # line 449
-    command = argument if category is None else None  # type: _coconut.typing.Optional[str]  # line 450
-    if command is None:  # line 451
-        print("\nUsage:\n  sos <command> [<argument1>, [<argument2>]] [<option1>, [<options...]]")  # line 451
-    for _value, cat in sorted([(_.value, _) for _ in list(Category)]) if category is None else [(None, category)]:  # over one or all categories  # line 452
-        ofcategory = {command_: values for command_, values in COMMANDS.items() if values.category == cat and (command is None or command_ == command)}  # type: Dict[str, Command]  # select commands from chosen category  # line 453
-        if len(ofcategory) == 0:  # line 454
-            continue  # line 454
-        print("\n%s:" % cat.name.replace("_", " "))  # line 455
-        for name, cmd in sorted(ofcategory.items()):  # line 456
-            args = "  %s %s  " % (name, " ".join([c.name for c in cmd.arguments]))  # type: str  # command argument names  # line 457
-            print("%s\n%s" % (args + cmd.short, pure.ajoin(" " * len(args), pure.splitStrip(cmd.long), nl="\n")))  # line 458
-            if command is None and not verbose:  # TODO align commands correctly when in short mode  # line 459
-                continue  # TODO align commands correctly when in short mode  # line 459
-            if cmd.arguments:  # line 460
-                print("\n  Arguments:")  # line 460
-            maxlen = 4 + 2 + max((len(s.name) for s in cmd.arguments)) if len(cmd.arguments) > 0 else 0  # type: int  # argument name length max plus indentation  # line 461
-            for c in cmd.arguments:  # line 462
-                print(pure.ljust("    %s  " % c.name, maxlen) + ("\n" + pure.ljust(width=maxlen)).join(pure.splitStrip(c.long)))  # line 462
-            matchingoptions = [(optname, pure.splitStrip(description)) for optname, description in [(optname, dikt[name]) for optname, dikt in OPTIONS.items() if name in dikt]]  # type: List[Tuple[str, _coconut.typing.Sequence[str]]]  # line 463
-            if matchingoptions:  # line 464
-                print("\n  Options:")  # line 465
-                maxoptlen = max([len(optname) for optname, __ in matchingoptions])  # type: int  # line 466
-                for optname, descriptions in sorted(matchingoptions):  # line 467
-                    if len(descriptions) == 0:  # line 468
-                        continue  # line 468
-                    print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen + (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl="\n") if len(descriptions) > 1 else ""))  # line 469
-            matchingoptions = [] if cmd is None else [(optname, pure.splitStrip(dikt[None]) if None in dikt else []) for optname, dikt in OPTIONS.items()]  # add all text for the generic description  # line 470
-            if matchingoptions:  # line 471
-                print("\n  Common options:")  # line 472
-                maxoptlen = max([len(optname) for optname, __ in matchingoptions])  # line 473
-                for optname, descriptions in sorted(matchingoptions):  # line 474
-                    if len(descriptions) == 0:  # line 475
-                        continue  # line 475
-                    print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen + (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl="\n") if len(descriptions) > 1 else ""))  # line 476
-    if command is None:  # line 477
-        print("\nCommon options:")  # line 478
-        genericOptions = {k: v[None] for k, v in OPTIONS.items() if None in v}  # type: Dict[str, str]  # line 479
-        maxlen = max((len(_) for _ in genericOptions))  # line 480
-        for optname, description in sorted(genericOptions.items()):  # line 481
-            print("  %s%s  %s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxlen), pure.ajoin(" " * (2 + 2 + maxlen + 2), pure.splitStrip(description), nl="\n", first=False)))  # line 482
+def usage(argument: 'str', version: 'bool'=False, verbose: 'bool'=False):  # line 445
+    if version:  # line 446
+        title = getTitle()  # type: _coconut.typing.Optional[str]  # line 447
+        if title:  # line 448
+            print(title + "\n")  # line 448
+    print("%s%s%s" % (MARKER, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))  # line 449
+    if version:  # line 450
+        sys.exit(0)  # line 450
+    category = CategoryAbbrev.get(argument, None)  # type: _coconut.typing.Optional[Category]  # convert shorthand for category  # line 451
+    command = argument if category is None else None  # type: _coconut.typing.Optional[str]  # line 452
+    if command is None:  # line 453
+        print("\nUsage:\n  sos <command> [<argument1>, [<argument2>]] [<option1>, [<options...]]")  # line 453
+    for _value, cat in sorted([(_.value, _) for _ in list(Category)]) if category is None else [(None, category)]:  # over one or all categories  # line 454
+        ofcategory = {command_: values for command_, values in COMMANDS.items() if values.category == cat and (command is None or command_ == command)}  # type: Dict[str, Command]  # select commands from chosen category  # line 455
+        if len(ofcategory) == 0:  # line 456
+            continue  # line 456
+        print("\n%s:" % cat.name.replace("_", " "))  # line 457
+        for name, cmd in sorted(ofcategory.items()):  # line 458
+            args = "  %s %s  " % (name, " ".join([c.name for c in cmd.arguments]))  # type: str  # command argument names  # line 459
+            print("%s\n%s" % (args + cmd.short, pure.ajoin(" " * len(args), pure.splitStrip(cmd.long), nl="\n")))  # line 460
+            if command is None and not verbose:  # TODO align commands correctly when in short mode  # line 461
+                continue  # TODO align commands correctly when in short mode  # line 461
+            if cmd.arguments:  # line 462
+                print("\n  Arguments:")  # line 462
+            maxlen = 4 + 2 + max((len(s.name) for s in cmd.arguments)) if len(cmd.arguments) > 0 else 0  # type: int  # argument name length max plus indentation  # line 463
+            for c in cmd.arguments:  # line 464
+                print(pure.ljust("    %s  " % c.name, maxlen) + ("\n" + pure.ljust(width=maxlen)).join(pure.splitStrip(c.long)))  # line 464
+            matchingoptions = [(optname, pure.splitStrip(description)) for optname, description in [(optname, dikt[name]) for optname, dikt in OPTIONS.items() if name in dikt]]  # type: List[Tuple[str, _coconut.typing.Sequence[str]]]  # line 465
+            if matchingoptions:  # line 466
+                print("\n  Options:")  # line 467
+                maxoptlen = max([len(optname) for optname, __ in matchingoptions])  # type: int  # line 468
+                for optname, descriptions in sorted(matchingoptions):  # line 469
+                    if len(descriptions) == 0:  # line 470
+                        continue  # line 470
+                    print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen + (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl="\n") if len(descriptions) > 1 else ""))  # line 471
+            matchingoptions = [] if cmd is None else [(optname, pure.splitStrip(dikt[None]) if None in dikt else []) for optname, dikt in OPTIONS.items()]  # add all text for the generic description  # line 472
+            if matchingoptions:  # line 473
+                print("\n  Common options:")  # line 474
+                maxoptlen = max([len(optname) for optname, __ in matchingoptions])  # line 475
+                for optname, descriptions in sorted(matchingoptions):  # line 476
+                    if len(descriptions) == 0:  # line 477
+                        continue  # line 477
+                    print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen + (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl="\n") if len(descriptions) > 1 else ""))  # line 478
+    if command is None:  # line 479
+        print("\nCommon options:")  # line 480
+        genericOptions = {k: v[None] for k, v in OPTIONS.items() if None in v}  # type: Dict[str, str]  # line 481
+        maxlen = max((len(_) for _ in genericOptions))  # line 482
+        for optname, description in sorted(genericOptions.items()):  # line 483
+            print("  %s%s  %s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxlen), pure.ajoin(" " * (2 + 2 + maxlen + 2), pure.splitStrip(description), nl="\n", first=False)))  # line 484
 
 # TODO wrap text at terminal boundaries automatically, if space suffices
 #    [<branch>][/<revision>]      Revision string. Branch is optional (defaulting to current branch) and may be a label or number >= 0
 #                                 Revision is an optional integer and may be negative to reference from the latest commits (-1 is most recent revision), or a tag name"""
-    sys.exit(0)  # line 487
+    sys.exit(0)  # line 489
