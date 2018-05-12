@@ -352,7 +352,10 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
   "all": {
     "ls": "Recursively list all files, starting from repository root",
     "log": """Show all commits since creation of the branch.
-              Default is only showing the last "logLines" entries"""
+              Default is only showing the last "logLines" entries""",
+    "publish": """Commit all files present at offline time, instead of only modifications thereafter.
+                  When going offline with SOS on an underlying VCS checkout with modifications, use this option.
+                  Otherwise - underlying VCS checkout was clean when going offline with SOS - avoid this option."""
   },
   "a": {
     "ls": "Recursively list all files, starting from repository root"

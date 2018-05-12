@@ -100,6 +100,7 @@ MULT_SYMBOL:str = "\u00d7"
 CROSS_SYMBOL:str = "\u2716"
 CHECKMARK_SYMBOL:str = "\u2714"
 PLUSMINUS_SYMBOL:str = "\u00b1"  # alternative for "~"
+ARROW_SYMBOL:str = "\u2799"  # alternative for "*" in "this revision"
 MOVE_SYMBOL:str = "\u21cc"  # alternative for "#". or use \U0001F5C0", which is very unlikely to be in any console font
 METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats (was undefined, "1" is the first versioned version after that)
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs", "_darcs": "darcs", "_MTN": "monotone", ".git/GL_COMMIT_EDIT_MSG": "gl"}

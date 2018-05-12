@@ -1,7 +1,7 @@
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import codecs, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
+import codecs, collections, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
 from io import BytesIO, BufferedRandom, TextIOWrapper
 
 try:
@@ -99,7 +99,6 @@ class Tests(unittest.TestCase):
   ''' Entire test suite. '''
 
   def setUp(_):
-    sos.__dict__["verbose"] = True  # required when executing tests manually
     sos.Metadata.singleton = None
     for entry in os.listdir(testFolder):  # cannot remove testFolder on Windows when using TortoiseSVN as VCS
       resource = os.path.join(testFolder, entry)
@@ -120,6 +119,7 @@ class Tests(unittest.TestCase):
   def assertInAny(_, what:str, where:str[]): _.assertTrue(any(what in w for w in where))
 
   def assertNotInAny(_, what:str, where:str[]): _.assertFalse(any(what in w for w in where))
+
 
   def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None):
     if prefix and not os.path.exists(prefix): os.makedirs(prefix)
@@ -258,8 +258,8 @@ class Tests(unittest.TestCase):
     sos.offline(options = ["--strict"])  # b0/r0 = ./file1
     _.createFile(2)
     os.unlink("file1")
-    sos.commit()  # b0/r1 = ./file2
-    sos.branch(options = ["--fast", "--last"])  # branch b1 from b0/1 TODO modify once --fast becomes the new normal
+    sos.commit()  # b0/r1 = +./file2  -./file1
+    sos.branch(options = ["--fast", "--last"])  # branch b1 from b0/1 TODO modify option switch once --fast becomes the new normal
     _.assertAllIn([sos.metaFile, sos.metaBack, "b0", "b1"], os.listdir(sos.metaFolder), only = True)
     _.createFile(3)
     sos.commit()  # b1/r2 = ./file2, ./file3
@@ -267,8 +267,8 @@ class Tests(unittest.TestCase):
     sos.branch(options = ["--fast", "--last"])  # branch b2 from b1/2
     sos.destroy("0")  # remove parent of b1 and transitive parent of b2
     _.assertAllIn([sos.metaFile, sos.metaBack, "b0_last", "b1", "b2"], os.listdir(sos.metaFolder), only = True)  # branch 0 was removed
-    _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(1)), only = True)  # revisions were copied to branch 1
-    _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(2)), only = True)  # revisions were copied to branch 1
+    _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(1)), only = True)  # all revisions before branch point were copied to branch 1
+    _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(2)), only = True)
     # TODO test also other functions like status --repo, log
 
   def testModificationWithOldRevisionRecognition(_):
@@ -285,7 +285,7 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["<older than last revision>", "<older than previously committed>"], out)
 
   def testGetParentBranch(_):
-    m = sos.Accessor({"branches": {0: sos.Accessor({"parent": None, "revision": None}), 1: sos.Accessor({"parent": 0, "revision": 1})}})
+    m = sos.Accessor({"branches": {0: sos.Accessor({"parent": None, "revision": None}), 1: sos.Accessor({"parent": 0, "revision": 1})}, "getParentBranches": lambda b, r: sos.Metadata.getParentBranches(m, b, r)})  # stupid workaround for the self-reference in the implementation
     _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 0))
     _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 1))
     _.assertEqual(1, sos.Metadata.getParentBranch(m, 1, 2))
@@ -523,8 +523,9 @@ class Tests(unittest.TestCase):
     sos.switch("test", ["--force"])  # should restore file1 and remove file3
     _.assertTrue(_.existsFile(1))  # was restored from branch's revision r1
     _.assertFalse(_.existsFile(3))  # was restored from branch's revision r1
+    sos.verbose.append(None)  # dict access necessary, as references on module-top-level are frozen
     out = wrapChannels(-> sos.dump("dumped.sos.zip", options = ["--skip-backup", "--full"])).replace("\r", "")
-    _.assertAllIn(["Dumping revisions"], out)
+    _.assertAllIn(["Dumping revisions"], out)  # TODO cannot set verbose flag afer module loading. Use transparent wrapper instead
     _.assertNotIn("Creating backup", out)
     out = wrapChannels(-> sos.dump("dumped.sos.zip", options = ["--skip-backup"])).replace("\r", "")
     _.assertIn("Dumping revisions", out)
@@ -532,6 +533,7 @@ class Tests(unittest.TestCase):
     out = wrapChannels(-> sos.dump("dumped.sos.zip", options = ["--full"])).replace("\r", "")
     _.assertAllIn(["Creating backup"], out)
     _.assertIn("Dumping revisions", out)
+    sos.verbose.pop()
 
   def testAutoDetectVCS(_):
     os.mkdir(".git")
@@ -943,6 +945,33 @@ class Tests(unittest.TestCase):
     _.createFile(3, "y" * 10)  # make a change
     sos.destroy("added", "--force")  # should succeed
 
+  def testFastBranchingOnEmptyHistory(_):
+    ''' Test fast branching without revisions and with them. '''
+    sos.offline(options = ["--strict", "--compress"])  # b0
+    sos.branch("", "", options = ["--fast", "--last"])  # b1
+    sos.branch("", "", options = ["--fast", "--last"])  # b2
+    sos.branch("", "", options = ["--fast", "--last"])  # b3
+    sos.destroy("2")
+    out = wrapChannels(-> sos.status()).replace("\r", "")
+    _.assertIn("b0 'trunk' @", out)
+    _.assertIn("b1         @", out)
+    _.assertIn("b3         @", out)
+    _.assertNotIn("b2         @", out)
+    sos.branch("", "")  # non-fast branching of b4
+    _.createFile(1)
+    _.createFile(2)
+    sos.commit("")
+    sos.branch("", "", options = ["--fast", "--last"])  # b5
+    sos.destroy("4")
+    out = wrapChannels(-> sos.status()).replace("\r", "")
+    _.assertIn("b0 'trunk' @", out)
+    _.assertIn("b1         @", out)
+    _.assertIn("b3         @", out)
+    _.assertIn("b5         @", out)
+    _.assertNotIn("b2         @", out)
+    _.assertNotIn("b4         @", out)
+    # TODO add more files and branch again
+
   def testUsage(_):
     try: sos.usage(); _.fail()  # TODO expect sys.exit(0)
     except: pass
@@ -1127,6 +1156,7 @@ class Tests(unittest.TestCase):
   # TODO test +01/-02/*..
   # TODO tests for loadcommit redirection
   # TODO test wrong branch/revision after fast branching, would raise exception for -1 otherwise
+
 
 if __name__ == '__main__':
   logging.basicConfig(level = logging.DEBUG, stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")
