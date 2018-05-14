@@ -62,19 +62,25 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
-- **Version 1.6**, not yet released:
+- **Version 1.6**, released on 2018-05-14:
+    - [Feature 77](https://github.com/ArneBachmann/sos/issues/77) Feature to commit branches to underlying VCS
     - [Feature 127, 218](https://github.com/ArneBachmann/sos/issues/127) Implement much better help system
-    - [Feature 212](https://github.com/ArneBachmann/sos/issues/212) Limit number of displayed revisions in `sos log`. Can be controlled by option flag `--all` and configuration setting `logLines`
-    - [Feature 213](https://github.com/ArneBachmann/sos/issues/213) Now displaying occupied storage space
     - [Feature 209](https://github.com/ArneBachmann/sos/issues/209) Added warning when committing a file with a older timestamp than its previous revision or previous commit
     - [Feature 210](https://github.com/ArneBachmann/sos/issues/210) Logic coding bug that prevented the distinction between full or differential dump to work
-    - [Enhancement 201, 208](https://github.com/ArneBachmann/sos/issues/201) Added a project logo
+    - [Feature 212](https://github.com/ArneBachmann/sos/issues/212) Limit number of displayed revisions in `sos log`. Can be controlled by option flag `--all` and configuration setting `logLines`
+    - [Feature 213](https://github.com/ArneBachmann/sos/issues/213) Now displaying occupied storage space
     - [Enhancement 144](https://github.com/ArneBachmann/sos/issues/144) Make a semantic distinction between verbose output using `--verbose` and debugging output using `--debug` and `--log`
+    - [Enhancement 173](https://github.com/ArneBachmann/sos/issues/173) Changed the way how merge options are handled - now allowing to remember one decision for the remainder of a file
+    - [Enhancement 201, 208](https://github.com/ArneBachmann/sos/issues/201) Added a project logo
     - [Enhancement 211](https://github.com/ArneBachmann/sos/issues/211) Add a fancy ASCII art title
     - [Enhancement 214](https://github.com/ArneBachmann/sos/issues/214) More documentation
     - [Enhancement 216](https://github.com/ArneBachmann/sos/issues/216) Change display in `sos log` to display number of modified text files instead of added text files
+    - [Enhancement 222, 218](https://github.com/ArneBachmann/sos/issues/227) Better `sos help` display and sorting
+    - [Enhancement 227](https://github.com/ArneBachmann/sos/issues/227) Sligthly modified diff output format
     - [Bug 217](https://github.com/ArneBachmann/sos/issues/217) Wrong path displayed in `sos status`
     - [Bug 219](https://github.com/ArneBachmann/sos/issues/219) Error in revision computation leading to switching not working correctly between fast-branched branches
+    - [Bug 221](https://github.com/ArneBachmann/sos/issues/221) Display of wrong number of files on `sos commit`
+    - [Bug 230, 219](https://github.com/ArneBachmann/sos/issues/230) Fixed bugs in destroy that could lead to errors when removing empty branches
     - [QA 198](https://github.com/ArneBachmann/sos/issues/198) Finally made the tests run on AppVeyor. Reason was file system synchronization problems not shown on Linux
     - Downloads so far: 0
 - **Version 1.5**, released on 2018-03-03:
