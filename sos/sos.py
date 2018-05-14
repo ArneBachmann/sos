@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x8a4aeb41
+# __coconut_hash__ = 0x7a0b1bf1
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -916,9 +916,9 @@ def update(argument: 'str', options: '_coconut.typing.Sequence[str]'=[], onlys: 
         else:  # line 779
             info("Nothing to update")  # but write back updated branch info below  # line 780
     else:  # integration required  # line 781
-        add_all = None  # type: _coconut.typing.Optional[str]  # line 782
-        del_all = None  # type: _coconut.typing.Optional[str]  # line 782
-        selection = None  # type: str  # line 782
+        add_all = None  # type: _coconut.typing.Optional[str]  # user input markers to continue to add/delete all remaining  # line 782
+        del_all = None  # type: _coconut.typing.Optional[str]  # user input markers to continue to add/delete all remaining  # line 782
+        selection = None  # type: str  # user input markers to continue to add/delete all remaining  # line 782
         if changed.deletions.items():  # line 783
             printo("Additions:")  # line 783
         for path, pinfo in changed.deletions.items():  # file-based update. Deletions mark files not present in current file tree -> needs addition!  # line 784

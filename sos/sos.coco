@@ -779,7 +779,7 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
     else:
       info("Nothing to update")  # but write back updated branch info below
   else:  # integration required
-    add_all:str?; del_all:str?; selection:str
+    add_all:str?; del_all:str?; selection:str  # user input markers to continue to add/delete all remaining
     if changed.deletions.items(): printo("Additions:")
     for path, pinfo in changed.deletions.items():  # file-based update. Deletions mark files not present in current file tree -> needs addition!
       selection = "y" if mrg.value & MergeOperation.INSERT.value else "n"  # default for non-ask case

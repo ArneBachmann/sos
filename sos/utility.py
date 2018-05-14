@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x397bd66b
+# __coconut_hash__ = 0x229ab968
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -413,11 +413,11 @@ def user_block_input(output: 'List[str]'):  # line 270
 
 def merge(file: '_coconut.typing.Optional[bytes]'=None, into: '_coconut.typing.Optional[bytes]'=None, filename: '_coconut.typing.Optional[str]'=None, intoname: '_coconut.typing.Optional[str]'=None, mergeOperation: 'MergeOperation'=MergeOperation.BOTH, charMergeOperation: 'MergeOperation'=MergeOperation.BOTH, diffOnly: 'bool'=False, eol: 'bool'=False, ignoreWhitespace: 'bool'=False) -> 'Tuple[Union[bytes, List[MergeBlock]], _coconut.typing.Optional[bytes]]':  # line 278
     ''' Merges other binary text contents 'file' (or reads file 'filename') into current text contents 'into' (or reads file 'intoname'), returning merged result.
-      For update, the other version is assumed to be the "new/added" one, while for diff, the current changes are the ones "added".
+      For 'sos update', the other version is assumed to be the "new/added" one, while for diff, the 'file' with changes is the one shown as "added".
       However, change direction markers are insert ("+") for elements only in into, and remove ("-") for elements only in other file (just like the diff marks +/-)
-      diffOnly returns detected change blocks only, no text merging
-      eol flag will use the other file's EOL marks
-      in case of replace block and INSERT strategy, the change will be added **behind** the original
+      diffOnly: if True, return detected change blocks only, no actual text merging
+      eol: if True, will use the other file's EOL marks
+      in case of replace block and INSERT strategy, the change will be added **behind** the original. HINT could be configurable
   '''  # line 293
     encoding = None  # type: str  # line 294
     othr = None  # type: _coconut.typing.Sequence[str]  # line 294
@@ -463,7 +463,7 @@ def merge(file: '_coconut.typing.Optional[bytes]'=None, into: '_coconut.typing.O
             offset += 1  # marker for intra-line change comment HINT was earlier part of the MergeBlock  # line 321
         last = line[0]  # line 322
         tmp[:] = [line[2:]]  # only keep current line for next block  # line 323
-# TODO add code to detect block moved blocks here
+# TODO add code to detect moved blocks here
     nl = othreol if eol else ((othreol if curreol is None else curreol))  # type: bytes  # no default newline, to mark "no newline"  # line 325
     debug("Diff blocks: " + repr(blocks))  # line 326
     if diffOnly:  # line 327

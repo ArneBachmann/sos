@@ -4,7 +4,7 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.5.4"
+RELEASE = "1.6"
 COMPATIBILITY_LEVEL = "3.4"
 
 print("sys.argv is %r" % sys.argv)

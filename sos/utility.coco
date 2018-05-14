@@ -285,11 +285,11 @@ def merge(
       ignoreWhitespace:bool = False
     ) -> Tuple[Union[bytes,List[MergeBlock]],bytes?] =
   ''' Merges other binary text contents 'file' (or reads file 'filename') into current text contents 'into' (or reads file 'intoname'), returning merged result.
-      For update, the other version is assumed to be the "new/added" one, while for diff, the current changes are the ones "added".
+      For 'sos update', the other version is assumed to be the "new/added" one, while for diff, the 'file' with changes is the one shown as "added".
       However, change direction markers are insert ("+") for elements only in into, and remove ("-") for elements only in other file (just like the diff marks +/-)
-      diffOnly returns detected change blocks only, no text merging
-      eol flag will use the other file's EOL marks
-      in case of replace block and INSERT strategy, the change will be added **behind** the original
+      diffOnly: if True, return detected change blocks only, no actual text merging
+      eol: if True, will use the other file's EOL marks
+      in case of replace block and INSERT strategy, the change will be added **behind** the original. HINT could be configurable
   '''
   encoding:str; othr:str[]; othreol:bytes?; curr:str[]; curreol:bytes?
   try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document
@@ -321,7 +321,7 @@ def merge(
     elif last == "?": offset += 1  # marker for intra-line change comment HINT was earlier part of the MergeBlock
     last = line[0]
     tmp[:] = [line[2:]]  # only keep current line for next block
-  # TODO add code to detect block moved blocks here
+  # TODO add code to detect moved blocks here
   nl:bytes = othreol if eol else (curreol ?? othreol)  # no default newline, to mark "no newline"
   debug("Diff blocks: " + repr(blocks))
   if diffOnly: return (blocks, nl)

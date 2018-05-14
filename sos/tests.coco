@@ -649,6 +649,10 @@ class Tests(unittest.TestCase):
     a = b"a\nb\ne"  # intra-line merge
     _.assertEqual(b, mockInput(["i"], -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)[0]))
     _.assertEqual(a, mockInput(["t"], -> sos.merge(a, b, charMergeOperation = sos.MergeOperation.ASK)[0]))
+    _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aaaacaaa")[0])
+    _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aaaaaaa")[0])
+    _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aabaacaaaa")[0])
+    _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"xaaaadaaac")[0])
 
   def testMergeEol(_):
     _.assertEqual(b"\r\n", sos.merge(b"a\nb", b"a\r\nb")[1])
