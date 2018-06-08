@@ -82,7 +82,7 @@ class Metadata:
         commitTimne == None in switch and log
         root: current user's working dir to compute relative paths (cwd is usually repository root)
     '''
-    adapt = path -> path if SLASH in path or os.sep in path else "./" + path
+    adapt = path -> path.replace(os.sep, SLASH) if os.sep in path else "./" + path
     relp = (path, root) -> adapt(os.path.relpath(path, root)) if root else path
     moves:Dict[str,PathInfo] = dict(changed.moves.values())  # of origin-pathinfo
     realadditions:Dict[str,PathInfo] = {k: v for k, v in changed.additions.items() if k not in changed.moves}
