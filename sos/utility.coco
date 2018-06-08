@@ -40,7 +40,7 @@ debug_:bool = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in
 class Accessor(dict):
   ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
   def __init__(_, mapping:Dict[str,Any]) -> None: dict.__init__(_, mapping)  # TODO remove -> None when fixed in Coconut stub
-  def __getattribute__(_, name:str) -> Any:
+  def __getattribute__(_, name:str) -> Any:  # or simply class C(dict): __getattr__ = dict.__getitem__
     try: return _[name]
     except: return dict.__getattribute__(_, name)
 
@@ -250,14 +250,15 @@ else:
     r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required
     makedata(_tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here
 
-def detectMoves(changes:ChangeSet) -> Dict[str,Tuple[str,PathInfo]] =
-  ''' Compute renames/removes for a changeset. '''
+def detectMoves(changes:ChangeSet, strict:bool) -> Dict[str,Tuple[str,PathInfo]] =
+  ''' Compute renames/removes for a changeset, returning new targetpath -> (old source path, new info). '''
   moves:Dict[str,Tuple[str,PathInfo]] = {}
   for path, info in changes.additions.items(): for dpath, dinfo in changes.deletions.items():
-      if info.size == dinfo.size and info.mtime == dinfo.mtime and info.hash == dinfo.hash:  # was moved TODO check either mtime or hash?
-        moves[path] = (dpath, info)  # store new data and original name, but don't remove add/del
+      if info.size == dinfo.size and ((info.hash == dinfo.hash) if strict else (info.mtime == dinfo.mtime)):  # was moved
+        if dpath not in moves or path.split(SLASH)[-1] == dpath.split(SLASH)[-1]:  # only override previously stored arbitrary move, when name match perfectly this time TODO compare even more parent folders when matching
+          moves[dpath] = (path, info)  # store new data and original name, but don't remove add/del
         break  # deletions loop, continue with next addition
-  moves
+  {path: (dpath, info) for dpath, (path, info) in moves.items()}  # sort by target (by moved-to)
 
 def user_input(text:str, choices:Iterable[str], default:str = None, selection:str = "") -> str =
   ''' Default can be a selection from choice and allows empty input. '''

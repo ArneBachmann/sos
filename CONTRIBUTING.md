@@ -1,6 +1,6 @@
 # Development and Contribution #
 
-- You are very welcome to contribute, fix bugs, and augment SOS by missing features!
+- You are welcome to contribute, fix bugs, and augment SOS by missing features!
 
     - Please ask for assignment of an issue
     - Send in your pull requests from any of your local branches (or your `master`) against `master`

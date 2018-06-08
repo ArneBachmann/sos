@@ -224,6 +224,9 @@ class Tests(unittest.TestCase):
     out:str = wrapChannels(-> sos.changes())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
+    out:str = wrapChannels(-> sos.changes(options = ["--relative"], cwd = "sub"))
+    _.assertIn("MOV ../file2  <-  ./file2", out)
+    _.assertIn("MOV ./file1  <-  ../file1", out)
     out = wrapChannels(-> sos.commit())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
@@ -280,9 +283,9 @@ class Tests(unittest.TestCase):
     os.utime(sos.encode("file1"), (now - 2000, now - 2000))  # make it look like an older version
     sync()
     out = wrapChannels(-> sos.changes())
-    _.assertAllIn(["<older than last revision>", "<older than previously committed>"], out)
+    _.assertIn("<older than previously committed>", out)
     out = wrapChannels(-> sos.commit())
-    _.assertAllIn(["<older than last revision>", "<older than previously committed>"], out)
+    _.assertIn("<older than previously committed>", out)
 
   def testGetParentBranch(_):
     m = sos.Accessor({"branches": {0: sos.Accessor({"parent": None, "revision": None}), 1: sos.Accessor({"parent": 0, "revision": 1})}, "getParentBranches": lambda b, r: sos.Metadata.getParentBranches(m, b, r)})  # stupid workaround for the self-reference in the implementation
@@ -1130,6 +1133,22 @@ class Tests(unittest.TestCase):
     _.assertTrue(_.existsFile(2))
     _.assertTrue(_.existsFile(4))
     _.assertTrue(_.existsFile(6))
+
+  def testMoveDetection(_):
+    _.createFile(1, "bla")
+    sos.offline()
+    os.mkdir("sub1")
+    os.mkdir("sub2")
+    shutil.copy2("file1", "sub1" + os.sep + "file_I")
+    shutil.move("file1", "sub2")
+    out = wrapChannels(-> sos.changes())
+    _.assertIn("MOV sub2/file1  <-  ./file1", out)  # ensure that the correctly named while is detected as a move,
+    _.assertIn("ADD sub1/file_I", out)  # while the differently named (same file) is detected as added
+    sos.commit("Moved the file")
+#    out = wrapChannels(-> sos.log(["--changes"]))  # TODO moves detection not yet implemented
+#    _.assertIn("MOV sub2/file1  <-  ./file1", out)  # ensure that the correctly named while is detected as a move,
+#    _.assertIn("ADD sub1/file_I", out)  # while the differently named (same file) is detected as added
+    _.createFile(1, "bla", prefix = "sub")
 
   def testHashCollision(_):
     sos.offline()

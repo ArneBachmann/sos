@@ -11,7 +11,7 @@
 - [Buy the developer a coffee](https://PayPal.Me/ArneBachmann/) to show your appreciation!
 
 ### From the author ###
-> I've been developing this software continuously over the course of the last months in my spare time, and it has been turned out great so far. I cannot, however, continue at this pace without the support of a lively community, or getting some kind of funding for the effort that I put into SOS besides my day job and being there for my family. Bug reports, feature requests and contributions are welcome, granted there's enough time to process them. Please support SOS in any way suiting you, to make it our primary personal productivity tool!
+> I've been developing this software continuously over the course of the last months in my spare time, and I think it turned out great so far. Due to other duties in my life I cannot, however, continue at this pace without the support of a lively community, or getting some kind of funding for the effort that I put into SOS. Bug reports, feature requests and contributions are welcome, granted there's enough time to process them. Please support SOS in any way suiting you, and spread the word!
 
 ### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
@@ -23,7 +23,7 @@
 
 - **Filename**: Fixed term for file names used throughout SOS and this documentation
 - **File pattern**: A filename or [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29), allowing to place special characters like `*?[!]` into file names to mark ellipses
-- **File tree**: A directory structure on the user's file system at a certain point in time. It's not exactly the same as a *checkout* or *working copy*, but largely comparable
+- **File tree**: A directory structure on the user's file system at a certain point. It's not exactly the same as a *checkout* or *working copy*, but largely comparable
 - **Revision**: An archived (or versioned, differential) set of file modifications, also known as changeset or patch
 
 
@@ -214,7 +214,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - `useChangesCommand`: Flag for making `sos status` into `sos status --repo` and using `sos changes` instead of `sos status` to more closely copy Fossil's behaviour
 - `useUnicodeFont`: Flag to use more fancy symbols, granted the console font supports them
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN, no name for Fossil)
-- `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. Example: `*.bak` could be a text file on your system, so add it to the `texttype` configuration, either globally (default) or locally (using `--local`). *Default*: Empty list
+- `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/…` mime. Example: `*.bak` could be a text file on your system, so add it to the `texttype` configuration, either globally (default) or locally (using `--local`). *Default*: Empty list
 - `bintype`: List of file patterns that should be recognized as binary files which cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list
 - `ignores`: List of filename patterns (without folder path) to ignore during repository operations. Any match from the corresponding white list will negate any hit for `ignores`. Default: See source code, e.g. `["*.bak", "*.py[cdo]]"`
 - `ignoresWhitelist`: List of filename patterns to be consider even if matched by an entry in the `ignores` list. Default: Empty list
@@ -224,8 +224,8 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 ## Noteworthy Details ##
 - SOS doesn't store branching point information (or references); each branch stands alone and has no relation whatsoever to other branches or certain revisions thereof, except incidentally its initial file contents
-- File tracking patterns are stored per branch, but **not** versioned with commits (!). This means that the "what to track" metadata is not part of the changesets. This is a simplification stemming from the main idea that revisions form a linear order of safepoints, and users rarely go back to older revisions
-- `sos update` will **not warn** if local changes are present! This is a noteworthy exception to the failsafe approach taken for most other commands
+- File tracking patterns are stored per branch, but **not** versioned with commits. This means that the "what to track" metadata is not part of the changesets. This is a simplification stemming from the main idea that revisions form a linear order of safepoints, and users rarely go back to older revisions
+- `sos update` will **not warn** if local changes are present. This is a noteworthy exception to the failsafe approach taken for most other commands
 
 
 ## Recipes ##
@@ -252,7 +252,7 @@ Ideas for future developments:
 
 ## Release Management ##
 - Increase version number in `setup.py`
-- Run `python3 setup.py clean build test` to update the PyPI version number, compile and test the code, and package it into an archive. If you need evelated rights to do so, use `sudo -E python...`.
+- Run `python3 setup.py clean build test` to update the PyPI version number, compile and test the code, and package it into an archive. If you need elevated rights to do so, use `sudo -E python…`.
 - Run `git add`, `git commit` and `git push` and let Travis CI and AppVeyor run the tests against different target platforms. If there were no problems, continue:
 - Don't forget to tag releases
 - Run `python3 setup.py sdist`

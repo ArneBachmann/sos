@@ -77,15 +77,20 @@ class Metadata:
     if revision < 0 or (_.commits and revision > max(_.commits)): Exit("Unknown revision r%02d" % revision)
     revision
 
-  def listChanges(_, changed:ChangeSet, commitTime:float? = None):
-    ''' List changes. If commitTime (in ms) is defined, also check timestamps of modified files for plausibility (if mtime older than last commit, note so). '''
+  def listChanges(_, changed:ChangeSet, commitTime:float? = None, root:str? = None):
+    ''' List changes. If commitTime (in ms) is defined, also check timestamps of modified files for plausibility (if mtime of new file is <= / older than in last commit, note so).
+        commitTimne == None in switch and log
+        root: current user's working dir to compute relative paths (cwd is usually repository root)
+    '''
+    prefix = path -> path if SLASH in path else "./" + path
+    relp = (path, root) -> prefix(os.path.relpath(path, root)) if root else path
     moves:Dict[str,PathInfo] = dict(changed.moves.values())  # of origin-pathinfo
     realadditions:Dict[str,PathInfo] = {k: v for k, v in changed.additions.items() if k not in changed.moves}
     realdeletions:Dict[str,PathInfo] = {k: v for k, v in changed.deletions.items() if k not in moves}
-    if len(changed.moves)         > 0: printo(ajoin("MOV ", ["%s  <-  %s" % (path, dpath) for path, (dpath, dinfo) in sorted(changed.moves.items())], "\n"))
-    if len(        realadditions) > 0: printo(ajoin("ADD ", sorted(        realadditions.keys()), "\n"))
-    if len(        realdeletions) > 0: printo(ajoin("DEL ", sorted(        realdeletions.keys()), "\n"))
-    if len(changed.modifications) > 0: printo(ajoin("MOD ", [m if commitTime is None else (m + (" <older than previously committed>" if pi.mtime < _.paths[m].mtime else "") + (" <older than last revision>" if pi.mtime < commitTime else "")) for (m, pi) in sorted(changed.modifications.items())], "\n"))
+    if len(changed.moves)         > 0: printo(ajoin("MOV ", ["%s  <-  %s" % (relp(path, root), relp(dpath, root)) for path, (dpath, dinfo) in sorted(changed.moves.items())], "\n"))
+    if len(        realadditions) > 0: printo(ajoin("ADD ", sorted(         [relp(p, root) for p in realadditions.keys()]), "\n"))
+    if len(        realdeletions) > 0: printo(ajoin("DEL ", sorted(         [relp(p, root) for p in realdeletions.keys()]), "\n"))
+    if len(changed.modifications) > 0: printo(ajoin("MOD ", [relp(m, root) if commitTime is None else (relp(m, root) + (" <older than previously committed>" if pi.mtime < _.paths[m].mtime else "")) for (m, pi) in sorted(changed.modifications.items())], "\n"))
 
   def loadBranches(_, offline:bool = False):
     ''' Load list of branches and current branch info from metadata file. offline = offline command avoids message. '''
@@ -343,7 +348,7 @@ class Metadata:
         if len([n for n in _.c.ignores if fnmatch.fnmatch(file, n)]) > 0 and len([p for p in _.c.ignoresWhitelist if fnmatch.fnmatch(file, p)]) == 0: continue  # don't mark ignored files as deleted
         pth:str = path + SLASH + file
         changed.deletions[pth] = _.paths[pth]
-    changed = dataCopy(ChangeSet, changed, moves = detectMoves(changed))
+    changed = dataCopy(ChangeSet, changed, moves = detectMoves(changed, _.strict))
     if progress: printo("\r" + pure.ljust() + "\r", nl = "")  # forces clean line of progress output
     elif verbose: info("Finished detecting changes")
     tt:float = time.time() - start_time; speed:float = (original / (KIBI * tt)) if tt > 0. else 0.
@@ -531,7 +536,7 @@ def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
   m.saveBranches()  # TODO or indent again?
   info(usage.MARKER + "%s new %sbranch b%d%s" % ("Continue work after branching" if stay else "Switched to", "unnamed " if name is None else "", branch, " '%s'" % name if name else ""))
 
-def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None) -> ChangeSet =
+def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None, cwd:str? = None) -> ChangeSet =
   ''' Show changes of file tree vs. (last or specified) revision on current or specified branch. '''
   m:Metadata = Metadata(); branch:int?; revision:int?
   strict:bool = '--strict' in options or m.strict
@@ -546,7 +551,7 @@ def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = No
     considerOnly = onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, m.getTrackingPatterns() | m.getTrackingPatterns(branch)),
     dontConsider = excps if not (m.track or m.picky) else excps ?? (m.getTrackingPatterns(negative = True) | m.getTrackingPatterns(branch, negative = True)),
     progress = '--progress' in options)
-  m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if m.commits else time.time())
+  m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if m.commits else time.time(), root = os.path.abspath(cwd) if '--relative' in options else None)
   changed  # returning for unit tests only TODO remove?
 
 def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitespace:bool, textWrap:bool = False):  # TODO introduce option to diff against committed revision
@@ -604,7 +609,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   if m.picky and not trackingPatterns: Exit("No file patterns staged for commit in picky mode")
   if verbose: info(usage.MARKER + "Committing changes to branch '%s'..." % m.branches[m.branch].name ?? "b%d" % m.branch)
   m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options, check = False, commit = True, onlys = onlys, excps = excps)  # special flag creates new revision for detected changes, but aborts if no changes
-  changed = dataCopy(ChangeSet, changed, moves = detectMoves(changed))
+  changed = dataCopy(ChangeSet, changed, moves = detectMoves(changed, strict))
   m.paths = {k: v for k, v in changed.additions.items()}  # copy to avoid wrong file numbers report below
   m.paths.update(changed.modifications)  # update pathset to changeset only
   m.paths.update <| {k: dataCopy(PathInfo, v, size = None, hash = None) for k, v in changed.deletions.items()}
@@ -710,7 +715,7 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
     return (m, branch, revision, changed, strict, force, m.getTrackingPatterns(branch), m.getTrackingPatterns(branch, negative = True))
   (m, m.branch, maxi + (1 if commit else 0), changed, strict, force, trackingPatterns, untrackingPatterns)
 
-def switch(argument:str, options:List[str] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
+def switch(argument:str, options:List[str] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None, cwd:str? = None):
   ''' Continue work on another branch, replacing file tree changes. '''
   m, branch, revision, changed, strict, _force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, ["--force"] + options)  # force continuation to delay check to this function
   force:bool = '--force' in options  # needed as we fake force in above access
@@ -732,7 +737,7 @@ def switch(argument:str, options:List[str] = [], onlys:FrozenSet[str]? = None, e
     for a, pinfo in changed.additions.items():  # has potential corresponding re-add in switch operation:
       if a in todos.deletions and pinfo.size == todos.deletions[a].size and (pinfo.hash == todos.deletions[a].hash if m.strict else pinfo.mtime == todos.deletions[a].mtime): rms.append(a)
     for rm in rms: del changed.additions[rm]  # TODO could also silently accept remote DEL for local ADD
-    if modified(changed) and not force: m.listChanges(changed); Exit("File tree contains changes. Use --force to proceed")
+    if modified(changed) and not force: m.listChanges(changed, cwd); Exit("File tree contains changes. Use --force to proceed")
     if verbose: info(usage.MARKER + "Switching to branch %sb%d/r%02d..." % ("'%s' " % m.branches[branch].name if m.branches[branch].name else "", branch, revision))
     if not modified(todos):
       info("No changes to current file tree")
@@ -902,7 +907,7 @@ def ls(folder:str? = None, options:str[] = []):
       matches.sort(key = (element) -> len(element))  # sort in-place
       printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else DOT), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))
 
-def log(options:str[] = []):
+def log(options:str[] = [], cwd:str? = None):
   ''' List previous commits on current branch. '''
   changes_:bool = "--changes" in options
   diff_:bool = "--diff" in options
@@ -929,10 +934,10 @@ def log(options:str[] = []):
       _del:FrozenSet[str] = olds - news
   #    _mod_:Dict[str,PathInfo] = {k: nxts[k] for k in news - _add - _del}
       _mod:FrozenSet[str] = frozenset([_ for _, info in {k: nxts[k] for k in news - _add - _del}.items() if last[_].size != info.size or (last[_].hash != info.hash if m.strict else last[_].mtime != info.mtime)])
-  #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds})  # TODO determine moves - can we reuse detectMoves(changes)?
+  #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds}, m.strict)  # TODO determine moves - can we reuse detectMoves(changes)?
       _txt:int = len([m_ for m_ in _mod if m.isTextType(m_)])
       printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ((ARROW_SYMBOL if m.c.useUnicodeFont else "*") if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
-      if changes_: m.listChanges <| ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {})  # TODO moves detection?
+      if changes_: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}), root = cwd if '--relative' in options else None)  # TODO moves detection?
       if diff_: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news  # replaces olds for next revision compare
     last = {k: v for k, v in nxts.items()}  # create new reference
@@ -1121,26 +1126,26 @@ def parse(vcs:str, cwd:str, cmd:str):
       if len(arguments) < 2: Exit("Need a second file pattern argument as target for move command")
       newRelPath, newPattern = relativize(root, os.path.join(cwd, arguments[1]))
     arguments[:] = (arguments + [None] * 3)[:3]
-    if   command[:1] == "a":   add(relPath, pattern, options, negative = "n" in command)  # addnot
+    if   command[:1] == "a":   add(relPath, pattern, options, negative = "n" in command)  # e.g. addnot
     elif command[:1] == "b":   branch(arguments[0], arguments[1], options)
     elif command[:3] == "com": commit(arguments[0], options, onlys, excps)
-    elif command[:2] == "ch":  changes(arguments[0], options, onlys, excps)  # "changes" (legacy)
+    elif command[:2] == "ch":  changes(arguments[0], options, onlys, excps, cwd)  # "changes" (legacy)
     elif command[:2] == "ci":  commit(arguments[0], options, onlys, excps)
     elif command[:3] == 'con': config(arguments, options)
     elif command[:2] == "de":  destroy(arguments[0], options)
     elif command[:2] == "di":  diff(arguments[0], options, onlys, excps)
     elif command[:2] == "du":  dump(arguments[0], options)
     elif command[:1] == "h":   usage.usage(arguments[0], verbose = verbose)
-    elif command[:2] == "lo":  log(options)
+    elif command[:2] == "lo":  log(options, cwd)
     elif command[:2] == "li":  ls(os.path.relpath(arguments[0] ?? cwd, root), options)
     elif command[:2] == "ls":  ls(os.path.relpath(arguments[0] ?? cwd, root), options)
-    elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options, negative = "n" in command)  # mvnot
+    elif command[:1] == "m":   move(relPath, pattern, newRelPath, newPattern, options, negative = "n" in command)  # e.g. mvnot
     elif command[:2] == "of":  offline(arguments[0], arguments[1], options)
     elif command[:2] == "on":  online(options)
     elif command[:1] == "p":   publish(arguments[0], cmd, options, onlys, excps)
-    elif command[:1] == "r":   remove(relPath, pattern, negative = "n" in command)  # rmnot
+    elif command[:1] == "r":   remove(relPath, pattern, negative = "n" in command)  # e.g. rmnot
     elif command[:2] == "st":  status(arguments[0], vcs, cmd, options, onlys, excps)
-    elif command[:2] == "sw":  switch(arguments[0], options, onlys, excps)
+    elif command[:2] == "sw":  switch(arguments[0], options, onlys, excps, cwd)
     elif command[:1] == "u":   update(arguments[0], options, onlys, excps)
     elif command[:1] == "v":   usage.usage(arguments[0], version = True)
     else: Exit("Unknown command '%s'" % command)

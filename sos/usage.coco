@@ -429,6 +429,15 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
   "n": {
     "log": """Maximum number of entries to show"""
   },
+  "relative": {
+    "changes": """Display paths relative to current working directory. Default: paths relative to SOS repository root"""
+  },
+  "relative": {
+    "log": """Display paths relative to current working directory. Default: paths relative to SOS repository root"""
+  },
+  "relative": {
+    "switch": """Display paths relative to current working directory. Default: paths relative to SOS repository root"""
+  }
 }
 
 
