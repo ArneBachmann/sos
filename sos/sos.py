@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x7e0a3a82
+# __coconut_hash__ = 0x60a4c612
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -119,8 +119,8 @@ class Metadata:  # line 46
         commitTimne == None in switch and log
         root: current user's working dir to compute relative paths (cwd is usually repository root)
     '''  # line 84
-        prefix = lambda path: path if SLASH in path else "./" + path  # line 85
-        relp = lambda path, root: prefix(os.path.relpath(path, root)) if root else path  # line 86
+        adapt = lambda path: (path if SLASH in path else "./" + path).replace(os.sep, SLASH)  # line 85
+        relp = lambda path, root: adapt(os.path.relpath(path, root)) if root else path  # line 86
         moves = dict(changed.moves.values())  # type: Dict[str, PathInfo]  # of origin-pathinfo  # line 87
         realadditions = {k: v for k, v in changed.additions.items() if k not in changed.moves}  # type: Dict[str, PathInfo]  # line 88
         realdeletions = {k: v for k, v in changed.deletions.items() if k not in moves}  # type: Dict[str, PathInfo]  # line 89
