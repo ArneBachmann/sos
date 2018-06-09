@@ -922,14 +922,19 @@ def log(options:str[] = [], cwd:str? = None):
   last:Dict[str,PathInfo] = {}  # path infos from previous revision
   commit:CommitInfo
   n:Metadata = Metadata()  # used for reading parent branch information
+  indicator:ProgressIndicator? = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if '--all' not in options and maxi > number_ ?? m.c.logLines else None
+  digits:int? = pure.requiredDecimalDigits(maxi) if indicator else None
+  lastno:int = max(0, maxi + 1 - (number_ ?? m.c.logLines))
   for no in range(maxi + 1):
+    if indicator: printo("  %%s %%0%dd" % digits % (indicator.getIndicator(), no), nl = "\r")
     if no in m.commits: commit = m.commits[no]
     else:
       if n.branch != n.getParentBranch(m.branch, no): n.loadBranch(n.getParentBranch(m.branch, no))
       commit = n.commits[no]
     nxts:Dict[str,PathInfo] = next(changesetIterator)
     news:FrozenSet[str] = frozenset(nxts.keys())
-    if "--all" in options or no >= max(0, maxi + 1 - (number_ ?? m.c.logLines)):
+    if "--all" in options or no >= lastno:
+      if no >= lastno: indicator = None
       _add:FrozenSet[str] = news - olds
       _del:FrozenSet[str] = olds - news
   #    _mod_:Dict[str,PathInfo] = {k: nxts[k] for k in news - _add - _del}

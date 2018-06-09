@@ -1,0 +1,2 @@
+import sos
+sos.main()

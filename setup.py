@@ -7,10 +7,9 @@ from setuptools import setup, find_packages
 RELEASE = "1.6.1"
 COMPATIBILITY_LEVEL = "3.4"
 
-print("sys.argv is %r" % sys.argv)
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 if 'build' in sys.argv:
-  if os.environ.get("CI", "False").lower() != "true":
+  if os.environ.get("CI", "False").lower() != "true":  # code only run locally, not on CI
     print("Transpiling Coconut files to Python...")
     cmd = "-develop" if 0 == subprocess.Popen("coconut-develop --help", shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 1000000).wait() and os.getenv("NODEV", "false").strip().lower() != "true" else ""
     if "--mypy" in sys.argv:
@@ -21,7 +20,6 @@ if 'build' in sys.argv:
   if "--force" in sys.argv: sys.argv.remove('--force')
 
   if os.path.exists(".git"):  # must be local development, but ignored
-    print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")
     try:
       so, se = subprocess.Popen("git describe --always", shell = sys.platform != 'win32', bufsize = 1, stdout = subprocess.PIPE).communicate()  # use tag or hash
       extra = so.strip().decode(sys.stdout.encoding).replace("\n", "-")
@@ -38,15 +36,16 @@ __version_info__ = ({version[0]}, {version[1]}, {version[2]})
 __version__ = r'{fullName}'
 __release_version__ = '{release}'""".format(version = version, fullName = versionString + "-" + extra, release = RELEASE))
 
-  README = "\n".join(["# SOS v%s #" % RELEASE] + open(readmeFile, "r").read().split("\n")[1:])  # replace title in original README file
+  README = "\n".join(["# SOS v%s #" % RELEASE] + open(readmeFile, "r").read().split("\n")[1:])  # replace title in original README.md file
   with open(readmeFile, "wb") as fd: fd.write(README.encode("UTF-8").replace(b"\r", b""))
+  print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")
   if 0 != os.system("pandoc --from=markdown --to=rst --output=README.rst README.md"): print("Warning: Cannot run pandoc")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to continue
 
   import sos.sos as sos
 
 if 'test' in sys.argv:
-  import logging
+  import logging  # manual setup of logger in current main thread
   logging.basicConfig(level = logging.DEBUG, stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")
   sys.argv.append("--verbose")
   import sos.sos as sos
@@ -112,7 +111,7 @@ setup(
   license = 'MPL-2.0',
   packages = find_packages(),  # should return ["sos"], but returns []
   package_dir = {"sos": "sos"},
-  package_data = {"": ["../LICENSE", "../README.md", "../README.rst", "*.coco"]},
+  package_data = {"": ["../LICENSE", "../*.md", "../README.rst", "*.coco"]},  # *.py is included in any case
   include_package_data = False,  # if True, will *NOT* package the data!
   zip_safe = False,  # TODO re-add and test extras section for backport = enum34
   extras_require = { ':python_version < "3.5"': 'typing >= 3.5.3' },
