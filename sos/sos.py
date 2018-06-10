@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x515f9f42
+# __coconut_hash__ = 0x54ecc457
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -756,735 +756,744 @@ def commit(argument: '_coconut.typing.Optional[str]'=None, options: '_coconut.ty
         m.tags.append(argument)  # memorize unique tag  # line 622
         info("Version was tagged with %s" % argument)  # memorize unique tag  # line 622
     m.saveBranches()  # line 623
-    printo(usage.MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changed.additions) - len(changed.moves), len(changed.deletions) - len(changed.moves), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(changed.modifications), MOVE_SYMBOL if m.c.useUnicodeFont else "#", len(changed.moves)))  # line 624
+    stored = 0  # type: int  # now determine new commit size on file system  # line 624
+    overhead = 0  # type: int  # now determine new commit size on file system  # line 624
+    commitFolder = revisionFolder(m.branch, revision)  # type: str  # line 625
+    for file in os.listdir(commitFolder):  # line 626
+        newsize = tryOrDefault(lambda _=None: os.stat(encode(os.path.join(commitFolder, file))).st_size, 0)  # type: int  # line 627
+        if file == metaFile:  # line 628
+            overhead += newsize  # line 628
+        else:  # line 629
+            stored += newsize  # line 629
+    printo(usage.MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d) summing %s (%.2f%% SOS overhead)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changed.additions) - len(changed.moves), len(changed.deletions) - len(changed.moves), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(changed.modifications), MOVE_SYMBOL if m.c.useUnicodeFont else "#", len(changed.moves), ("%.2f MiB" % ((stored + overhead) / MEBI)) if stored > 1.25 * MEBI else (("%.2f Kib" % ((stored + overhead) / KIBI)) if stored > 1.25 * KIBI else ("%d bytes" % (stored + overhead))), (overhead * 100. / (stored + overhead)) if stored + overhead > 0 else 0.))  # line 630
 
-def status(argument: '_coconut.typing.Optional[str]'=None, vcs: '_coconut.typing.Optional[str]'=None, cmd: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None):  # line 626
-    ''' Show branches and current repository state. '''  # line 627
-    m = Metadata()  # type: Metadata  # line 628
-    if not (m.c.useChangesCommand or '--repo' in options):  # line 629
-        changes(argument, options, onlys, excps)  # line 629
-        return  # line 629
-    current = m.branch  # type: int  # line 630
-    strict = '--strict' in options or m.strict  # type: bool  # line 631
-    info(usage.MARKER + "Offline repository status")  # line 632
-    info("Repository root:     %s" % os.getcwd())  # line 633
-    info("Underlying VCS root: %s" % vcs)  # line 634
-    info("Underlying VCS type: %s" % cmd)  # line 635
-    info("Installation path:   %s" % os.path.abspath(os.path.dirname(os.path.dirname(__file__))))  # because sos/sos.py  # line 636
-    info("Current SOS version: %s" % version.__version__)  # line 637
-    info("At creation version: %s" % m.version)  # line 638
-    info("Metadata format:     %s" % m.format)  # line 639
-    info("Content checking:    %sactivated" % ("" if m.strict else "de"))  # line 640
-    info("Data compression:    %sactivated" % ("" if m.compress else "de"))  # line 641
-    info("Repository mode:     %s" % ("track" if m.track else ("picky" if m.picky else "simple")))  # line 642
-    info("Number of branches:  %d" % len(m.branches))  # line 643
-    trackingPatterns = m.getTrackingPatterns()  # type: FrozenSet[str]  # line 644
-    untrackingPatterns = m.getTrackingPatterns(negative=True)  # type: FrozenSet[str]  # line 645
-    m.loadBranch(current)  # line 646
-    maxi = max(m.commits) if m.commits else m.branches[m.branch].revision  # type: _coconut.typing.Optional[int]  # line 647
-    if maxi is not None:  # load all commits up to specified revision, except no commits  # line 648
-        m.computeSequentialPathSet(current, maxi)  # load all commits up to specified revision, except no commits  # line 648
-    changed, _msg = m.findChanges(checkContent=strict, considerOnly=onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingPatterns), dontConsider=excps if not (m.track or m.picky) else (untrackingPatterns if excps is None else excps), progress=True)  # line 649
-    printo("%s File tree %s" % ((CROSS_SYMBOL if m.c.useUnicodeFont else "!") if modified(changed) else (CHECKMARK_SYMBOL if m.c.useUnicodeFont else " "), "has changes" if modified(changed) else "is unchanged"))  # TODO use other marks if no unicode console detected TODO bad choice of symbols for changed vs. unchanged  # line 654
-    sl = max([len((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(b.name)) for b in m.branches.values()])  # type: int  # line 655
-    for branch in sorted(m.branches.values(), key=lambda b: b.number):  # line 656
-        payload = 0  # type: int  # count used storage per branch  # line 657
-        overhead = 0  # type: int  # count used storage per branch  # line 657
-        original = 0  # type: int  # count used storage per branch  # line 657
-        for dn, ds, fs in os.walk(branchFolder(branch.number)):  # line 658
-            for f in fs:  # TODO count all backup folders as overhead instead? check "onlydeveloped" code for that logic  # line 659
-                if f == metaFile or f.endswith(BACKUP_SUFFIX):  # line 660
-                    overhead += tryOrDefault(lambda _=None: os.stat(encode(os.path.join(dn, f))).st_size, 0)  # line 660
-                else:  # line 661
-                    payload += tryOrDefault(lambda _=None: os.stat(encode(os.path.join(dn, f))).st_size, 0)  # line 661
-        pl_amount = float(payload) / MEBI  # type: float  # line 662
-        oh_amount = float(overhead) / MEBI  # type: float  # line 662
+def status(argument: '_coconut.typing.Optional[str]'=None, vcs: '_coconut.typing.Optional[str]'=None, cmd: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None):  # line 632
+    ''' Show branches and current repository state. '''  # line 633
+    m = Metadata()  # type: Metadata  # line 634
+    if not (m.c.useChangesCommand or '--repo' in options):  # line 635
+        changes(argument, options, onlys, excps)  # line 635
+        return  # line 635
+    current = m.branch  # type: int  # line 636
+    strict = '--strict' in options or m.strict  # type: bool  # line 637
+    info(usage.MARKER + "Offline repository status")  # line 638
+    info("Repository root:     %s" % os.getcwd())  # line 639
+    info("Underlying VCS root: %s" % vcs)  # line 640
+    info("Underlying VCS type: %s" % cmd)  # line 641
+    info("Installation path:   %s" % os.path.abspath(os.path.dirname(os.path.dirname(__file__))))  # because sos/sos.py  # line 642
+    info("Current SOS version: %s" % version.__version__)  # line 643
+    info("At creation version: %s" % m.version)  # line 644
+    info("Metadata format:     %s" % m.format)  # line 645
+    info("Content checking:    %sactivated" % ("" if m.strict else "de"))  # line 646
+    info("Data compression:    %sactivated" % ("" if m.compress else "de"))  # line 647
+    info("Repository mode:     %s" % ("track" if m.track else ("picky" if m.picky else "simple")))  # line 648
+    info("Number of branches:  %d" % len(m.branches))  # line 649
+    trackingPatterns = m.getTrackingPatterns()  # type: FrozenSet[str]  # line 650
+    untrackingPatterns = m.getTrackingPatterns(negative=True)  # type: FrozenSet[str]  # line 651
+    m.loadBranch(current)  # line 652
+    maxi = max(m.commits) if m.commits else m.branches[m.branch].revision  # type: _coconut.typing.Optional[int]  # line 653
+    if maxi is not None:  # load all commits up to specified revision, except no commits  # line 654
+        m.computeSequentialPathSet(current, maxi)  # load all commits up to specified revision, except no commits  # line 654
+    changed, _msg = m.findChanges(checkContent=strict, considerOnly=onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingPatterns), dontConsider=excps if not (m.track or m.picky) else (untrackingPatterns if excps is None else excps), progress=True)  # line 655
+    printo("%s File tree %s" % ((CROSS_SYMBOL if m.c.useUnicodeFont else "!") if modified(changed) else (CHECKMARK_SYMBOL if m.c.useUnicodeFont else " "), "has changes" if modified(changed) else "is unchanged"))  # TODO use other marks if no unicode console detected TODO bad choice of symbols for changed vs. unchanged  # line 660
+    sl = max([len((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(b.name)) for b in m.branches.values()])  # type: int  # line 661
+    for branch in sorted(m.branches.values(), key=lambda b: b.number):  # line 662
+        payload = 0  # type: int  # count used storage per branch  # line 663
+        overhead = 0  # type: int  # count used storage per branch  # line 663
+        original = 0  # type: int  # count used storage per branch  # line 663
+        for dn, ds, fs in os.walk(branchFolder(branch.number)):  # line 664
+            for f in fs:  # TODO count all backup folders as overhead instead? check "onlydeveloped" code for that logic  # line 665
+                if f == metaFile or f.endswith(BACKUP_SUFFIX):  # line 666
+                    overhead += tryOrDefault(lambda _=None: os.stat(encode(os.path.join(dn, f))).st_size, 0)  # line 666
+                else:  # line 667
+                    payload += tryOrDefault(lambda _=None: os.stat(encode(os.path.join(dn, f))).st_size, 0)  # line 667
+        pl_amount = float(payload) / MEBI  # type: float  # line 668
+        oh_amount = float(overhead) / MEBI  # type: float  # line 668
 # if pl_amount >= 1100.:   convert to string
-        m.loadBranch(branch.number)  # knows commit history  # line 664
-        for commit_ in range(1 + max(m.commits) if m.commits else 0):  # line 665
-            m.loadCommit(m.branch, commit_)  # line 666
-            for pinfo in m.paths.values():  # line 667
-                original += (lambda _coconut_none_coalesce_item: 0 if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(pinfo.size)  # line 667
-        maxi = max(m.commits) if m.commits else m.branches[branch.number].revision  # line 668
-        printo("  %s b%d%s @%s (%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % (("'%s'" % branch.name) if branch.name else "")), strftime(branch.ctime), "in sync" if branch.inSync else "modified", len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "", (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))  # line 669
-    if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):  # line 670
-        info("\nTracked file patterns:")  # TODO print matching untracking patterns side-by-side  # line 671
-        printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))  # line 672
-        info("\nUntracked file patterns:")  # line 673
-        printo(ajoin("  | ", m.branches[m.branch].untracked, "\n"))  # line 674
+        m.loadBranch(branch.number)  # knows commit history  # line 670
+        for commit_ in range(1 + max(m.commits) if m.commits else 0):  # line 671
+            m.loadCommit(m.branch, commit_)  # line 672
+            for pinfo in m.paths.values():  # line 673
+                original += (lambda _coconut_none_coalesce_item: 0 if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(pinfo.size)  # line 673
+        maxi = max(m.commits) if m.commits else m.branches[branch.number].revision  # line 674
+        printo("  %s b%d%s @%s (%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % (("'%s'" % branch.name) if branch.name else "")), strftime(branch.ctime), "in sync" if branch.inSync else "modified", len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "", (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))  # line 675
+    if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):  # line 676
+        info("\nTracked file patterns:")  # TODO print matching untracking patterns side-by-side  # line 677
+        printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))  # line 678
+        info("\nUntracked file patterns:")  # line 679
+        printo(ajoin("  | ", m.branches[m.branch].untracked, "\n"))  # line 680
 
-def exitOnChanges(argument: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[], check: 'bool'=True, commit: 'bool'=False, onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None) -> 'Tuple[Metadata, _coconut.typing.Optional[int], int, ChangeSet, bool, bool, FrozenSet[str], FrozenSet[str]]':  # line 676
+def exitOnChanges(argument: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[], check: 'bool'=True, commit: 'bool'=False, onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None) -> 'Tuple[Metadata, _coconut.typing.Optional[int], int, ChangeSet, bool, bool, FrozenSet[str], FrozenSet[str]]':  # line 682
     ''' Common behavior for switch, update, delete, commit.
       Should not be called for picky mode, unless tracking patterns were already added.
       argument: optional branch/revision, used only in switch and update
       check: stop program on detected change (default yes)
       commit: don't stop on changes and write to file system
       Returns (Metadata, (current or target) branch, revision, set of changes vs. last commit on current branch, strict, force flags.
-  '''  # line 683
-    assert not (check and commit)  # line 684
-    m = Metadata()  # type: Metadata  # line 685
-    force = '--force' in options  # type: bool  # line 686
-    strict = '--strict' in options or m.strict  # type: bool  # line 687
-    if argument is not None:  # line 688
-        branch, revision = m.parseRevisionString(argument)  # for early abort  # line 689
-        if branch is None:  # line 690
-            Exit("Branch '%s' doesn't exist. Cannot proceed" % argument)  # line 690
-    m.loadBranch(m.branch)  # knows last commits of *current* branch  # line 691
-    maxi = max(m.commits) if m.commits else m.branches[m.branch].revision  # type: int  # line 692
+  '''  # line 689
+    assert not (check and commit)  # line 690
+    m = Metadata()  # type: Metadata  # line 691
+    force = '--force' in options  # type: bool  # line 692
+    strict = '--strict' in options or m.strict  # type: bool  # line 693
+    if argument is not None:  # line 694
+        branch, revision = m.parseRevisionString(argument)  # for early abort  # line 695
+        if branch is None:  # line 696
+            Exit("Branch '%s' doesn't exist. Cannot proceed" % argument)  # line 696
+    m.loadBranch(m.branch)  # knows last commits of *current* branch  # line 697
+    maxi = max(m.commits) if m.commits else m.branches[m.branch].revision  # type: int  # line 698
 
 # Determine current changes
-    trackingPatterns = m.getTrackingPatterns()  # type: FrozenSet[str]  # line 695
-    untrackingPatterns = m.getTrackingPatterns(negative=True)  # type: FrozenSet[str]  # line 696
-    m.computeSequentialPathSet(m.branch, maxi)  # load all commits up to specified revision  # line 697
-    changed, msg = m.findChanges(m.branch if commit else None, maxi + 1 if commit else None, checkContent=strict, considerOnly=onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingPatterns), dontConsider=excps if not (m.track or m.picky) else (untrackingPatterns if excps is None else excps), progress='--progress' in options)  # line 698
-    if check and modified(changed) and not force:  # line 703
-        m.listChanges(changed, commitTime=m.commits[max(m.commits)].ctime if m.commits else 0)  # line 704
-        Exit("File tree contains changes. Use --force to proceed")  # line 705
-    elif commit:  # line 706
-        if not modified(changed) and not force:  # line 707
-            Exit("Nothing to commit")  # line 707
-        m.listChanges(changed, commitTime=m.commits[max(m.commits)].ctime if m.commits else 0)  # line 708
-        if msg:  # line 709
-            printo(msg)  # line 709
+    trackingPatterns = m.getTrackingPatterns()  # type: FrozenSet[str]  # line 701
+    untrackingPatterns = m.getTrackingPatterns(negative=True)  # type: FrozenSet[str]  # line 702
+    m.computeSequentialPathSet(m.branch, maxi)  # load all commits up to specified revision  # line 703
+    changed, msg = m.findChanges(m.branch if commit else None, maxi + 1 if commit else None, checkContent=strict, considerOnly=onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingPatterns), dontConsider=excps if not (m.track or m.picky) else (untrackingPatterns if excps is None else excps), progress='--progress' in options)  # line 704
+    if check and modified(changed) and not force:  # line 709
+        m.listChanges(changed, commitTime=m.commits[max(m.commits)].ctime if m.commits else 0)  # line 710
+        Exit("File tree contains changes. Use --force to proceed")  # line 711
+    elif commit:  # line 712
+        if not modified(changed) and not force:  # line 713
+            Exit("Nothing to commit")  # line 713
+        m.listChanges(changed, commitTime=m.commits[max(m.commits)].ctime if m.commits else 0)  # line 714
+        if msg:  # line 715
+            printo(msg)  # line 715
 
-    if argument is not None:  # branch/revision specified  # line 711
-        m.loadBranch(branch)  # knows commits of target branch  # line 712
-        maxi = max(m.commits) if m.commits else m.branches[m.branch].revision  # line 713
-        revision = m.correctNegativeIndexing(revision)  # line 714
-        return (m, branch, revision, changed, strict, force, m.getTrackingPatterns(branch), m.getTrackingPatterns(branch, negative=True))  # line 715
-    return (m, m.branch, maxi + (1 if commit else 0), changed, strict, force, trackingPatterns, untrackingPatterns)  # line 716
+    if argument is not None:  # branch/revision specified  # line 717
+        m.loadBranch(branch)  # knows commits of target branch  # line 718
+        maxi = max(m.commits) if m.commits else m.branches[m.branch].revision  # line 719
+        revision = m.correctNegativeIndexing(revision)  # line 720
+        return (m, branch, revision, changed, strict, force, m.getTrackingPatterns(branch), m.getTrackingPatterns(branch, negative=True))  # line 721
+    return (m, m.branch, maxi + (1 if commit else 0), changed, strict, force, trackingPatterns, untrackingPatterns)  # line 722
 
-def switch(argument: 'str', options: 'List[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None, cwd: '_coconut.typing.Optional[str]'=None):  # line 718
-    ''' Continue work on another branch, replacing file tree changes. '''  # line 719
-    m, branch, revision, changed, strict, _force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, ["--force"] + options)  # force continuation to delay check to this function  # line 720
-    force = '--force' in options  # type: bool  # needed as we fake force in above access  # line 721
+def switch(argument: 'str', options: 'List[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None, cwd: '_coconut.typing.Optional[str]'=None):  # line 724
+    ''' Continue work on another branch, replacing file tree changes. '''  # line 725
+    m, branch, revision, changed, strict, _force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, ["--force"] + options)  # force continuation to delay check to this function  # line 726
+    force = '--force' in options  # type: bool  # needed as we fake force in above access  # line 727
 
 # Determine file changes from other branch to current file tree
-    if '--meta' in options:  # only switch meta data  # line 724
-        m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked=m.branches[branch].tracked, untracked=m.branches[branch].untracked)  # line 725
-    else:  # full file switch  # line 726
-        m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for target branch into memory  # line 727
-        todos, _msg = m.findChanges(checkContent=strict, inverse=True, considerOnly=onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingPatterns | m.getTrackingPatterns(branch)), dontConsider=excps if not (m.track or m.picky) else ((untrackingPatterns | m.getTrackingPatterns(branch, negative=True)) if excps is None else excps), progress='--progress' in options)  # determine difference of other branch vs. file tree (forced or in sync with current branch; "addition" means exists now and should be removed)  # line 728
+    if '--meta' in options:  # only switch meta data  # line 730
+        m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked=m.branches[branch].tracked, untracked=m.branches[branch].untracked)  # line 731
+    else:  # full file switch  # line 732
+        m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for target branch into memory  # line 733
+        todos, _msg = m.findChanges(checkContent=strict, inverse=True, considerOnly=onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingPatterns | m.getTrackingPatterns(branch)), dontConsider=excps if not (m.track or m.picky) else ((untrackingPatterns | m.getTrackingPatterns(branch, negative=True)) if excps is None else excps), progress='--progress' in options)  # determine difference of other branch vs. file tree (forced or in sync with current branch; "addition" means exists now and should be removed)  # line 734
 
 # Now check for potential conflicts
-        changed.deletions.clear()  # local deletions never create conflicts, modifications always  # line 735
-        rms = []  # type: _coconut.typing.Sequence[str]  # local additions can be ignored if restoration from switch would be same  # line 736
-        for a, pinfo in changed.additions.items():  # has potential corresponding re-add in switch operation:  # line 737
-            if a in todos.deletions and pinfo.size == todos.deletions[a].size and (pinfo.hash == todos.deletions[a].hash if m.strict else pinfo.mtime == todos.deletions[a].mtime):  # line 738
-                rms.append(a)  # line 738
-        for rm in rms:  # TODO could also silently accept remote DEL for local ADD  # line 739
-            del changed.additions[rm]  # TODO could also silently accept remote DEL for local ADD  # line 739
-        if modified(changed) and not force:  # line 740
-            m.listChanges(changed, cwd)  # line 740
-            Exit("File tree contains changes. Use --force to proceed")  # line 740
-        if verbose:  # line 741
-            info(usage.MARKER + "Switching to branch %sb%d/r%02d..." % ("'%s' " % m.branches[branch].name if m.branches[branch].name else "", branch, revision))  # line 741
-        if not modified(todos):  # line 742
-            info("No changes to current file tree")  # line 743
-        else:  # integration required  # line 744
-            for path, pinfo in todos.deletions.items():  # line 745
-                m.restoreFile(path, branch, revision, pinfo, ensurePath=True)  # is deleted in current file tree: restore from branch to reach target state  # line 746
-                printo("ADD " + path)  # line 747
-            for path, pinfo in todos.additions.items():  # line 748
-                os.unlink(encode(os.path.join(m.root, path.replace(SLASH, os.sep))))  # is added in current file tree: remove from branch to reach target state  # line 749
-                printo("DEL " + path)  # line 750
-            for path, pinfo in todos.modifications.items():  # line 751
-                m.restoreFile(path, branch, revision, pinfo)  # is modified in current file tree: restore from branch to reach target  # line 752
-                printo("MOD " + path)  # line 753
-    m.branch = branch  # line 754
-    m.saveBranches()  # store switched path info  # line 755
-    info(usage.MARKER + "Switched to branch %sb%d/r%02d" % ("'%s' " % (m.branches[branch].name if m.branches[branch].name else ""), branch, revision))  # line 756
+        changed.deletions.clear()  # local deletions never create conflicts, modifications always  # line 741
+        rms = []  # type: _coconut.typing.Sequence[str]  # local additions can be ignored if restoration from switch would be same  # line 742
+        for a, pinfo in changed.additions.items():  # has potential corresponding re-add in switch operation:  # line 743
+            if a in todos.deletions and pinfo.size == todos.deletions[a].size and (pinfo.hash == todos.deletions[a].hash if m.strict else pinfo.mtime == todos.deletions[a].mtime):  # line 744
+                rms.append(a)  # line 744
+        for rm in rms:  # TODO could also silently accept remote DEL for local ADD  # line 745
+            del changed.additions[rm]  # TODO could also silently accept remote DEL for local ADD  # line 745
+        if modified(changed) and not force:  # line 746
+            m.listChanges(changed, cwd)  # line 746
+            Exit("File tree contains changes. Use --force to proceed")  # line 746
+        if verbose:  # line 747
+            info(usage.MARKER + "Switching to branch %sb%d/r%02d..." % ("'%s' " % m.branches[branch].name if m.branches[branch].name else "", branch, revision))  # line 747
+        if not modified(todos):  # line 748
+            info("No changes to current file tree")  # line 749
+        else:  # integration required  # line 750
+            for path, pinfo in todos.deletions.items():  # line 751
+                m.restoreFile(path, branch, revision, pinfo, ensurePath=True)  # is deleted in current file tree: restore from branch to reach target state  # line 752
+                printo("ADD " + path)  # line 753
+            for path, pinfo in todos.additions.items():  # line 754
+                os.unlink(encode(os.path.join(m.root, path.replace(SLASH, os.sep))))  # is added in current file tree: remove from branch to reach target state  # line 755
+                printo("DEL " + path)  # line 756
+            for path, pinfo in todos.modifications.items():  # line 757
+                m.restoreFile(path, branch, revision, pinfo)  # is modified in current file tree: restore from branch to reach target  # line 758
+                printo("MOD " + path)  # line 759
+    m.branch = branch  # line 760
+    m.saveBranches()  # store switched path info  # line 761
+    info(usage.MARKER + "Switched to branch %sb%d/r%02d" % ("'%s' " % (m.branches[branch].name if m.branches[branch].name else ""), branch, revision))  # line 762
 
-def update(argument: 'str', options: '_coconut.typing.Sequence[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None):  # line 758
+def update(argument: 'str', options: '_coconut.typing.Sequence[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None):  # line 764
     ''' Load and integrate a specified other branch/revision into current life file tree.
       In tracking mode, this also updates the set of tracked patterns.
       User options for merge operation: --add/--rm/--ask --add-lines/--rm-lines/--ask-lines (inside each file), --add-chars/--rm-chars/--ask-chars
-  '''  # line 762
-    mrg = getAnyOfMap({"--add": MergeOperation.INSERT, "--rm": MergeOperation.REMOVE, "--ask": MergeOperation.ASK}, options, MergeOperation.BOTH)  # type: MergeOperation  # default operation is replicate remote state  # line 763
-    mrgline = getAnyOfMap({'--add-lines': MergeOperation.INSERT, '--rm-lines': MergeOperation.REMOVE, "--ask-lines": MergeOperation.ASK}, options, mrg)  # type: MergeOperation  # default operation for modified files is same as for files  # line 764
-    mrgchar = getAnyOfMap({'--add-chars': MergeOperation.INSERT, '--rm-chars': MergeOperation.REMOVE, "--ask-chars": MergeOperation.ASK}, options, mrgline)  # type: MergeOperation  # default operation for modified files is same as for lines  # line 765
-    eol = '--eol' in options  # type: bool  # use remote eol style  # line 766
-    m = Metadata()  # type: Metadata  # TODO same is called inside stop on changes - could return both current and designated branch instead  # line 767
-    currentBranch = m.branch  # type: _coconut.typing.Optional[int]  # line 768
-    m, branch, revision, changes_, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, options, check=False, onlys=onlys, excps=excps)  # don't check for current changes, only parse arguments  # line 769
-    if verbose:  # line 770
-        info(usage.MARKER + "Integrating changes from '%s/r%02d' into file tree..." % ((lambda _coconut_none_coalesce_item: "b%d" % branch if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(m.branches[branch].name), revision))  # line 770
+  '''  # line 768
+    mrg = getAnyOfMap({"--add": MergeOperation.INSERT, "--rm": MergeOperation.REMOVE, "--ask": MergeOperation.ASK}, options, MergeOperation.BOTH)  # type: MergeOperation  # default operation is replicate remote state  # line 769
+    mrgline = getAnyOfMap({'--add-lines': MergeOperation.INSERT, '--rm-lines': MergeOperation.REMOVE, "--ask-lines": MergeOperation.ASK}, options, mrg)  # type: MergeOperation  # default operation for modified files is same as for files  # line 770
+    mrgchar = getAnyOfMap({'--add-chars': MergeOperation.INSERT, '--rm-chars': MergeOperation.REMOVE, "--ask-chars": MergeOperation.ASK}, options, mrgline)  # type: MergeOperation  # default operation for modified files is same as for lines  # line 771
+    eol = '--eol' in options  # type: bool  # use remote eol style  # line 772
+    m = Metadata()  # type: Metadata  # TODO same is called inside stop on changes - could return both current and designated branch instead  # line 773
+    currentBranch = m.branch  # type: _coconut.typing.Optional[int]  # line 774
+    m, branch, revision, changes_, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, options, check=False, onlys=onlys, excps=excps)  # don't check for current changes, only parse arguments  # line 775
+    if verbose:  # line 776
+        info(usage.MARKER + "Integrating changes from '%s/r%02d' into file tree..." % ((lambda _coconut_none_coalesce_item: "b%d" % branch if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(m.branches[branch].name), revision))  # line 776
 
 # Determine file changes from other branch over current file tree
-    m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for branch to integrate  # line 773
-    trackingUnion = trackingPatterns | m.getTrackingPatterns(branch)  # type: FrozenSet[str]  # line 774
-    untrackingUnion = untrackingPatterns | m.getTrackingPatterns(branch, negative=True)  # type: FrozenSet[str]  # line 775
-    changed, _msg = m.findChanges(checkContent=strict, inverse=True, considerOnly=onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingUnion), dontConsider=excps if not (m.track or m.picky) else (untrackingUnion if onlys is None else onlys), progress='--progress' in options)  # determine difference of other branch vs. file tree. "addition" means exists now but not in other, and should be removed unless in tracking mode  # line 776
-    if mrg != MergeOperation.ASK and not changed.modifications and not (mrg.value & MergeOperation.INSERT.value and changed.additions or (mrg.value & MergeOperation.REMOVE.value and changed.deletions)):  # no file ops, TODO ASK handling is clumsy here  # line 781
-        if trackingUnion != trackingPatterns:  # nothing added  # line 782
-            info("No file changes detected, but tracking patterns were merged (run 'sos switch /-1 --meta' to undo)")  # TODO write test to see if this works  # line 783
-        else:  # line 784
-            info("Nothing to update")  # but write back updated branch info below  # line 785
-    else:  # integration required  # line 786
-        add_all = None  # type: _coconut.typing.Optional[str]  # user input markers to continue to add/delete all remaining  # line 787
-        del_all = None  # type: _coconut.typing.Optional[str]  # user input markers to continue to add/delete all remaining  # line 787
-        selection = None  # type: str  # user input markers to continue to add/delete all remaining  # line 787
-        if changed.deletions.items():  # line 788
-            printo("Additions:")  # line 788
-        for path, pinfo in changed.deletions.items():  # file-based update. Deletions mark files not present in current file tree -> needs addition!  # line 789
-            selection = "y" if mrg.value & MergeOperation.INSERT.value else "n"  # default for non-ask case  # line 790
-            if add_all is None and mrg == MergeOperation.ASK:  # line 791
-                selection = user_input("  Restore %r? *[Y]es, [N]o, yes to [A]ll, n[O] to all: " % path, "ynao", "y")  # line 792
-                if selection in "ao":  # line 793
-                    add_all = "y" if selection == "a" else "n"  # line 793
-                    selection = add_all  # line 793
-            if "y" in (add_all, selection):  # deleted in current file tree: restore from branch to reach target  # line 794
-                m.restoreFile(path, branch, revision, pinfo, ensurePath=True)  # deleted in current file tree: restore from branch to reach target  # line 794
-            printo(("ADD " if "y" in (add_all, selection) else "(A) ") + path)  # TODO document (A) as "selected not to add by user choice"  # line 795
-        if changed.additions.items():  # line 796
-            printo("Deletions:")  # line 796
-        for path, pinfo in changed.additions.items():  # line 797
-            if m.track or m.picky:  # because untracked files of other branch cannot be detected (which is good)  # line 798
-                Exit("This should never happen. Please create an issue report on Github")  # because untracked files of other branch cannot be detected (which is good)  # line 798
-            selection = "y" if mrg.value & MergeOperation.REMOVE.value else "n"  # line 799
-            if del_all is None and mrg == MergeOperation.ASK:  # line 800
-                selection = user_input("  Delete %r? *[Y]es, [N]o, yes to [A]ll, n[O] to all: " % path, "ynao", "y")  # line 801
-                if selection in "ao":  # line 802
-                    del_all = "y" if selection == "a" else "n"  # line 802
-                    selection = del_all  # line 802
-            if "y" in (del_all, selection):  # line 803
-                os.unlink(encode(m.root + os.sep + path.replace(SLASH, os.sep)))  # line 803
-            printo(("DEL " if "y" in (del_all, selection) else "(D) ") + path)  # not contained in other branch, but maybe kept  # line 804
-        if changed.modifications.items():  # line 805
-            printo("Modifications:")  # line 805
-        for path, pinfo in changed.modifications.items():  # line 806
-            into = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))  # type: str  # line 807
-            binary = not m.isTextType(path)  # type: bool  # line 808
-            op = "m"  # type: str  # merge as default for text files, always asks for binary (TODO unless --theirs or --mine)  # line 809
-            if mrg == MergeOperation.ASK or binary:  # TODO this may ask user even if no interaction was asked for  # line 810
-                printo(("MOD " if not binary else "BIN ") + path)  # TODO print mtime, size differences?  # line 811
-                op = user_input("  Resolve %r: *M[I]ne (skip), [T]heirs" % into + (": " if binary else ", [M]erge: "), "it" if binary else "itm", "i")  # line 812
-            if op == "t":  # line 813
-                printo("THR " + path)  # blockwise copy of contents  # line 814
-                m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile=into)  # blockwise copy of contents  # line 814
-            elif op == "m":  # line 815
-                with open(encode(into), "rb") as fd:  # TODO slurps current file  # line 816
-                    current = fd.read()  # type: bytes  # TODO slurps current file  # line 816
-                file = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # type: _coconut.typing.Optional[bytes]  # parse lines  # line 817
-                if current == file and verbose:  # line 818
-                    info("No difference to versioned file")  # line 818
-                elif file is not None:  # if None, error message was already logged  # line 819
-                    merged = None  # type: bytes  # line 820
-                    nl = None  # type: bytes  # line 820
-                    merged, nl = merge(file=file, into=current, mergeOperation=mrgline, charMergeOperation=mrgchar, eol=eol)  # line 821
-                    if merged != current:  # line 822
-                        with open(encode(path), "wb") as fd:  # TODO write to temp file first, in case writing fails  # line 823
-                            fd.write(merged)  # TODO write to temp file first, in case writing fails  # line 823
-                    elif verbose:  # TODO but update timestamp?  # line 824
-                        info("No change")  # TODO but update timestamp?  # line 824
-            else:  # mine or wrong input  # line 825
-                printo("MNE " + path)  # nothing to do! same as skip  # line 826
-    info(usage.MARKER + "Integrated changes from '%s/r%02d' into file tree" % ((lambda _coconut_none_coalesce_item: "b%d" % branch if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(m.branches[branch].name), revision))  # line 827
-    m.branches[currentBranch] = dataCopy(BranchInfo, m.branches[currentBranch], inSync=False, tracked=list(trackingUnion))  # line 828
-    m.branch = currentBranch  # need to restore setting before saving TODO operate on different objects instead  # line 829
-    m.saveBranches()  # line 830
+    m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for branch to integrate  # line 779
+    trackingUnion = trackingPatterns | m.getTrackingPatterns(branch)  # type: FrozenSet[str]  # line 780
+    untrackingUnion = untrackingPatterns | m.getTrackingPatterns(branch, negative=True)  # type: FrozenSet[str]  # line 781
+    changed, _msg = m.findChanges(checkContent=strict, inverse=True, considerOnly=onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingUnion), dontConsider=excps if not (m.track or m.picky) else (untrackingUnion if onlys is None else onlys), progress='--progress' in options)  # determine difference of other branch vs. file tree. "addition" means exists now but not in other, and should be removed unless in tracking mode  # line 782
+    if mrg != MergeOperation.ASK and not changed.modifications and not (mrg.value & MergeOperation.INSERT.value and changed.additions or (mrg.value & MergeOperation.REMOVE.value and changed.deletions)):  # no file ops, TODO ASK handling is clumsy here  # line 787
+        if trackingUnion != trackingPatterns:  # nothing added  # line 788
+            info("No file changes detected, but tracking patterns were merged (run 'sos switch /-1 --meta' to undo)")  # TODO write test to see if this works  # line 789
+        else:  # line 790
+            info("Nothing to update")  # but write back updated branch info below  # line 791
+    else:  # integration required  # line 792
+        add_all = None  # type: _coconut.typing.Optional[str]  # user input markers to continue to add/delete all remaining  # line 793
+        del_all = None  # type: _coconut.typing.Optional[str]  # user input markers to continue to add/delete all remaining  # line 793
+        selection = None  # type: str  # user input markers to continue to add/delete all remaining  # line 793
+        if changed.deletions.items():  # line 794
+            printo("Additions:")  # line 794
+        for path, pinfo in changed.deletions.items():  # file-based update. Deletions mark files not present in current file tree -> needs addition!  # line 795
+            selection = "y" if mrg.value & MergeOperation.INSERT.value else "n"  # default for non-ask case  # line 796
+            if add_all is None and mrg == MergeOperation.ASK:  # line 797
+                selection = user_input("  Restore %r? *[Y]es, [N]o, yes to [A]ll, n[O] to all: " % path, "ynao", "y")  # line 798
+                if selection in "ao":  # line 799
+                    add_all = "y" if selection == "a" else "n"  # line 799
+                    selection = add_all  # line 799
+            if "y" in (add_all, selection):  # deleted in current file tree: restore from branch to reach target  # line 800
+                m.restoreFile(path, branch, revision, pinfo, ensurePath=True)  # deleted in current file tree: restore from branch to reach target  # line 800
+            printo(("ADD " if "y" in (add_all, selection) else "(A) ") + path)  # TODO document (A) as "selected not to add by user choice"  # line 801
+        if changed.additions.items():  # line 802
+            printo("Deletions:")  # line 802
+        for path, pinfo in changed.additions.items():  # line 803
+            if m.track or m.picky:  # because untracked files of other branch cannot be detected (which is good)  # line 804
+                Exit("This should never happen. Please create an issue report on Github")  # because untracked files of other branch cannot be detected (which is good)  # line 804
+            selection = "y" if mrg.value & MergeOperation.REMOVE.value else "n"  # line 805
+            if del_all is None and mrg == MergeOperation.ASK:  # line 806
+                selection = user_input("  Delete %r? *[Y]es, [N]o, yes to [A]ll, n[O] to all: " % path, "ynao", "y")  # line 807
+                if selection in "ao":  # line 808
+                    del_all = "y" if selection == "a" else "n"  # line 808
+                    selection = del_all  # line 808
+            if "y" in (del_all, selection):  # line 809
+                os.unlink(encode(m.root + os.sep + path.replace(SLASH, os.sep)))  # line 809
+            printo(("DEL " if "y" in (del_all, selection) else "(D) ") + path)  # not contained in other branch, but maybe kept  # line 810
+        if changed.modifications.items():  # line 811
+            printo("Modifications:")  # line 811
+        for path, pinfo in changed.modifications.items():  # line 812
+            into = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))  # type: str  # line 813
+            binary = not m.isTextType(path)  # type: bool  # line 814
+            op = "m"  # type: str  # merge as default for text files, always asks for binary (TODO unless --theirs or --mine)  # line 815
+            if mrg == MergeOperation.ASK or binary:  # TODO this may ask user even if no interaction was asked for  # line 816
+                printo(("MOD " if not binary else "BIN ") + path)  # TODO print mtime, size differences?  # line 817
+                op = user_input("  Resolve %r: *M[I]ne (skip), [T]heirs" % into + (": " if binary else ", [M]erge: "), "it" if binary else "itm", "i")  # line 818
+            if op == "t":  # line 819
+                printo("THR " + path)  # blockwise copy of contents  # line 820
+                m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile=into)  # blockwise copy of contents  # line 820
+            elif op == "m":  # line 821
+                with open(encode(into), "rb") as fd:  # TODO slurps current file  # line 822
+                    current = fd.read()  # type: bytes  # TODO slurps current file  # line 822
+                file = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # type: _coconut.typing.Optional[bytes]  # parse lines  # line 823
+                if current == file and verbose:  # line 824
+                    info("No difference to versioned file")  # line 824
+                elif file is not None:  # if None, error message was already logged  # line 825
+                    merged = None  # type: bytes  # line 826
+                    nl = None  # type: bytes  # line 826
+                    merged, nl = merge(file=file, into=current, mergeOperation=mrgline, charMergeOperation=mrgchar, eol=eol)  # line 827
+                    if merged != current:  # line 828
+                        with open(encode(path), "wb") as fd:  # TODO write to temp file first, in case writing fails  # line 829
+                            fd.write(merged)  # TODO write to temp file first, in case writing fails  # line 829
+                    elif verbose:  # TODO but update timestamp?  # line 830
+                        info("No change")  # TODO but update timestamp?  # line 830
+            else:  # mine or wrong input  # line 831
+                printo("MNE " + path)  # nothing to do! same as skip  # line 832
+    info(usage.MARKER + "Integrated changes from '%s/r%02d' into file tree" % ((lambda _coconut_none_coalesce_item: "b%d" % branch if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(m.branches[branch].name), revision))  # line 833
+    m.branches[currentBranch] = dataCopy(BranchInfo, m.branches[currentBranch], inSync=False, tracked=list(trackingUnion))  # line 834
+    m.branch = currentBranch  # need to restore setting before saving TODO operate on different objects instead  # line 835
+    m.saveBranches()  # line 836
 
-def destroy(argument: 'str', options: '_coconut.typing.Sequence[str]'=[]):  # line 832
-    ''' Remove a branch entirely. '''  # line 833
-    m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options)  # line 834
-    if len(m.branches) == 1:  # line 835
-        Exit("Cannot remove the only remaining branch. Use 'sos online' to leave offline mode")  # line 835
-    branch, revision = m.parseRevisionString(argument)  # not from exitOnChanges, because we have to set argument to None there  # line 836
-    if branch is None or branch not in m.branches:  # line 837
-        Exit("Cannot delete unknown branch %r" % branch)  # line 837
-    if verbose:  # line 838
-        info(usage.MARKER + "Removing branch b%d%s..." % (branch, " '%s'" % ((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(m.branches[branch].name))))  # line 838
-    binfo = m.removeBranch(branch)  # need to keep a reference to removed entry for output below  # line 839
-    info(usage.MARKER + "Branch b%d%s removed" % (branch, " '%s'" % ((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(binfo.name))))  # line 840
+def destroy(argument: 'str', options: '_coconut.typing.Sequence[str]'=[]):  # line 838
+    ''' Remove a branch entirely. '''  # line 839
+    m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options)  # line 840
+    if len(m.branches) == 1:  # line 841
+        Exit("Cannot remove the only remaining branch. Use 'sos online' to leave offline mode")  # line 841
+    branch, revision = m.parseRevisionString(argument)  # not from exitOnChanges, because we have to set argument to None there  # line 842
+    if branch is None or branch not in m.branches:  # line 843
+        Exit("Cannot delete unknown branch %r" % branch)  # line 843
+    if verbose:  # line 844
+        info(usage.MARKER + "Removing branch b%d%s..." % (branch, " '%s'" % ((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(m.branches[branch].name))))  # line 844
+    binfo = m.removeBranch(branch)  # need to keep a reference to removed entry for output below  # line 845
+    info(usage.MARKER + "Branch b%d%s removed" % (branch, " '%s'" % ((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(binfo.name))))  # line 846
 
-def add(relPath: 'str', pattern: 'str', options: '_coconut.typing.Sequence[str]'=[], negative: 'bool'=False):  # line 842
-    ''' Add a tracked files pattern to current branch's tracked files. negative means tracking blacklisting. '''  # line 843
-    force = '--force' in options  # type: bool  # line 844
-    m = Metadata()  # type: Metadata  # line 845
-    if not (m.track or m.picky):  # line 846
-        Exit("Repository is in simple mode. Create offline repositories via 'sos offline --track' or 'sos offline --picky' or configure a user-wide default via 'sos config track on'")  # line 846
-    patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 847
-    if pattern in patterns:  # line 848
-        Exit("Pattern '%s' already tracked" % pattern)  # line 848
-    if not force and not os.path.exists(encode(relPath.replace(SLASH, os.sep))):  # line 849
-        Exit("The pattern folder doesn't exist. Use --force to add the file pattern anyway")  # line 849
-    if not force and len(fnmatch.filter(os.listdir(os.path.abspath(relPath.replace(SLASH, os.sep))), os.path.basename(pattern.replace(SLASH, os.sep)))) == 0:  # doesn't match any current file  # line 850
-        Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")  # line 851
-    patterns.append(pattern)  # line 852
-    m.saveBranches()  # line 853
-    info(usage.MARKER + "Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), os.path.abspath(relPath)))  # line 854
+def add(relPath: 'str', pattern: 'str', options: '_coconut.typing.Sequence[str]'=[], negative: 'bool'=False):  # line 848
+    ''' Add a tracked files pattern to current branch's tracked files. negative means tracking blacklisting. '''  # line 849
+    force = '--force' in options  # type: bool  # line 850
+    m = Metadata()  # type: Metadata  # line 851
+    if not (m.track or m.picky):  # line 852
+        Exit("Repository is in simple mode. Create offline repositories via 'sos offline --track' or 'sos offline --picky' or configure a user-wide default via 'sos config track on'")  # line 852
+    patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 853
+    if pattern in patterns:  # line 854
+        Exit("Pattern '%s' already tracked" % pattern)  # line 854
+    if not force and not os.path.exists(encode(relPath.replace(SLASH, os.sep))):  # line 855
+        Exit("The pattern folder doesn't exist. Use --force to add the file pattern anyway")  # line 855
+    if not force and len(fnmatch.filter(os.listdir(os.path.abspath(relPath.replace(SLASH, os.sep))), os.path.basename(pattern.replace(SLASH, os.sep)))) == 0:  # doesn't match any current file  # line 856
+        Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")  # line 857
+    patterns.append(pattern)  # line 858
+    m.saveBranches()  # line 859
+    info(usage.MARKER + "Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), os.path.abspath(relPath)))  # line 860
 
-def remove(relPath: 'str', pattern: 'str', negative: 'bool'=False):  # line 856
-    ''' Remove a tracked files pattern from current branch's tracked files. '''  # line 857
-    m = Metadata()  # type: Metadata  # line 858
-    if not (m.track or m.picky):  # line 859
-        Exit("Repository is in simple mode. Needs 'offline --track' or 'offline --picky' instead")  # line 859
-    patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 860
-    if pattern not in patterns:  # line 861
-        suggestion = _coconut.set()  # type: Set[str]  # line 862
-        for pat in patterns:  # line 863
-            if fnmatch.fnmatch(pattern, pat):  # line 863
-                suggestion.add(pat)  # line 863
-        if suggestion:  # TODO use same wording as in move  # line 864
-            printo("Do you mean any of the following tracked file patterns? '%s'" % (", ".join(sorted(suggestion))))  # TODO use same wording as in move  # line 864
-        Exit("Tracked pattern '%s' not found" % pattern)  # line 865
-    patterns.remove(pattern)  # line 866
-    m.saveBranches()  # line 867
-    info(usage.MARKER + "Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), os.path.abspath(relPath.replace(SLASH, os.sep))))  # line 868
+def remove(relPath: 'str', pattern: 'str', negative: 'bool'=False):  # line 862
+    ''' Remove a tracked files pattern from current branch's tracked files. '''  # line 863
+    m = Metadata()  # type: Metadata  # line 864
+    if not (m.track or m.picky):  # line 865
+        Exit("Repository is in simple mode. Needs 'offline --track' or 'offline --picky' instead")  # line 865
+    patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 866
+    if pattern not in patterns:  # line 867
+        suggestion = _coconut.set()  # type: Set[str]  # line 868
+        for pat in patterns:  # line 869
+            if fnmatch.fnmatch(pattern, pat):  # line 869
+                suggestion.add(pat)  # line 869
+        if suggestion:  # TODO use same wording as in move  # line 870
+            printo("Do you mean any of the following tracked file patterns? '%s'" % (", ".join(sorted(suggestion))))  # TODO use same wording as in move  # line 870
+        Exit("Tracked pattern '%s' not found" % pattern)  # line 871
+    patterns.remove(pattern)  # line 872
+    m.saveBranches()  # line 873
+    info(usage.MARKER + "Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), os.path.abspath(relPath.replace(SLASH, os.sep))))  # line 874
 
-def ls(folder: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[]):  # line 870
-    ''' List specified directory, augmenting with repository metadata. '''  # line 871
-    m = Metadata()  # type: Metadata  # line 872
-    folder = (os.getcwd() if folder is None else folder)  # line 873
-    if '--all' in options:  # always start at SOS repo root with --all  # line 874
-        folder = m.root  # always start at SOS repo root with --all  # line 874
-    recursive = '--recursive' in options or '-r' in options or '--all' in options  # type: bool  # line 875
-    patterns = '--patterns' in options or '-p' in options  # type: bool  # line 876
-    DOT = (DOT_SYMBOL if m.c.useUnicodeFont else " ") * 3  # type: str  # TODO or "."?  # line 877
-    if verbose:  # line 878
-        info(usage.MARKER + "Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))  # line 878
-    relPath = relativize(m.root, os.path.join(folder, "-"))[0]  # type: str  # line 879
-    if relPath.startswith(os.pardir):  # line 880
-        Exit("Cannot list contents of folder outside offline repository")  # line 880
-    trackingPatterns = m.getTrackingPatterns() if m.track or m.picky else _coconut.frozenset()  # type: _coconut.typing.Optional[FrozenSet[str]]  # for current branch  # line 881
-    untrackingPatterns = m.getTrackingPatterns(negative=True) if m.track or m.picky else _coconut.frozenset()  # type: _coconut.typing.Optional[FrozenSet[str]]  # for current branch  # line 882
-    if '--tags' in options:  # TODO this has nothing to do with "ls" - it's an entirely different command. Move if something like "sos tag" has been implemented  # line 883
-        if len(m.tags) > 0:  # line 884
-            printo(ajoin("TAG ", sorted(m.tags), nl="\n"))  # line 884
-        return  # line 885
-    for dirpath, dirnames, _filenames in os.walk(folder):  # line 886
-        if not recursive:  # avoid recursion  # line 887
-            dirnames.clear()  # avoid recursion  # line 887
-        dirnames[:] = sorted([decode(d) for d in dirnames])  # line 888
-        dirnames[:] = [d for d in dirnames if len([n for n in m.c.ignoreDirs if fnmatch.fnmatch(d, n)]) == 0 or len([p for p in m.c.ignoreDirsWhitelist if fnmatch.fnmatch(d, p)]) > 0]  # global ignores  # line 889
+def ls(folder: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[]):  # line 876
+    ''' List specified directory, augmenting with repository metadata. '''  # line 877
+    m = Metadata()  # type: Metadata  # line 878
+    folder = (os.getcwd() if folder is None else folder)  # line 879
+    if '--all' in options:  # always start at SOS repo root with --all  # line 880
+        folder = m.root  # always start at SOS repo root with --all  # line 880
+    recursive = '--recursive' in options or '-r' in options or '--all' in options  # type: bool  # line 881
+    patterns = '--patterns' in options or '-p' in options  # type: bool  # line 882
+    DOT = (DOT_SYMBOL if m.c.useUnicodeFont else " ") * 3  # type: str  # TODO or "."?  # line 883
+    if verbose:  # line 884
+        info(usage.MARKER + "Repository is in %s mode" % ("tracking" if m.track else ("picky" if m.picky else "simple")))  # line 884
+    relPath = relativize(m.root, os.path.join(folder, "-"))[0]  # type: str  # line 885
+    if relPath.startswith(os.pardir):  # line 886
+        Exit("Cannot list contents of folder outside offline repository")  # line 886
+    trackingPatterns = m.getTrackingPatterns() if m.track or m.picky else _coconut.frozenset()  # type: _coconut.typing.Optional[FrozenSet[str]]  # for current branch  # line 887
+    untrackingPatterns = m.getTrackingPatterns(negative=True) if m.track or m.picky else _coconut.frozenset()  # type: _coconut.typing.Optional[FrozenSet[str]]  # for current branch  # line 888
+    if '--tags' in options:  # TODO this has nothing to do with "ls" - it's an entirely different command. Move if something like "sos tag" has been implemented  # line 889
+        if len(m.tags) > 0:  # line 890
+            printo(ajoin("TAG ", sorted(m.tags), nl="\n"))  # line 890
+        return  # line 891
+    for dirpath, dirnames, _filenames in os.walk(folder):  # line 892
+        if not recursive:  # avoid recursion  # line 893
+            dirnames.clear()  # avoid recursion  # line 893
+        dirnames[:] = sorted([decode(d) for d in dirnames])  # line 894
+        dirnames[:] = [d for d in dirnames if len([n for n in m.c.ignoreDirs if fnmatch.fnmatch(d, n)]) == 0 or len([p for p in m.c.ignoreDirsWhitelist if fnmatch.fnmatch(d, p)]) > 0]  # global ignores  # line 895
 
-        folder = decode(dirpath)  # line 891
-        relPath = relativize(m.root, os.path.join(folder, "-"))[0]  # line 892
-        if patterns:  # line 893
-            out = ajoin("TRK ", [os.path.basename(p) for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath], nl="\n")  # type: str  # line 894
-            if out:  # line 895
-                printo("DIR %s\n" % relPath + out)  # line 895
-            continue  # with next folder  # line 896
-        files = list(sorted((entry for entry in os.listdir(folder) if os.path.isfile(os.path.join(folder, entry)))))  # type: List[str]  # line 897
-        if len(files) > 0:  # line 898
-            printo("DIR %s" % relPath)  # line 898
-        for file in files:  # for each file list all tracking patterns that match, or none (e.g. in picky mode after commit)  # line 899
-            ignore = None  # type: _coconut.typing.Optional[str]  # line 900
-            for ig in m.c.ignores:  # remember first match  # line 901
-                if fnmatch.fnmatch(file, ig):  # remember first match  # line 901
-                    ignore = ig  # remember first match  # line 901
-                    break  # remember first match  # line 901
-            if ignore:  # found a white list entry for ignored file, undo ignoring it  # line 902
-                for wl in m.c.ignoresWhitelist:  # found a white list entry for ignored file, undo ignoring it  # line 902
-                    if fnmatch.fnmatch(file, wl):  # found a white list entry for ignored file, undo ignoring it  # line 902
-                        ignore = None  # found a white list entry for ignored file, undo ignoring it  # line 902
-                        break  # found a white list entry for ignored file, undo ignoring it  # line 902
-            matches = []  # type: List[str]  # line 903
-            if not ignore:  # line 904
-                for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder  # line 905
-                    if fnmatch.fnmatch(file, os.path.basename(pattern)):  # line 906
-                        matches.append(os.path.basename(pattern))  # line 906
-            matches.sort(key=lambda element: len(element))  # sort in-place  # line 907
-            printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else DOT), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))  # line 908
+        folder = decode(dirpath)  # line 897
+        relPath = relativize(m.root, os.path.join(folder, "-"))[0]  # line 898
+        if patterns:  # line 899
+            out = ajoin("TRK ", [os.path.basename(p) for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath], nl="\n")  # type: str  # line 900
+            if out:  # line 901
+                printo("DIR %s\n" % relPath + out)  # line 901
+            continue  # with next folder  # line 902
+        files = list(sorted((entry for entry in os.listdir(folder) if os.path.isfile(os.path.join(folder, entry)))))  # type: List[str]  # line 903
+        if len(files) > 0:  # line 904
+            printo("DIR %s" % relPath)  # line 904
+        for file in files:  # for each file list all tracking patterns that match, or none (e.g. in picky mode after commit)  # line 905
+            ignore = None  # type: _coconut.typing.Optional[str]  # line 906
+            for ig in m.c.ignores:  # remember first match  # line 907
+                if fnmatch.fnmatch(file, ig):  # remember first match  # line 907
+                    ignore = ig  # remember first match  # line 907
+                    break  # remember first match  # line 907
+            if ignore:  # found a white list entry for ignored file, undo ignoring it  # line 908
+                for wl in m.c.ignoresWhitelist:  # found a white list entry for ignored file, undo ignoring it  # line 908
+                    if fnmatch.fnmatch(file, wl):  # found a white list entry for ignored file, undo ignoring it  # line 908
+                        ignore = None  # found a white list entry for ignored file, undo ignoring it  # line 908
+                        break  # found a white list entry for ignored file, undo ignoring it  # line 908
+            matches = []  # type: List[str]  # line 909
+            if not ignore:  # line 910
+                for pattern in (p for p in trackingPatterns if os.path.dirname(p).replace(os.sep, SLASH) == relPath):  # only patterns matching current folder  # line 911
+                    if fnmatch.fnmatch(file, os.path.basename(pattern)):  # line 912
+                        matches.append(os.path.basename(pattern))  # line 912
+            matches.sort(key=lambda element: len(element))  # sort in-place  # line 913
+            printo("%s %s%s" % ("IGN" if ignore is not None else ("TRK" if len(matches) > 0 else DOT), file, "  (%s)" % ignore if ignore is not None else ("  (%s)" % ("; ".join(matches)) if len(matches) > 0 else "")))  # line 914
 
-def log(options: '_coconut.typing.Sequence[str]'=[], cwd: '_coconut.typing.Optional[str]'=None):  # line 910
-    ''' List previous commits on current branch. '''  # line 911
-    changes_ = "--changes" in options  # type: bool  # line 912
-    diff_ = "--diff" in options  # type: bool  # line 913
-    number_ = tryOrDefault(lambda _=None: int(sys.argv[sys.argv.index("-n") + 1]), None)  # type: _coconut.typing.Optional[int]  # line 914
-    m = Metadata()  # type: Metadata  # line 915
-    m.loadBranch(m.branch)  # knows commit history  # line 916
-    maxi = max(m.commits) if m.commits else m.branches[m.branch].revision  # type: int  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo  # line 917
-    info((lambda _coconut_none_coalesce_item: "r%02d" % m.branch if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(usage.MARKER + "Offline commit history of branch '%s'" % m.branches[m.branch].name))  # TODO also retain info of "from branch/revision" on branching?  # line 918
-    nl = len("%d" % maxi)  # type: int  # determine space needed for revision  # line 919
-    changesetIterator = m.computeSequentialPathSetIterator(m.branch, maxi)  # type: _coconut.typing.Optional[Iterator[Dict[str, PathInfo]]]  # line 920
-    olds = _coconut.frozenset()  # type: FrozenSet[str]  # last revision's entries  # line 921
-    last = {}  # type: Dict[str, PathInfo]  # path infos from previous revision  # line 922
-    commit = None  # type: CommitInfo  # line 923
-    n = Metadata()  # type: Metadata  # used for reading parent branch information  # line 924
-    indicator = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if '--all' not in options and maxi > (lambda _coconut_none_coalesce_item: m.c.logLines if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(number_) else None  # type: _coconut.typing.Optional[ProgressIndicator]  # line 925
-    digits = pure.requiredDecimalDigits(maxi) if indicator else None  # type: _coconut.typing.Optional[int]  # line 926
-    lastno = max(0, maxi + 1 - ((lambda _coconut_none_coalesce_item: m.c.logLines if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(number_)))  # type: int  # line 927
-    for no in range(maxi + 1):  # line 928
-        if indicator:  # line 929
-            printo("  %%s %%0%dd" % digits % (indicator.getIndicator(), no), nl="\r")  # line 929
-        if no in m.commits:  # line 930
-            commit = m.commits[no]  # line 930
-        else:  # line 931
-            if n.branch != n.getParentBranch(m.branch, no):  # line 932
-                n.loadBranch(n.getParentBranch(m.branch, no))  # line 932
-            commit = n.commits[no]  # line 933
-        nxts = next(changesetIterator)  # type: Dict[str, PathInfo]  # line 934
-        news = frozenset(nxts.keys())  # type: FrozenSet[str]  # line 935
-        if "--all" in options or no >= lastno:  # line 936
-            if no >= lastno:  # line 937
-                indicator = None  # line 937
-            _add = news - olds  # type: FrozenSet[str]  # line 938
-            _del = olds - news  # type: FrozenSet[str]  # line 939
+def log(options: '_coconut.typing.Sequence[str]'=[], cwd: '_coconut.typing.Optional[str]'=None):  # line 916
+    ''' List previous commits on current branch. '''  # line 917
+    changes_ = "--changes" in options  # type: bool  # line 918
+    diff_ = "--diff" in options  # type: bool  # line 919
+    number_ = tryOrDefault(lambda _=None: int(sys.argv[sys.argv.index("-n") + 1]), None)  # type: _coconut.typing.Optional[int]  # line 920
+    m = Metadata()  # type: Metadata  # line 921
+    m.loadBranch(m.branch)  # knows commit history  # line 922
+    maxi = max(m.commits) if m.commits else m.branches[m.branch].revision  # type: int  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo  # line 923
+    info((lambda _coconut_none_coalesce_item: "r%02d" % m.branch if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(usage.MARKER + "Offline commit history of branch '%s'" % m.branches[m.branch].name))  # TODO also retain info of "from branch/revision" on branching?  # line 924
+    nl = len("%d" % maxi)  # type: int  # determine space needed for revision  # line 925
+    changesetIterator = m.computeSequentialPathSetIterator(m.branch, maxi)  # type: _coconut.typing.Optional[Iterator[Dict[str, PathInfo]]]  # line 926
+    olds = _coconut.frozenset()  # type: FrozenSet[str]  # last revision's entries  # line 927
+    last = {}  # type: Dict[str, PathInfo]  # path infos from previous revision  # line 928
+    commit = None  # type: CommitInfo  # line 929
+    n = Metadata()  # type: Metadata  # used for reading parent branch information  # line 930
+    indicator = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if '--all' not in options and maxi > (lambda _coconut_none_coalesce_item: m.c.logLines if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(number_) else None  # type: _coconut.typing.Optional[ProgressIndicator]  # line 931
+    digits = pure.requiredDecimalDigits(maxi) if indicator else None  # type: _coconut.typing.Optional[int]  # line 932
+    lastno = max(0, maxi + 1 - ((lambda _coconut_none_coalesce_item: m.c.logLines if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(number_)))  # type: int  # line 933
+    for no in range(maxi + 1):  # line 934
+        if indicator:  # line 935
+            printo("  %%s %%0%dd" % digits % (indicator.getIndicator(), no), nl="\r")  # line 935
+        if no in m.commits:  # line 936
+            commit = m.commits[no]  # line 936
+        else:  # line 937
+            if n.branch != n.getParentBranch(m.branch, no):  # line 938
+                n.loadBranch(n.getParentBranch(m.branch, no))  # line 938
+            commit = n.commits[no]  # line 939
+        nxts = next(changesetIterator)  # type: Dict[str, PathInfo]  # line 940
+        news = frozenset(nxts.keys())  # type: FrozenSet[str]  # line 941
+        if "--all" in options or no >= lastno:  # line 942
+            if no >= lastno:  # line 943
+                indicator = None  # line 943
+            _add = news - olds  # type: FrozenSet[str]  # line 944
+            _del = olds - news  # type: FrozenSet[str]  # line 945
 #    _mod_:Dict[str,PathInfo] = {k: nxts[k] for k in news - _add - _del}
-            _mod = frozenset([_ for _, info in {k: nxts[k] for k in news - _add - _del}.items() if last[_].size != info.size or (last[_].hash != info.hash if m.strict else last[_].mtime != info.mtime)])  # type: FrozenSet[str]  # line 941
+            _mod = frozenset([_ for _, info in {k: nxts[k] for k in news - _add - _del}.items() if last[_].size != info.size or (last[_].hash != info.hash if m.strict else last[_].mtime != info.mtime)])  # type: FrozenSet[str]  # line 947
 #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds}, m.strict)  # TODO determine moves - can we reuse detectMoves(changes)?
-            _txt = len([m_ for m_ in _mod if m.isTextType(m_)])  # type: int  # line 943
-            printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ((ARROW_SYMBOL if m.c.useUnicodeFont else "*") if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, ((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(commit.message)), "TAG" if ((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(commit.message)) in m.tags else ""))  # line 944
-            if changes_:  # TODO moves detection?  # line 945
-                m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}), root=cwd if '--relative' in options else None)  # TODO moves detection?  # line 945
-            if diff_:  #  _diff(m, changes)  # needs from revision diff  # line 946
-                pass  #  _diff(m, changes)  # needs from revision diff  # line 946
-        olds = news  # replaces olds for next revision compare  # line 947
-        last = {k: v for k, v in nxts.items()}  # create new reference  # line 948
+            _txt = len([m_ for m_ in _mod if m.isTextType(m_)])  # type: int  # line 949
+            printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ((ARROW_SYMBOL if m.c.useUnicodeFont else "*") if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, ((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(commit.message)), "TAG" if ((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(commit.message)) in m.tags else ""))  # line 950
+            if changes_:  # TODO moves detection?  # line 951
+                m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}), root=cwd if '--relative' in options else None)  # TODO moves detection?  # line 951
+            if diff_:  #  _diff(m, changes)  # needs from revision diff  # line 952
+                pass  #  _diff(m, changes)  # needs from revision diff  # line 952
+        olds = news  # replaces olds for next revision compare  # line 953
+        last = {k: v for k, v in nxts.items()}  # create new reference  # line 954
 
-def dump(argument: 'str', options: '_coconut.typing.Sequence[str]'=[]):  # line 950
-    ''' Exported entire repository as archive for easy transfer. '''  # line 951
-    if verbose:  # line 952
-        info(usage.MARKER + "Dumping repository to archive...")  # line 952
-    m = Metadata()  # type: Metadata  # to load the configuration  # line 953
-    progress = '--progress' in options  # type: bool  # line 954
-    delta = '--full' not in options  # type: bool  # line 955
-    skipBackup = '--skip-backup' in options  # type: bool  # line 956
-    import functools  # line 957
-    import locale  # line 957
-    import warnings  # line 957
-    import zipfile  # line 957
-    try:  # HINT zlib is the library that contains the deflated algorithm  # line 958
-        import zlib  # HINT zlib is the library that contains the deflated algorithm  # line 958
-        compression = zipfile.ZIP_DEFLATED  # HINT zlib is the library that contains the deflated algorithm  # line 958
-    except:  # line 959
-        compression = zipfile.ZIP_STORED  # line 959
+def dump(argument: 'str', options: '_coconut.typing.Sequence[str]'=[]):  # line 956
+    ''' Exported entire repository as archive for easy transfer. '''  # line 957
+    if verbose:  # line 958
+        info(usage.MARKER + "Dumping repository to archive...")  # line 958
+    m = Metadata()  # type: Metadata  # to load the configuration  # line 959
+    progress = '--progress' in options  # type: bool  # line 960
+    delta = '--full' not in options  # type: bool  # line 961
+    skipBackup = '--skip-backup' in options  # type: bool  # line 962
+    import functools  # line 963
+    import locale  # line 963
+    import warnings  # line 963
+    import zipfile  # line 963
+    try:  # HINT zlib is the library that contains the deflated algorithm  # line 964
+        import zlib  # HINT zlib is the library that contains the deflated algorithm  # line 964
+        compression = zipfile.ZIP_DEFLATED  # HINT zlib is the library that contains the deflated algorithm  # line 964
+    except:  # line 965
+        compression = zipfile.ZIP_STORED  # line 965
 
-    if argument is None:  # line 961
-        Exit("Argument missing (target filename)")  # line 961
-    argument = argument if "." in argument else argument + DUMP_FILE  # TODO this logic lacks a bit, "v1.2" would not receive the suffix  # line 962
-    entries = []  # type: List[str]  # line 963
-    if os.path.exists(encode(argument)) and not skipBackup:  # line 964
-        try:  # line 965
-            if verbose:  # line 966
-                info("Creating backup...")  # line 966
-            shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))  # line 967
-            if delta:  # list of pure relative paths without leading dot, normal slashes  # line 968
-                with zipfile.ZipFile(argument, "r") as _zip:  # list of pure relative paths without leading dot, normal slashes  # line 968
-                    entries = _zip.namelist()  # list of pure relative paths without leading dot, normal slashes  # line 968
-        except Exception as E:  # line 969
-            Exit("Error creating backup copy before dumping. Please resolve and retry. %r" % E)  # line 969
-    if verbose:  # line 970
-        info("Dumping revisions...")  # line 970
-    if delta:  # , UserWarning, "zipfile", 0)  # don't show duplicate entries warnings  # line 971
-        warnings.filterwarnings('ignore', 'Duplicate name.*')  # , UserWarning, "zipfile", 0)  # don't show duplicate entries warnings  # line 971
-    with zipfile.ZipFile(argument, "a" if delta else "w", compression) as _zip:  # create  # line 972
-        _zip.debug = 0  # suppress debugging output  # line 973
-        _zip.comment = ("Repository dump from %r" % strftime()).encode(UTF8)  # line 974
-        repopath = os.path.join(os.getcwd(), metaFolder)  # type: str  # line 975
-        indicator = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if progress else None  # type: _coconut.typing.Optional[ProgressIndicator]  # line 976
-        totalsize = 0  # type: int  # line 977
-        start_time = time.time()  # type: float  # line 978
-        for dirpath, dirnames, filenames in os.walk(repopath):  # TODO use index knowledge instead of walking to avoid adding stuff not needed?  # line 979
-            dirpath = decode(dirpath)  # line 980
-            if dirpath.endswith(BACKUP_SUFFIX):  # don't backup backups  # line 981
-                continue  # don't backup backups  # line 981
-            printo(pure.ljust(dirpath))  # TODO improve progress indicator output to | dir | dumpuing file  # line 982
-            dirnames[:] = sorted([decode(d) for d in dirnames], key=functools.cmp_to_key(lambda a, b: tryOrDefault(lambda: locale.strcoll("%8d" % int(a[1:]), "%8d" % int(b[1:])), locale.strcoll(a, b))))  # HINT sort for reproducible delta dumps  # line 983
-            filenames[:] = sorted([decode(f) for f in filenames])  # line 984
-            for filename in filenames:  # line 985
-                abspath = os.path.join(dirpath, filename)  # type: str  # line 986
-                relpath = os.path.join(metaFolder, os.path.relpath(abspath, repopath)).replace(os.sep, "/")  # type: str  # line 987
-                totalsize += os.stat(encode(abspath)).st_size  # line 988
-                show = indicator.getIndicator() if progress else None  # type: _coconut.typing.Optional[str]  # line 989
-                if relpath.endswith(BACKUP_SUFFIX):  # don't backup backups  # line 990
-                    continue  # don't backup backups  # line 990
-                if not delta or relpath.endswith(metaFile) or relpath not in entries:  # always update metadata, otherwise only add new revision files  # line 991
-                    if show:  # line 992
-                        printo("\r" + pure.ljust("Dumping %s @%.2f MiB/s %s" % (show, totalsize / (MEBI * (time.time() - start_time)), filename)), nl="")  # line 992
-                    _zip.write(abspath, relpath)  # write entry into archive  # line 993
-        if delta:  # line 994
-            _zip.comment = ("Delta dump from %r" % strftime()).encode(UTF8)  # line 994
-    info("\r" + pure.ljust(usage.MARKER + "Finished dumping %s repository @%.2f MiB/s." % ("differential" if delta else "entire", totalsize / (MEBI * (time.time() - start_time)))))  # clean line  # line 995
+    if argument is None:  # line 967
+        Exit("Argument missing (target filename)")  # line 967
+    argument = argument if "." in argument else argument + DUMP_FILE  # TODO this logic lacks a bit, "v1.2" would not receive the suffix  # line 968
+    entries = []  # type: List[str]  # line 969
+    if os.path.exists(encode(argument)) and not skipBackup:  # line 970
+        try:  # line 971
+            if verbose:  # line 972
+                info("Creating backup...")  # line 972
+            shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))  # line 973
+            if delta:  # list of pure relative paths without leading dot, normal slashes  # line 974
+                with zipfile.ZipFile(argument, "r") as _zip:  # list of pure relative paths without leading dot, normal slashes  # line 974
+                    entries = _zip.namelist()  # list of pure relative paths without leading dot, normal slashes  # line 974
+        except Exception as E:  # line 975
+            Exit("Error creating backup copy before dumping. Please resolve and retry. %r" % E)  # line 975
+    if verbose:  # line 976
+        info("Dumping revisions...")  # line 976
+    if delta:  # , UserWarning, "zipfile", 0)  # don't show duplicate entries warnings  # line 977
+        warnings.filterwarnings('ignore', 'Duplicate name.*')  # , UserWarning, "zipfile", 0)  # don't show duplicate entries warnings  # line 977
+    with zipfile.ZipFile(argument, "a" if delta else "w", compression) as _zip:  # create  # line 978
+        _zip.debug = 0  # suppress debugging output  # line 979
+        _zip.comment = ("Repository dump from %r" % strftime()).encode(UTF8)  # line 980
+        repopath = os.path.join(os.getcwd(), metaFolder)  # type: str  # line 981
+        indicator = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if progress else None  # type: _coconut.typing.Optional[ProgressIndicator]  # line 982
+        totalsize = 0  # type: int  # line 983
+        start_time = time.time()  # type: float  # line 984
+        for dirpath, dirnames, filenames in os.walk(repopath):  # TODO use index knowledge instead of walking to avoid adding stuff not needed?  # line 985
+            dirpath = decode(dirpath)  # line 986
+            if dirpath.endswith(BACKUP_SUFFIX):  # don't backup backups  # line 987
+                continue  # don't backup backups  # line 987
+            printo(pure.ljust(dirpath))  # TODO improve progress indicator output to | dir | dumpuing file  # line 988
+            dirnames[:] = sorted([decode(d) for d in dirnames], key=functools.cmp_to_key(lambda a, b: tryOrDefault(lambda: locale.strcoll("%8d" % int(a[1:]), "%8d" % int(b[1:])), locale.strcoll(a, b))))  # HINT sort for reproducible delta dumps  # line 989
+            filenames[:] = sorted([decode(f) for f in filenames])  # line 990
+            for filename in filenames:  # line 991
+                abspath = os.path.join(dirpath, filename)  # type: str  # line 992
+                relpath = os.path.join(metaFolder, os.path.relpath(abspath, repopath)).replace(os.sep, "/")  # type: str  # line 993
+                totalsize += os.stat(encode(abspath)).st_size  # line 994
+                show = indicator.getIndicator() if progress else None  # type: _coconut.typing.Optional[str]  # line 995
+                if relpath.endswith(BACKUP_SUFFIX):  # don't backup backups  # line 996
+                    continue  # don't backup backups  # line 996
+                if not delta or relpath.endswith(metaFile) or relpath not in entries:  # always update metadata, otherwise only add new revision files  # line 997
+                    if show:  # line 998
+                        printo("\r" + pure.ljust("Dumping %s @%.2f MiB/s %s" % (show, totalsize / (MEBI * (time.time() - start_time)), filename)), nl="")  # line 998
+                    _zip.write(abspath, relpath)  # write entry into archive  # line 999
+        if delta:  # line 1000
+            _zip.comment = ("Delta dump from %r" % strftime()).encode(UTF8)  # line 1000
+    info("\r" + pure.ljust(usage.MARKER + "Finished dumping %s repository @%.2f MiB/s." % ("differential" if delta else "entire", totalsize / (MEBI * (time.time() - start_time)))))  # clean line  # line 1001
 
-def publish(message: '_coconut.typing.Optional[str]', cmd: 'str', options: '_coconut.typing.Sequence[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None):  # line 997
-    ''' Write changes made to the branch into one commit of the underlying VCS without further checks. '''  # line 998
-    m = Metadata()  # type: Metadata  # TODO SOS only commit whats different from VCS state?  # line 999
-    if not (m.track or m.picky):  # TODO add manual file picking mode instead (add by extension, recursive, ... see issue for details)  # line 1000
-        Exit("Not implemented for simple repository mode yet")  # TODO add manual file picking mode instead (add by extension, recursive, ... see issue for details)  # line 1000
-    m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options, onlys=onlys, excps=excps)  # line 1001
-    maxi = m.getHighestRevision(branch)  # type: _coconut.typing.Optional[int]  # line 1002
-    if maxi is None:  # line 1003
-        Exit("No revision to publish on current branch (or any of its parents after fast-branching)")  # line 1003
-    m.computeSequentialPathSet(branch, maxi, startwith=1 if maxi >= 1 and not '--all' in options and not (m.track or m.picky) else 0)  # load all commits up to specified revision  # line 1004
+def publish(message: '_coconut.typing.Optional[str]', cmd: 'str', options: '_coconut.typing.Sequence[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None):  # line 1003
+    ''' Write changes made to the branch into one commit of the underlying VCS without further checks. '''  # line 1004
+    m = Metadata()  # type: Metadata  # TODO SOS only commit whats different from VCS state?  # line 1005
+    if not (m.track or m.picky):  # TODO add manual file picking mode instead (add by extension, recursive, ... see issue for details)  # line 1006
+        Exit("Not implemented for simple repository mode yet")  # TODO add manual file picking mode instead (add by extension, recursive, ... see issue for details)  # line 1006
+    m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options, onlys=onlys, excps=excps)  # line 1007
+    maxi = m.getHighestRevision(branch)  # type: _coconut.typing.Optional[int]  # line 1008
+    if maxi is None:  # line 1009
+        Exit("No revision to publish on current branch (or any of its parents after fast-branching)")  # line 1009
+    m.computeSequentialPathSet(branch, maxi, startwith=1 if maxi >= 1 and not '--all' in options and not (m.track or m.picky) else 0)  # load all commits up to specified revision  # line 1010
 # HINT logic to only add changed files vs. originating file state - would require in-depth underlying VCS knowledge. We currentöy assume commit 0 as base
 # TODO discuss: only commit changes from r1.. onward vs. r0?, or attempt to add everything in repo, even if unchanged? the problem is that for different branches we might need to switch also underlying branches
-    import subprocess  # only required in this section  # line 1007
+    import subprocess  # only required in this section  # line 1013
 # HINT stash/rollback for Git? or implement a global mechanism to revert?
-    files = list(m.paths.keys())  # type: _coconut.typing.Sequence[str]  # line 1009
-    while files:  # line 1010
-        command = fitStrings(files, prefix="%s add" % cmd, process=lambda _=None: '"%s"' % _.replace("\"", "\\\""))  # type: str  # considering maximum command-line length, filename quoting, and spaces  # line 1011
-        returncode = subprocess.Popen(command, shell=False).wait()  # type: int  # line 1012
+    files = list(m.paths.keys())  # type: _coconut.typing.Sequence[str]  # line 1015
+    while files:  # line 1016
+        command = fitStrings(files, prefix="%s add" % cmd, process=lambda _=None: '"%s"' % _.replace("\"", "\\\""))  # type: str  # considering maximum command-line length, filename quoting, and spaces  # line 1017
+        returncode = subprocess.Popen(command, shell=False).wait()  # type: int  # line 1018
 #    returncode:int = 0; debug(command)
-        if returncode != 0:  # line 1014
-            Exit("Error adding files from SOS revision to underlying VCS. Leaving %s in potentially inconsistent state" % vcsNames[cmd])  # line 1014
-    tracked = None  # type: bool  # line 1015
-    commitArgs = None  # type: _coconut.typing.Optional[str]  # line 1015
-    tracked, commitArgs = vcsCommits[cmd]  # line 1015
-    returncode = subprocess.Popen(('%s commit -m "%s" %s' % (cmd, (("Committed from SOS %s/r%02d on %s" % ((lambda _coconut_none_coalesce_item: ("b%d" % m.branch) if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(m.branches[branch].name), revision, strftime())).replace("\"", "\\\"") if message is None else message), ("" if commitArgs is None else commitArgs))))  # TODO quote-escaping on Windows  # line 1016
+        if returncode != 0:  # line 1020
+            Exit("Error adding files from SOS revision to underlying VCS. Leaving %s in potentially inconsistent state" % vcsNames[cmd])  # line 1020
+    tracked = None  # type: bool  # line 1021
+    commitArgs = None  # type: _coconut.typing.Optional[str]  # line 1021
+    tracked, commitArgs = vcsCommits[cmd]  # line 1021
+    returncode = subprocess.Popen(('%s commit -m "%s" %s' % (cmd, (("Committed from SOS %s/r%02d on %s" % ((lambda _coconut_none_coalesce_item: ("b%d" % m.branch) if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(m.branches[branch].name), revision, strftime())).replace("\"", "\\\"") if message is None else message), ("" if commitArgs is None else commitArgs))))  # TODO quote-escaping on Windows  # line 1022
 #  debug(('%s commit -m "%s" %s' % (cmd, message ?? ("Committed from SOS %s/r%02d on %s" % (m.branches[branch].name ?? ("b%d" % m.branch), revision, strftime())).replace("\"", "\\\""), commitArgs ?? "")))
-    if returncode != 0:  # line 1018
-        Exit("Error committing files from SOS revision to underlying VCS. Please check current %s state" % cmd)  # line 1018
-    if tracked:  # line 1019
-        warn("Please note that all the files added in this commit will continue to be tracked by the underlying VCS")  # line 1019
+    if returncode != 0:  # line 1024
+        Exit("Error committing files from SOS revision to underlying VCS. Please check current %s state" % cmd)  # line 1024
+    if tracked:  # line 1025
+        warn("Please note that all the files added in this commit will continue to be tracked by the underlying VCS")  # line 1025
 
-def config(arguments: 'List[str]', options: 'List[str]'=[]):  # line 1021
-    command = None  # type: str  # line 1022
-    key = None  # type: str  # line 1022
-    value = None  # type: str  # line 1022
-    v = None  # type: str  # line 1022
-    command, key, value = (arguments + [None] * 2)[:3]  # line 1023
-    if command is None:  # line 1024
-        usage.usage("help", verbose=True)  # line 1024
-    if command not in ["set", "unset", "show", "list", "add", "rm"]:  # line 1025
-        Exit("Unknown config command")  # line 1025
-    local = "--local" in options  # type: bool  # line 1026
-    m = Metadata()  # type: Metadata  # loads layered configuration as well. TODO warning if repo not exists  # line 1027
-    c = m.c if local else m.c.__defaults  # type: configr.Configr  # line 1028
-    if command == "set":  # line 1029
-        if None in (key, value):  # line 1030
-            Exit("Key or value not specified")  # line 1030
-        if key not in (([] if local else CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS):  # TODO move defaultbranch to configurable_texts?  # line 1031
-            Exit("Unsupported key for %s configuration %r" % ("local " if local else "global", key))  # TODO move defaultbranch to configurable_texts?  # line 1031
-        if key in CONFIGURABLE_FLAGS and value.lower() not in TRUTH_VALUES + FALSE_VALUES:  # line 1032
-            Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())  # line 1032
-        c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (tryOrIgnore(lambda _=None: int(value), lambda E: error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?  # line 1033
-    elif command == "unset":  # line 1034
-        if key is None:  # line 1035
-            Exit("No key specified")  # line 1035
-        if key not in c.keys():  # HINT: Works on local configurations when used with --local  # line 1036
-            Exit("Unknown key")  # HINT: Works on local configurations when used with --local  # line 1036
-        del c[key]  # line 1037
-    elif command == "add":  # line 1038
-        if None in (key, value):  # line 1039
-            Exit("Key or value not specified")  # line 1039
-        if key not in CONFIGURABLE_LISTS:  # line 1040
-            Exit("Unsupported key %r" % key)  # line 1040
-        if key not in c.keys():  # prepare empty list, or copy from global, add new value below  # line 1041
-            c[key] = [_ for _ in c.__defaults[key]] if local else []  # prepare empty list, or copy from global, add new value below  # line 1041
-        elif value in c[key]:  # line 1042
-            Exit("Value already contained, nothing to do")  # line 1042
-        if ";" in value:  # line 1043
-            c[key].append(removePath(key, value))  # line 1043
-        else:  # line 1044
-            c[key].extend([removePath(key, v) for v in value.split(";")])  # line 1044
-    elif command == "rm":  # line 1045
-        if None in (key, value):  # line 1046
-            Exit("Key or value not specified")  # line 1046
-        if key not in c.keys():  # line 1047
-            Exit("Unknown key %r" % key)  # line 1047
-        if value not in c[key]:  # line 1048
-            Exit("Unknown value %r" % value)  # line 1048
-        c[key].remove(value)  # line 1049
-        if local and len(c[key]) == 0 and "--prune" in options:  # remove local entry, to fallback to global  # line 1050
-            del c[key]  # remove local entry, to fallback to global  # line 1050
-    else:  # Show or list  # line 1051
-        if key == "ints":  # list valid configuration items  # line 1052
-            printo(", ".join(CONFIGURABLE_INTS))  # list valid configuration items  # line 1052
-        elif key == "flags":  # line 1053
-            printo(", ".join(CONFIGURABLE_FLAGS))  # line 1053
-        elif key == "lists":  # line 1054
-            printo(", ".join(CONFIGURABLE_LISTS))  # line 1054
-        elif key == "texts":  # line 1055
-            printo(", ".join([_ for _ in defaults.keys() if _ not in (CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS)]))  # line 1055
-        else:  # line 1056
-            out = {3: "[default]", 2: "[global] ", 1: "[local]  "}  # type: Dict[int, str]  # in contrast to Git, we don't need (nor want) to support a "system" config scope  # line 1057
-            c = m.c  # always use full configuration chain  # line 1058
-            try:  # attempt single key  # line 1059
-                assert key is not None  # force exception  # line 1060
-                c[key]  # force exception  # line 1060
-                l = key in c.keys()  # type: bool  # line 1061
-                g = key in c.__defaults.keys()  # type: bool  # line 1061
-                printo("%s %s %r" % (key.rjust(20), out[3] if not (l or g) else (out[1] if l else out[2]), c[key]))  # line 1062
-            except:  # normal value listing  # line 1063
-                vals = {k: (repr(v), 3) for k, v in defaults.items()}  # type: Dict[str, Tuple[str, int]]  # line 1064
-                vals.update({k: (repr(v), 2) for k, v in c.__defaults.items()})  # line 1065
-                vals.update({k: (repr(v), 1) for k, v in c.__map.items()})  # line 1066
-                for k, vt in sorted(vals.items()):  # line 1067
-                    printo("%s %s %s" % (k.rjust(20), out[vt[1]], vt[0]))  # line 1067
-                if len(c.keys()) == 0:  # line 1068
-                    info("No local configuration stored")  # line 1068
-                if len(c.__defaults.keys()) == 0:  # line 1069
-                    info("No global configuration stored")  # line 1069
-        return  # in case of list, no need to store anything  # line 1070
-    if local:  # saves changes of repoConfig  # line 1071
-        m.repoConf = c.__map  # saves changes of repoConfig  # line 1071
-        m.saveBranches()  # saves changes of repoConfig  # line 1071
-        Exit("OK", code=0)  # saves changes of repoConfig  # line 1071
-    else:  # global config  # line 1072
-        f, h = saveConfig(c)  # only saves c.__defaults (nested Configr)  # line 1073
-        if f is None:  # line 1074
-            error("Error saving user configuration: %r" % h)  # line 1074
-        else:  # line 1075
-            Exit("OK", code=0)  # line 1075
+def config(arguments: 'List[str]', options: 'List[str]'=[]):  # line 1027
+    command = None  # type: str  # line 1028
+    key = None  # type: str  # line 1028
+    value = None  # type: str  # line 1028
+    v = None  # type: str  # line 1028
+    command, key, value = (arguments + [None] * 2)[:3]  # line 1029
+    if command is None:  # line 1030
+        usage.usage("help", verbose=True)  # line 1030
+    if command not in ["set", "unset", "show", "list", "add", "rm"]:  # line 1031
+        Exit("Unknown config command")  # line 1031
+    local = "--local" in options  # type: bool  # line 1032
+    m = Metadata()  # type: Metadata  # loads layered configuration as well. TODO warning if repo not exists  # line 1033
+    c = m.c if local else m.c.__defaults  # type: configr.Configr  # line 1034
+    if command == "set":  # line 1035
+        if None in (key, value):  # line 1036
+            Exit("Key or value not specified")  # line 1036
+        if key not in (([] if local else CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS):  # TODO move defaultbranch to configurable_texts?  # line 1037
+            Exit("Unsupported key for %s configuration %r" % ("local " if local else "global", key))  # TODO move defaultbranch to configurable_texts?  # line 1037
+        if key in CONFIGURABLE_FLAGS and value.lower() not in TRUTH_VALUES + FALSE_VALUES:  # line 1038
+            Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())  # line 1038
+        c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (tryOrIgnore(lambda _=None: int(value), lambda E: error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?  # line 1039
+    elif command == "unset":  # line 1040
+        if key is None:  # line 1041
+            Exit("No key specified")  # line 1041
+        if key not in c.keys():  # HINT: Works on local configurations when used with --local  # line 1042
+            Exit("Unknown key")  # HINT: Works on local configurations when used with --local  # line 1042
+        del c[key]  # line 1043
+    elif command == "add":  # line 1044
+        if None in (key, value):  # line 1045
+            Exit("Key or value not specified")  # line 1045
+        if key not in CONFIGURABLE_LISTS:  # line 1046
+            Exit("Unsupported key %r" % key)  # line 1046
+        if key not in c.keys():  # prepare empty list, or copy from global, add new value below  # line 1047
+            c[key] = [_ for _ in c.__defaults[key]] if local else []  # prepare empty list, or copy from global, add new value below  # line 1047
+        elif value in c[key]:  # line 1048
+            Exit("Value already contained, nothing to do")  # line 1048
+        if ";" in value:  # line 1049
+            c[key].append(removePath(key, value))  # line 1049
+        else:  # line 1050
+            c[key].extend([removePath(key, v) for v in value.split(";")])  # line 1050
+    elif command == "rm":  # line 1051
+        if None in (key, value):  # line 1052
+            Exit("Key or value not specified")  # line 1052
+        if key not in c.keys():  # line 1053
+            Exit("Unknown key %r" % key)  # line 1053
+        if value not in c[key]:  # line 1054
+            Exit("Unknown value %r" % value)  # line 1054
+        c[key].remove(value)  # line 1055
+        if local and len(c[key]) == 0 and "--prune" in options:  # remove local entry, to fallback to global  # line 1056
+            del c[key]  # remove local entry, to fallback to global  # line 1056
+    else:  # Show or list  # line 1057
+        if key == "ints":  # list valid configuration items  # line 1058
+            printo(", ".join(CONFIGURABLE_INTS))  # list valid configuration items  # line 1058
+        elif key == "flags":  # line 1059
+            printo(", ".join(CONFIGURABLE_FLAGS))  # line 1059
+        elif key == "lists":  # line 1060
+            printo(", ".join(CONFIGURABLE_LISTS))  # line 1060
+        elif key == "texts":  # line 1061
+            printo(", ".join([_ for _ in defaults.keys() if _ not in (CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS)]))  # line 1061
+        else:  # line 1062
+            out = {3: "[default]", 2: "[global] ", 1: "[local]  "}  # type: Dict[int, str]  # in contrast to Git, we don't need (nor want) to support a "system" config scope  # line 1063
+            c = m.c  # always use full configuration chain  # line 1064
+            try:  # attempt single key  # line 1065
+                assert key is not None  # force exception  # line 1066
+                c[key]  # force exception  # line 1066
+                l = key in c.keys()  # type: bool  # line 1067
+                g = key in c.__defaults.keys()  # type: bool  # line 1067
+                printo("%s %s %r" % (key.rjust(20), out[3] if not (l or g) else (out[1] if l else out[2]), c[key]))  # line 1068
+            except:  # normal value listing  # line 1069
+                vals = {k: (repr(v), 3) for k, v in defaults.items()}  # type: Dict[str, Tuple[str, int]]  # line 1070
+                vals.update({k: (repr(v), 2) for k, v in c.__defaults.items()})  # line 1071
+                vals.update({k: (repr(v), 1) for k, v in c.__map.items()})  # line 1072
+                for k, vt in sorted(vals.items()):  # line 1073
+                    printo("%s %s %s" % (k.rjust(20), out[vt[1]], vt[0]))  # line 1073
+                if len(c.keys()) == 0:  # line 1074
+                    info("No local configuration stored")  # line 1074
+                if len(c.__defaults.keys()) == 0:  # line 1075
+                    info("No global configuration stored")  # line 1075
+        return  # in case of list, no need to store anything  # line 1076
+    if local:  # saves changes of repoConfig  # line 1077
+        m.repoConf = c.__map  # saves changes of repoConfig  # line 1077
+        m.saveBranches()  # saves changes of repoConfig  # line 1077
+        Exit("OK", code=0)  # saves changes of repoConfig  # line 1077
+    else:  # global config  # line 1078
+        f, h = saveConfig(c)  # only saves c.__defaults (nested Configr)  # line 1079
+        if f is None:  # line 1080
+            error("Error saving user configuration: %r" % h)  # line 1080
+        else:  # line 1081
+            Exit("OK", code=0)  # line 1081
 
-def move(relPath: 'str', pattern: 'str', newRelPath: 'str', newPattern: 'str', options: 'List[str]'=[], negative: 'bool'=False):  # line 1077
+def move(relPath: 'str', pattern: 'str', newRelPath: 'str', newPattern: 'str', options: 'List[str]'=[], negative: 'bool'=False):  # line 1083
     ''' Path differs: Move files, create folder if not existing. Pattern differs: Attempt to rename file, unless exists in target or not unique.
       for "mvnot" don't do any renaming (or do?)
-  '''  # line 1080
-    if verbose:  # line 1081
-        info(usage.MARKER + "Renaming %r to %r" % (pattern, newPattern))  # line 1081
-    force = '--force' in options  # type: bool  # line 1082
-    soft = '--soft' in options  # type: bool  # line 1083
-    if not os.path.exists(encode(relPath.replace(SLASH, os.sep))) and not force:  # line 1084
-        Exit("Source folder doesn't exist. Use --force to proceed anyway")  # line 1084
-    m = Metadata()  # type: Metadata  # line 1085
-    patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 1086
-    matching = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(encode(relPath.replace(SLASH, os.sep))) else [], os.path.basename(pattern))  # type: List[str]  # find matching files in source  # line 1087
-    matching[:] = [f for f in matching if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]  # line 1088
-    if not matching and not force:  # line 1089
-        Exit("No files match the specified file pattern. Use --force to proceed anyway")  # line 1089
-    if not (m.track or m.picky):  # line 1090
-        Exit("Repository is in simple mode. Simply use basic file operations to modify files, then execute 'sos commit' to version the changes")  # line 1090
-    if pattern not in patterns:  # list potential alternatives and exit  # line 1091
-        for tracked in (t for t in patterns if os.path.dirname(t) == relPath):  # for all patterns of the same source folder  # line 1092
-            alternative = fnmatch.filter(matching, os.path.basename(tracked))  # type: _coconut.typing.Sequence[str]  # find if it matches any of the files in the source folder, too  # line 1093
-            if alternative:  # line 1094
-                info("  '%s' matches %d files" % (tracked, len(alternative)))  # line 1094
-        if not (force or soft):  # line 1095
-            Exit("File pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)  # line 1095
-    basePattern = os.path.basename(pattern)  # type: str  # pure glob without folder  # line 1096
-    newBasePattern = os.path.basename(newPattern)  # type: str  # line 1097
-    if basePattern.count("*") < newBasePattern.count("*") or (basePattern.count("?") - basePattern.count("[?]")) < (newBasePattern.count("?") - newBasePattern.count("[?]")) or (basePattern.count("[") - basePattern.count("\\[")) < (newBasePattern.count("[") - newBasePattern.count("\\[")) or (basePattern.count("]") - basePattern.count("\\]")) < (newBasePattern.count("]") - newBasePattern.count("\\]")):  # line 1098
-        Exit("Glob markers from '%s' to '%s' don't match, cannot move/rename tracked matching files" % (basePattern, newBasePattern))  # line 1102
-    oldTokens = None  # type: _coconut.typing.Sequence[GlobBlock]  # line 1103
-    newToken = None  # type: _coconut.typing.Sequence[GlobBlock]  # line 1103
-    oldTokens, newTokens = tokenizeGlobPatterns(os.path.basename(pattern), os.path.basename(newPattern))  # line 1104
-    matches = convertGlobFiles(matching, oldTokens, newTokens)  # type: _coconut.typing.Sequence[Tuple[str, str]]  # computes list of source - target filename pairs  # line 1105
-    if len({st[1] for st in matches}) != len(matches):  # line 1106
-        Exit("Some target filenames are not unique and different move/rename actions would point to the same target file")  # line 1106
-    matches = reorderRenameActions(matches, exitOnConflict=not soft)  # attempts to find conflict-free renaming order, or exits  # line 1107
-    if os.path.exists(encode(newRelPath)):  # line 1108
-        exists = [filename[1] for filename in matches if os.path.exists(encode(os.path.join(newRelPath, filename[1]).replace(SLASH, os.sep)))]  # type: _coconut.typing.Sequence[str]  # line 1109
-        if exists and not (force or soft):  # line 1110
-            Exit("%s files would write over existing files in %s cases. Use --force to execute it anyway" % ("Moving" if relPath != newRelPath else "Renaming", "all" if len(exists) == len(matches) else "some"))  # line 1110
-    else:  # line 1111
-        os.makedirs(encode(os.path.abspath(newRelPath.replace(SLASH, os.sep))))  # line 1111
-    if not soft:  # perform actual renaming  # line 1112
-        for (source, target) in matches:  # line 1113
-            try:  # line 1114
-                shutil.move(encode(os.path.abspath(os.path.join(relPath, source).replace(SLASH, os.sep))), encode(os.path.abspath(os.path.join(newRelPath, target).replace(SLASH, os.sep))))  # line 1114
-            except Exception as E:  # one error can lead to another in case of delicate renaming order  # line 1115
-                error("Cannot move/rename file '%s' to '%s'" % (source, os.path.join(newRelPath, target)))  # one error can lead to another in case of delicate renaming order  # line 1115
-    patterns[patterns.index(pattern)] = newPattern  # line 1116
-    m.saveBranches()  # line 1117
+  '''  # line 1086
+    if verbose:  # line 1087
+        info(usage.MARKER + "Renaming %r to %r" % (pattern, newPattern))  # line 1087
+    force = '--force' in options  # type: bool  # line 1088
+    soft = '--soft' in options  # type: bool  # line 1089
+    if not os.path.exists(encode(relPath.replace(SLASH, os.sep))) and not force:  # line 1090
+        Exit("Source folder doesn't exist. Use --force to proceed anyway")  # line 1090
+    m = Metadata()  # type: Metadata  # line 1091
+    patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 1092
+    matching = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(encode(relPath.replace(SLASH, os.sep))) else [], os.path.basename(pattern))  # type: List[str]  # find matching files in source  # line 1093
+    matching[:] = [f for f in matching if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]  # line 1094
+    if not matching and not force:  # line 1095
+        Exit("No files match the specified file pattern. Use --force to proceed anyway")  # line 1095
+    if not (m.track or m.picky):  # line 1096
+        Exit("Repository is in simple mode. Simply use basic file operations to modify files, then execute 'sos commit' to version the changes")  # line 1096
+    if pattern not in patterns:  # list potential alternatives and exit  # line 1097
+        for tracked in (t for t in patterns if os.path.dirname(t) == relPath):  # for all patterns of the same source folder  # line 1098
+            alternative = fnmatch.filter(matching, os.path.basename(tracked))  # type: _coconut.typing.Sequence[str]  # find if it matches any of the files in the source folder, too  # line 1099
+            if alternative:  # line 1100
+                info("  '%s' matches %d files" % (tracked, len(alternative)))  # line 1100
+        if not (force or soft):  # line 1101
+            Exit("File pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)  # line 1101
+    basePattern = os.path.basename(pattern)  # type: str  # pure glob without folder  # line 1102
+    newBasePattern = os.path.basename(newPattern)  # type: str  # line 1103
+    if basePattern.count("*") < newBasePattern.count("*") or (basePattern.count("?") - basePattern.count("[?]")) < (newBasePattern.count("?") - newBasePattern.count("[?]")) or (basePattern.count("[") - basePattern.count("\\[")) < (newBasePattern.count("[") - newBasePattern.count("\\[")) or (basePattern.count("]") - basePattern.count("\\]")) < (newBasePattern.count("]") - newBasePattern.count("\\]")):  # line 1104
+        Exit("Glob markers from '%s' to '%s' don't match, cannot move/rename tracked matching files" % (basePattern, newBasePattern))  # line 1108
+    oldTokens = None  # type: _coconut.typing.Sequence[GlobBlock]  # line 1109
+    newToken = None  # type: _coconut.typing.Sequence[GlobBlock]  # line 1109
+    oldTokens, newTokens = tokenizeGlobPatterns(os.path.basename(pattern), os.path.basename(newPattern))  # line 1110
+    matches = convertGlobFiles(matching, oldTokens, newTokens)  # type: _coconut.typing.Sequence[Tuple[str, str]]  # computes list of source - target filename pairs  # line 1111
+    if len({st[1] for st in matches}) != len(matches):  # line 1112
+        Exit("Some target filenames are not unique and different move/rename actions would point to the same target file")  # line 1112
+    matches = reorderRenameActions(matches, exitOnConflict=not soft)  # attempts to find conflict-free renaming order, or exits  # line 1113
+    if os.path.exists(encode(newRelPath)):  # line 1114
+        exists = [filename[1] for filename in matches if os.path.exists(encode(os.path.join(newRelPath, filename[1]).replace(SLASH, os.sep)))]  # type: _coconut.typing.Sequence[str]  # line 1115
+        if exists and not (force or soft):  # line 1116
+            Exit("%s files would write over existing files in %s cases. Use --force to execute it anyway" % ("Moving" if relPath != newRelPath else "Renaming", "all" if len(exists) == len(matches) else "some"))  # line 1116
+    else:  # line 1117
+        os.makedirs(encode(os.path.abspath(newRelPath.replace(SLASH, os.sep))))  # line 1117
+    if not soft:  # perform actual renaming  # line 1118
+        for (source, target) in matches:  # line 1119
+            try:  # line 1120
+                shutil.move(encode(os.path.abspath(os.path.join(relPath, source).replace(SLASH, os.sep))), encode(os.path.abspath(os.path.join(newRelPath, target).replace(SLASH, os.sep))))  # line 1120
+            except Exception as E:  # one error can lead to another in case of delicate renaming order  # line 1121
+                error("Cannot move/rename file '%s' to '%s'" % (source, os.path.join(newRelPath, target)))  # one error can lead to another in case of delicate renaming order  # line 1121
+    patterns[patterns.index(pattern)] = newPattern  # line 1122
+    m.saveBranches()  # line 1123
 
-def parse(vcs: 'str', cwd: 'str', cmd: 'str'):  # line 1119
-    ''' Main operation. root is underlying VCS base dir. main() has already chdir'ed into SOS root folder, cwd is original working directory for add, rm, mv. '''  # line 1120
-    debug("Parsing command-line arguments...")  # line 1121
-    root = os.getcwd()  # line 1122
-    try:  # line 1123
-        onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)  # line 1124
-        command = sys.argv[1].strip() if len(sys.argv) > 1 else ""  # line 1125
-        arguments = [c.strip() for c in sys.argv[2:] if not (c.startswith("-") and (len(c) == 2 or c[1] == "-"))]  # type: List[_coconut.typing.Optional[str]]  # line 1126
-        options = [c.strip() for c in sys.argv[2:] if c.startswith("-") and (len(c) == 2 or c[1] == "-")]  # options with arguments have to be parsed from sys.argv  # line 1127
-        debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))  # line 1128
-        if command[:1] in "amr":  # line 1129
-            relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "."))  # line 1129
-        if command[:1] == "m":  # line 1130
-            if len(arguments) < 2:  # line 1131
-                Exit("Need a second file pattern argument as target for move command")  # line 1131
-            newRelPath, newPattern = relativize(root, os.path.join(cwd, arguments[1]))  # line 1132
-        arguments[:] = (arguments + [None] * 3)[:3]  # line 1133
-        if command[:1] == "a":  # e.g. addnot  # line 1134
-            add(relPath, pattern, options, negative="n" in command)  # e.g. addnot  # line 1134
-        elif command[:1] == "b":  # line 1135
-            branch(arguments[0], arguments[1], options)  # line 1135
-        elif command[:3] == "com":  # line 1136
-            commit(arguments[0], options, onlys, excps)  # line 1136
-        elif command[:2] == "ch":  # "changes" (legacy)  # line 1137
-            changes(arguments[0], options, onlys, excps, cwd)  # "changes" (legacy)  # line 1137
-        elif command[:2] == "ci":  # line 1138
-            commit(arguments[0], options, onlys, excps)  # line 1138
-        elif command[:3] == 'con':  # line 1139
-            config(arguments, options)  # line 1139
-        elif command[:2] == "de":  # line 1140
-            destroy(arguments[0], options)  # line 1140
-        elif command[:2] == "di":  # line 1141
-            diff(arguments[0], options, onlys, excps)  # line 1141
-        elif command[:2] == "du":  # line 1142
-            dump(arguments[0], options)  # line 1142
-        elif command[:1] == "h":  # line 1143
-            usage.usage(arguments[0], verbose=verbose)  # line 1143
-        elif command[:2] == "lo":  # line 1144
-            log(options, cwd)  # line 1144
-        elif command[:2] == "li":  # line 1145
-            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1145
-        elif command[:2] == "ls":  # line 1146
-            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1146
-        elif command[:1] == "m":  # e.g. mvnot  # line 1147
-            move(relPath, pattern, newRelPath, newPattern, options, negative="n" in command)  # e.g. mvnot  # line 1147
-        elif command[:2] == "of":  # line 1148
-            offline(arguments[0], arguments[1], options)  # line 1148
-        elif command[:2] == "on":  # line 1149
-            online(options)  # line 1149
-        elif command[:1] == "p":  # line 1150
-            publish(arguments[0], cmd, options, onlys, excps)  # line 1150
-        elif command[:1] == "r":  # e.g. rmnot  # line 1151
-            remove(relPath, pattern, negative="n" in command)  # e.g. rmnot  # line 1151
-        elif command[:2] == "st":  # line 1152
-            status(arguments[0], vcs, cmd, options, onlys, excps)  # line 1152
-        elif command[:2] == "sw":  # line 1153
-            switch(arguments[0], options, onlys, excps, cwd)  # line 1153
-        elif command[:1] == "u":  # line 1154
-            update(arguments[0], options, onlys, excps)  # line 1154
-        elif command[:1] == "v":  # line 1155
-            usage.usage(arguments[0], version=True)  # line 1155
-        else:  # line 1156
-            Exit("Unknown command '%s'" % command)  # line 1156
-        Exit(code=0)  # regular exit  # line 1157
-    except (Exception, RuntimeError) as E:  # line 1158
-        exception(E)  # line 1159
-        Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing")  # line 1160
+def parse(vcs: 'str', cwd: 'str', cmd: 'str'):  # line 1125
+    ''' Main operation. root is underlying VCS base dir. main() has already chdir'ed into SOS root folder, cwd is original working directory for add, rm, mv. '''  # line 1126
+    debug("Parsing command-line arguments...")  # line 1127
+    root = os.getcwd()  # line 1128
+    try:  # line 1129
+        onlys, excps = parseOnlyOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)  # line 1130
+        command = sys.argv[1].strip() if len(sys.argv) > 1 else ""  # line 1131
+        arguments = [c.strip() for c in sys.argv[2:] if not (c.startswith("-") and (len(c) == 2 or c[1] == "-"))]  # type: List[_coconut.typing.Optional[str]]  # line 1132
+        options = [c.strip() for c in sys.argv[2:] if c.startswith("-") and (len(c) == 2 or c[1] == "-")]  # options with arguments have to be parsed from sys.argv  # line 1133
+        debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))  # line 1134
+        if command[:1] in "amr":  # line 1135
+            relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "."))  # line 1135
+        if command[:1] == "m":  # line 1136
+            if len(arguments) < 2:  # line 1137
+                Exit("Need a second file pattern argument as target for move command")  # line 1137
+            newRelPath, newPattern = relativize(root, os.path.join(cwd, arguments[1]))  # line 1138
+        arguments[:] = (arguments + [None] * 3)[:3]  # line 1139
+        if command[:1] == "a":  # e.g. addnot  # line 1140
+            add(relPath, pattern, options, negative="n" in command)  # e.g. addnot  # line 1140
+        elif command[:1] == "b":  # line 1141
+            branch(arguments[0], arguments[1], options)  # line 1141
+        elif command[:3] == "com":  # line 1142
+            commit(arguments[0], options, onlys, excps)  # line 1142
+        elif command[:2] == "ch":  # "changes" (legacy)  # line 1143
+            changes(arguments[0], options, onlys, excps, cwd)  # "changes" (legacy)  # line 1143
+        elif command[:2] == "ci":  # line 1144
+            commit(arguments[0], options, onlys, excps)  # line 1144
+        elif command[:3] == 'con':  # line 1145
+            config(arguments, options)  # line 1145
+        elif command[:2] == "de":  # line 1146
+            destroy(arguments[0], options)  # line 1146
+        elif command[:2] == "di":  # line 1147
+            diff(arguments[0], options, onlys, excps)  # line 1147
+        elif command[:2] == "du":  # line 1148
+            dump(arguments[0], options)  # line 1148
+        elif command[:1] == "h":  # line 1149
+            usage.usage(arguments[0], verbose=verbose)  # line 1149
+        elif command[:2] == "lo":  # line 1150
+            log(options, cwd)  # line 1150
+        elif command[:2] == "li":  # line 1151
+            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1151
+        elif command[:2] == "ls":  # line 1152
+            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1152
+        elif command[:1] == "m":  # e.g. mvnot  # line 1153
+            move(relPath, pattern, newRelPath, newPattern, options, negative="n" in command)  # e.g. mvnot  # line 1153
+        elif command[:2] == "of":  # line 1154
+            offline(arguments[0], arguments[1], options)  # line 1154
+        elif command[:2] == "on":  # line 1155
+            online(options)  # line 1155
+        elif command[:1] == "p":  # line 1156
+            publish(arguments[0], cmd, options, onlys, excps)  # line 1156
+        elif command[:1] == "r":  # e.g. rmnot  # line 1157
+            remove(relPath, pattern, negative="n" in command)  # e.g. rmnot  # line 1157
+        elif command[:2] == "st":  # line 1158
+            status(arguments[0], vcs, cmd, options, onlys, excps)  # line 1158
+        elif command[:2] == "sw":  # line 1159
+            switch(arguments[0], options, onlys, excps, cwd)  # line 1159
+        elif command[:1] == "u":  # line 1160
+            update(arguments[0], options, onlys, excps)  # line 1160
+        elif command[:1] == "v":  # line 1161
+            usage.usage(arguments[0], version=True)  # line 1161
+        else:  # line 1162
+            Exit("Unknown command '%s'" % command)  # line 1162
+        Exit(code=0)  # regular exit  # line 1163
+    except (Exception, RuntimeError) as E:  # line 1164
+        exception(E)  # line 1165
+        Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing")  # line 1166
 
-def main():  # line 1162
-    global debug, info, warn, error  # to modify logger  # line 1163
-    logging.basicConfig(level=level, stream=sys.stderr, format=("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))  # line 1164
-    _log = Logger(logging.getLogger(__name__))  # line 1165
-    debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1165
-    for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv):  # clean up program arguments  # line 1166
-        sys.argv.remove(option)  # clean up program arguments  # line 1166
-    if '--help' in sys.argv or len(sys.argv) < 2:  # line 1167
-        usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose=verbose)  # line 1167
-    command = sys.argv[1] if len(sys.argv) > 1 else None  # type: _coconut.typing.Optional[str]  # line 1168
-    root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command  # line 1169
-    debug("Detected SOS root folder: %s\nDetected VCS root folder: %s" % (("-" if root is None else root), ("-" if vcs is None else vcs)))  # line 1170
-    defaults["defaultbranch"] = (lambda _coconut_none_coalesce_item: "default" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(vcsBranches.get(cmd, vcsBranches[SVN]))  # sets dynamic default with SVN fallback  # line 1171
-    defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback  # line 1172
-    if (not force_vcs or force_sos) and (root is not None or (("" if command is None else command))[:2] == "of" or (("_" if command is None else command))[:1] in "hv"):  # in offline mode or just going offline TODO what about git config?  # line 1173
-        cwd = os.getcwd()  # line 1174
-        os.chdir(cwd if command[:2] == "of" else (cwd if root is None else root))  # line 1175
-        parse(vcs, cwd, cmd)  # line 1176
-    elif force_vcs or cmd is not None:  # online mode - delegate to VCS  # line 1177
-        info("%s: Running '%s %s'" % (usage.COMMAND.upper(), cmd, " ".join(sys.argv[1:])))  # line 1178
-        import subprocess  # only required in this section  # line 1179
-        process = subprocess.Popen([cmd] + sys.argv[1:], shell=False, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)  # line 1180
-        inp = ""  # type: str  # line 1181
-        while True:  # line 1182
-            so, se = process.communicate(input=inp)  # line 1183
-            if process.returncode is not None:  # line 1184
-                break  # line 1184
-            inp = sys.stdin.read()  # line 1185
-        if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")  # line 1186
-            if root is None:  # line 1187
-                Exit("Cannot determine VCS root folder: Unable to mark repository as synchronized and will show a warning when leaving offline mode")  # line 1187
-            m = Metadata(root)  # type: Metadata  # line 1188
-            m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync=True)  # mark as committed  # line 1189
-            m.saveBranches()  # line 1190
-    else:  # line 1191
-        Exit("No offline repository present, and unable to detect VCS file tree")  # line 1191
+def main():  # line 1168
+    global debug, info, warn, error  # to modify logger  # line 1169
+    logging.basicConfig(level=level, stream=sys.stderr, format=("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))  # line 1170
+    _log = Logger(logging.getLogger(__name__))  # line 1171
+    debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1171
+    for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv):  # clean up program arguments  # line 1172
+        sys.argv.remove(option)  # clean up program arguments  # line 1172
+    if '--help' in sys.argv or len(sys.argv) < 2:  # line 1173
+        usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose=verbose)  # line 1173
+    command = sys.argv[1] if len(sys.argv) > 1 else None  # type: _coconut.typing.Optional[str]  # line 1174
+    root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command  # line 1175
+    debug("Detected SOS root folder: %s\nDetected VCS root folder: %s" % (("-" if root is None else root), ("-" if vcs is None else vcs)))  # line 1176
+    defaults["defaultbranch"] = (lambda _coconut_none_coalesce_item: "default" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(vcsBranches.get(cmd, vcsBranches[SVN]))  # sets dynamic default with SVN fallback  # line 1177
+    defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback  # line 1178
+    if (not force_vcs or force_sos) and (root is not None or (("" if command is None else command))[:2] == "of" or (("_" if command is None else command))[:1] in "hv"):  # in offline mode or just going offline TODO what about git config?  # line 1179
+        cwd = os.getcwd()  # line 1180
+        os.chdir(cwd if command[:2] == "of" else (cwd if root is None else root))  # line 1181
+        parse(vcs, cwd, cmd)  # line 1182
+    elif force_vcs or cmd is not None:  # online mode - delegate to VCS  # line 1183
+        info("%s: Running '%s %s'" % (usage.COMMAND.upper(), cmd, " ".join(sys.argv[1:])))  # line 1184
+        import subprocess  # only required in this section  # line 1185
+        process = subprocess.Popen([cmd] + sys.argv[1:], shell=False, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)  # line 1186
+        inp = ""  # type: str  # line 1187
+        while True:  # line 1188
+            so, se = process.communicate(input=inp)  # line 1189
+            if process.returncode is not None:  # line 1190
+                break  # line 1190
+            inp = sys.stdin.read()  # line 1191
+        if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")  # line 1192
+            if root is None:  # line 1193
+                Exit("Cannot determine VCS root folder: Unable to mark repository as synchronized and will show a warning when leaving offline mode")  # line 1193
+            m = Metadata(root)  # type: Metadata  # line 1194
+            m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync=True)  # mark as committed  # line 1195
+            m.saveBranches()  # line 1196
+    else:  # line 1197
+        Exit("No offline repository present, and unable to detect VCS file tree")  # line 1197
 
 
 # Main part
-force_sos = [None] if '--sos' in sys.argv else []  # type: bool  # this is a trick allowing to modify the flags from the test suite  # line 1195
-force_vcs = [None] if '--vcs' in sys.argv else []  # type: bool  # line 1196
-verbose = [None] if '--verbose' in sys.argv or '-v' in sys.argv else []  # type: bool  # imported from utility, and only modified here  # line 1197
-debug_ = [None] if os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv else []  # type: bool  # line 1198
-level = logging.DEBUG if '--debug' in sys.argv else logging.INFO  # type: int  # line 1199
+force_sos = [None] if '--sos' in sys.argv else []  # type: bool  # this is a trick allowing to modify the flags from the test suite  # line 1201
+force_vcs = [None] if '--vcs' in sys.argv else []  # type: bool  # line 1202
+verbose = [None] if '--verbose' in sys.argv or '-v' in sys.argv else []  # type: bool  # imported from utility, and only modified here  # line 1203
+debug_ = [None] if os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv else []  # type: bool  # line 1204
+level = logging.DEBUG if '--debug' in sys.argv else logging.INFO  # type: int  # line 1205
 
-_log = Logger(logging.getLogger(__name__))  # line 1201
-debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1201
+_log = Logger(logging.getLogger(__name__))  # line 1207
+debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1207
 
-if __name__ == '__main__':  # line 1203
-    main()  # line 1203
+if __name__ == '__main__':  # line 1209
+    main()  # line 1209

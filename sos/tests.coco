@@ -230,7 +230,7 @@ class Tests(unittest.TestCase):
     out = wrapChannels(-> sos.commit())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
-    _.assertIn("Created new revision r01 (+00/-00/~00/#02)", out)  # TODO why is this not captured?
+    _.assertIn("Created new revision r01 (+00/-00/~00/#02) summing 628 bytes (88.22% SOS overhead)", out)  # TODO why is this not captured?
 
   def testPatternPaths(_):
     sos.offline(options = ["--track"])

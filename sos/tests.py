@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x26be28a6
+# __coconut_hash__ = 0xc231d9c6
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -311,7 +311,7 @@ class Tests(unittest.TestCase):  # line 98
         out = wrapChannels(lambda _=None: sos.commit())  # line 230
         _.assertIn("MOV ./file2  <-  sub/file2", out)  # line 231
         _.assertIn("MOV sub/file1  <-  ./file1", out)  # line 232
-        _.assertIn("Created new revision r01 (+00/-00/~00/#02)", out)  # TODO why is this not captured?  # line 233
+        _.assertIn("Created new revision r01 (+00/-00/~00/#02) summing 628 bytes (88.22% SOS overhead)", out)  # TODO why is this not captured?  # line 233
 
     def testPatternPaths(_):  # line 235
         sos.offline(options=["--track"])  # line 236
