@@ -230,7 +230,7 @@ class Tests(unittest.TestCase):
     out = wrapChannels(-> sos.commit())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
-    _.assertIn("Created new revision r01 (+00/-00/~00/#02) summing 628 bytes (88.22% SOS overhead)", out)  # TODO why is this not captured?
+    _.assertIn("Created new revision r01 (+00/-00/~00/#02) summing 628 bytes in 2 files (88.22% SOS overhead)", out)  # TODO why is this not captured?
 
   def testPatternPaths(_):
     sos.offline(options = ["--track"])
@@ -258,7 +258,8 @@ class Tests(unittest.TestCase):
 
   def testFastBranching(_):
     _.createFile(1)
-    sos.offline(options = ["--strict"])  # b0/r0 = ./file1
+    out = wrapChannels(-> sos.offline(options = ["--strict"]))  # b0/r0 = ./file1
+    _.assertIn("1 file added to initial branch 'trunk'", out)
     _.createFile(2)
     os.unlink("file1")
     sos.commit()  # b0/r1 = +./file2  -./file1

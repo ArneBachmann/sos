@@ -215,8 +215,7 @@ class Metadata:
         _.loadBranch(_.branch)
         revision:int = max(_.commits) if _.commits else 0  # TODO what if last switch was to an earlier revision? no persisting of last checkout
         _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
-        for path, pinfo in _.paths.items():
-          _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
+        for path, pinfo in _.paths.items(): _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
     _.commits = {0: CommitInfo(number = 0, ctime = now, message = initialMessage ?? "Branched on %s" % strftime(now))}  # store initial commit for new branch
     _.saveBranch(branch)  # save branch meta data (revisions) to branch folder
     _.saveCommit(branch, 0)  # save commit meta data to revision folder
@@ -327,7 +326,8 @@ class Metadata:
             hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = revisionFolder(branch, revision, base = _.root, file = nameHash) if write else None, callback = ((sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")) if show else None) if size > 0 else (None, 0)
             changed.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
             compressed += written; original += size
-          except Exception as E: exception(E)
+          except PermissionError as E: error("File permission error for %s" % filepath)
+          except Exception as F: exception(F)
           continue  # with next file
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
@@ -476,12 +476,12 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = []):
   ''' Initial command to start working offline. '''
   if os.path.exists(encode(metaFolder)):
     if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over.\nUse 'sos online' to check for out-of-sync branches, or\nWipe existing offline branches with 'sos offline --force'")
-    try:
-      for entry in os.listdir(metaFolder):
+    try:  # throw away all previous metadata before going offline
+      for entry in os.listdir(metaFolder):  # TODO why not rmtree the metadata alltogether as in "online"?
         resource = metaFolder + os.sep + entry
         if os.path.isdir(resource): shutil.rmtree(encode(resource))
         else: os.unlink(encode(resource))
-    except: Exit("Cannot reliably remove previous repository contents. Please remove .sos folder manually prior to going offline")
+    except: Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder)
   m:Metadata = Metadata(offline = True)
   if '--strict'   in options or m.c.strict:   m.strict =   True   # always hash contents
   if '--compress' in options or m.c.compress: m.compress = True  # plain file copies instead of compressed ones
@@ -493,6 +493,7 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = []):
   m.createBranch(0, name ?? defaults["defaultbranch"], initialMessage ?? "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
   m.saveBranches(also = {"version": version.__version__})  # stores version info only once. no change immediately after going offline, going back online won't issue a warning
+  debug("%d file%s added to initial branch %r" % (len(m.paths), "s" if len(m.paths) > 1 else "", m.branches[m.branch].name))
   info(usage.MARKER + "Offline repository prepared. Use 'sos online' to finish offline work")
 
 def online(options:str[] = []):
@@ -621,13 +622,15 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch modified
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
   m.saveBranches()
-  stored:int = 0; overhead:int = 0  # now determine new commit size on file system
+  stored:int = 0; overhead:int = 0; count:int = 0  # now determine new commit size on file system
   commitFolder:str = revisionFolder(m.branch, revision)
   for file in os.listdir(commitFolder):
-    newsize:int = tryOrDefault(-> os.stat(encode(os.path.join(commitFolder, file))).st_size, 0)
-    if file == metaFile: overhead += newsize
-    else: stored += newsize
-  printo(usage.MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d) summing %s (%.2f%% SOS overhead)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changed.additions) - len(changed.moves), len(changed.deletions) - len(changed.moves), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(changed.modifications), MOVE_SYMBOL if m.c.useUnicodeFont else "#", len(changed.moves), ("%.2f MiB" % ((stored + overhead) / MEBI)) if stored > 1.25 * MEBI else (("%.2f Kib" % ((stored + overhead) / KIBI)) if stored > 1.25 * KIBI else ("%d bytes" % (stored + overhead))), (overhead * 100. / (stored + overhead)) if stored + overhead > 0 else 0.))
+    try:
+      newsize:int = os.stat(encode(os.path.join(commitFolder, file))).st_size
+      if file == metaFile: overhead += newsize
+      else: stored += newsize; count += 1
+    except Exception as E: error(E)
+  printo(usage.MARKER + "Created new revision r%02d%s (+%02d/-%02d/%s%02d/%s%02d) summing %s in %d files (%.2f%% SOS overhead)" % (revision, ((" '%s'" % argument) if argument is not None else ""), len(changed.additions) - len(changed.moves), len(changed.deletions) - len(changed.moves), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(changed.modifications), MOVE_SYMBOL if m.c.useUnicodeFont else "#", len(changed.moves), ("%.2f MiB" % ((stored + overhead) / MEBI)) if stored > 1.25 * MEBI else (("%.2f Kib" % ((stored + overhead) / KIBI)) if stored > 1.25 * KIBI else ("%d bytes" % (stored + overhead))), count, (overhead * 100. / (stored + overhead)) if stored + overhead > 0 else 0.))
 
 def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show branches and current repository state. '''
