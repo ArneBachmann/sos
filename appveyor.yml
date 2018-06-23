@@ -6,9 +6,14 @@ build_script:
   # https://mnaoumov.wordpress.com/2015/01/11/execution-of-external-commands-in-powershell-done-right/
   - ps: |
 #      $ErrorActionPreference = "SilentlyContinue"
-      try {
+      try
+      {
         if ($isLinux) { ./run.sh } else { cmd /c ".\run.bat" 2>&1 | % { "$_" } }
-      } catch { }
+      }
+      finally
+      {
+        $error.Clear()
+      }
 clone_script:
   - cmd: "git clone https://github.com/ArneBachmann/sos .\\"
 deploy: false
@@ -78,8 +83,8 @@ install:
   - cmd: "python --version"
   - ps: |
 #      $ErrorActionPreference = "SilentlyContinue"
-      try {}
+      try {
         if ($isLinux) { ./install.sh } else { cmd /c ".\install.bat" 2>&1 | % { "$_" } }
-      } catch { }
+      } finally { $error.Clear() }
 skip_branch_with_pr: true
 version: "{build}.{branch}"
