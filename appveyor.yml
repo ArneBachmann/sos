@@ -4,8 +4,8 @@
 
 build_script:
   # https://mnaoumov.wordpress.com/2015/01/11/execution-of-external-commands-in-powershell-done-right/
-  - ps: |
 #      $ErrorActionPreference = "SilentlyContinue"
+  - ps: |
       if ($isLinux) { ./run.sh } else { cmd /c ".\run.bat" 2>&1 | % { "$_" } }
       $error.Clear()
 clone_script:
