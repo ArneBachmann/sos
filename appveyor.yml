@@ -1,7 +1,8 @@
 # https://ci.appveyor.com/tools/validate-yaml
 # http://www.yamllint.com/
 build_script:
-  - ps: if ($isLinux) { "./run.sh" } else { "cmd /c .\run.bat" }
+  - ps: |
+      if ($isLinux) { ./run.sh } else { cmd /c .\run.bat }
 clone_script:
   - cmd: "git clone https://github.com/ArneBachmann/sos .\\"
 deploy: false
@@ -49,6 +50,7 @@ init:
   - "set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 install:
   - cmd: "python --version"
-  - ps: if ($isLinux) { "./install.sh" } else { "cmd /c .\install.bat" }
+  - ps: |
+      if ($isLinux) { ./install.sh } else { cmd /c .\install.bat }
 skip_branch_with_pr: true
 version: "{build}.{branch}"
