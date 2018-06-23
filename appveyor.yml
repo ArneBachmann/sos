@@ -2,7 +2,8 @@
 # http://www.yamllint.com/
 build_script:
   # https://mnaoumov.wordpress.com/2015/01/11/execution-of-external-commands-in-powershell-done-right/
-  - ps: "if ($isLinux) { ./run.sh } else { cmd /c ".\run.bat" 2>&1 | % { "$_" } }"
+  - ps: |
+      if ($isLinux) { ./run.sh } else { cmd /c ".\run.bat" 2>&1 | % { "$_" } }
 clone_script:
   - cmd: "git clone https://github.com/ArneBachmann/sos .\\"
 deploy: false
@@ -50,6 +51,7 @@ init:
   - "set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 install:
   - cmd: "python --version"
-  - ps: "if ($isLinux) { ./install.sh } else { cmd /c ".\install.bat" 2>&1 | % { "$_" } }"
+  - ps: |
+      if ($isLinux) { ./install.sh } else { cmd /c ".\install.bat" 2>&1 | % { "$_" } }
 skip_branch_with_pr: true
 version: "{build}.{branch}"
