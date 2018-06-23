@@ -38,11 +38,14 @@ debug_:bool = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in
 
 # Classes
 class Accessor(dict):
-  ''' Dictionary with attribute access. Writing only supported via dictionary access. '''
+  ''' Dictionary with attribute access. '''
   def __init__(_, mapping:Dict[str,Any]) -> None: dict.__init__(_, mapping)  # TODO remove -> None when fixed in Coconut stub
   def __getattribute__(_, name:str) -> Any:  # or simply class C(dict): __getattr__ = dict.__getitem__
     try: return _[name]
     except: return dict.__getattribute__(_, name)
+  def __setattribute__(_, name:str, value: Any) -> None:
+    try: _[name] = value
+    except: dict.__setattribute__(_, name, value)
 
 if TYPE_CHECKING:  # available since coconut 1.3.1.21 (?)
   Number = TypeVar("Number", int, float)
@@ -204,7 +207,8 @@ def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str
   indicator:ProgressIndicator? = ProgressIndicator(symbols, callback) if callback else None
   _hash = hashlib.sha256()
   wsize:int = 0
-  if saveTo and os.path.exists(encode(saveTo)): Exit("Hash conflict. Leaving revision in inconsistent state. This should happen only once in a lifetime")
+  if saveTo and os.path.exists(encode(saveTo)):
+    Exit("Hash collision detected. Leaving repository in inconsistent state.", 1)  # HINT this exits immediately
   to = openIt(saveTo, "w", compress) if saveTo else None
   with open(encode(path), "rb") as fd:
     while True:
@@ -428,7 +432,7 @@ def findSosVcsBase() -> Tuple[str?,str?,str?] =
   vcs:Tuple[str?,str?] = (None, None)
   while not os.path.exists(encode(os.path.join(path, metaFolder))):
     contents:Set[str] = set(os.listdir(path))
-    vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents or (SLASH in folder and os.path.exists(os.path.join(os.getcwd(), folder.replace(SLASH, os.sep))))]  # determine VCS type from existence of dot folder
+    vcss:str[] = [executable for folder, executable in vcsFolders.items() if folder in contents or (SLASH in folder and os.path.exists(os.path.join(os.getcwd(), folder.replace(SLASH, os.sep))))]  # determine VCS type from existence of dot folder TODO use encode?
     choice:str? = None
     if len(vcss) > 1:
       choice = SVN if SVN in vcss else vcss[0]  # SVN is preferred

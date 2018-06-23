@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xdf2c2fd9
+# __coconut_hash__ = 0x28de1fb3
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -288,7 +288,7 @@ class Tests(unittest.TestCase):  # line 98
         _.createFile(4)  # line 207
         _.createFile(5)  # line 208
         sos.commit()  # line 209
-        out = [__.replace(os.getcwd() + os.sep + sos.metaFolder + os.sep, "").strip() for __ in wrapChannels(lambda _=None: sos.dump("x." + sos.DUMP_FILE)).replace("\r", "").split("\n")]  # line 210
+        out = [__.replace(os.getcwd() + os.sep + sos.metaFolder + os.sep, "").strip() for __ in wrapChannels(lambda _=None: sos.dump("x." + sos.DUMP_FILE)).replace("\r", "").split("\n")]  # type: List[str]  # line 210
         _.assertTrue(out.index("b0%sr2" % os.sep) > out.index("b0%sr1" % os.sep))  # line 211
         _.assertTrue(out.index("b0%sr1" % os.sep) > out.index("b0%sr0" % os.sep))  # line 212
 
@@ -305,7 +305,7 @@ class Tests(unittest.TestCase):  # line 98
         out = wrapChannels(lambda _=None: sos.changes())  # type: str  # line 224
         _.assertIn("MOV ./file2  <-  sub/file2", out)  # line 225
         _.assertIn("MOV sub/file1  <-  ./file1", out)  # line 226
-        out = wrapChannels(lambda _=None: sos.changes(options=["--relative"], cwd="sub"))  # type: str  # line 227
+        out = wrapChannels(lambda _=None: sos.changes(options=["--relative"], cwd="sub"))  # line 227
         _.assertIn("MOV ../file2  <-  ./file2", out)  # line 228
         _.assertIn("MOV ./file1  <-  ../file1", out)  # line 229
         out = wrapChannels(lambda _=None: sos.commit())  # line 230
@@ -317,859 +317,856 @@ class Tests(unittest.TestCase):  # line 98
         sos.offline(options=["--track"])  # line 236
         os.mkdir("sub")  # line 237
         _.createFile("sub" + os.sep + "file1", "sdfsdf")  # line 238
-        sos.add("sub", "sub/file?")  # line 239
-        sos.commit("test")  # should pick up sub/file1 pattern  # line 240
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # sub/file1 was added  # line 241
-        _.createFile(1)  # line 242
-        try:  # should not commit anything, as the file in base folder doesn't match the tracked pattern  # line 243
-            sos.commit("nothing")  # should not commit anything, as the file in base folder doesn't match the tracked pattern  # line 243
-            _.fail()  # should not commit anything, as the file in base folder doesn't match the tracked pattern  # line 243
-        except:  # line 244
-            pass  # line 244
+        out = wrapChannels(lambda _=None: sos.add("sub", "sub/file?"))  # type: str  # line 239
+        _.assertAllIn(["Added tracking pattern", "'%s'" % "file?", os.path.abspath("sub")], out)  # line 240
+        sos.commit("test")  # should pick up sub/file1 pattern  # line 241
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # sub/file1 was added  # line 242
+        _.createFile(1)  # line 243
+        try:  # should not commit anything, as the file in base folder doesn't match the tracked pattern  # line 244
+            sos.commit("nothing")  # should not commit anything, as the file in base folder doesn't match the tracked pattern  # line 244
+            _.fail()  # should not commit anything, as the file in base folder doesn't match the tracked pattern  # line 244
+        except:  # line 245
+            pass  # line 245
 
-    def testNoArgs(_):  # line 246
-        pass  # call "sos" without arguments should simply show help or info about missing arguments  # line 247
+    def testNoArgs(_):  # line 247
+        pass  # call "sos" without arguments should simply show help or info about missing arguments  # line 248
 
-    def testAutoMetadataUpgrade(_):  # line 249
-        sos.offline()  # line 250
-        with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "r", encoding=sos.UTF8) as fd:  # line 251
-            repo, branches, config = json.load(fd)  # line 251
-        repo["version"] = None  # lower than any pip version  # line 252
-        branches[:] = [branch[:5] for branch in branches]  # simulate some older state  # line 253
-        del repo["format"]  # simulate pre-1.3.5  # line 254
-        with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "w", encoding=sos.UTF8) as fd:  # line 255
-            json.dump((repo, branches, config), fd, ensure_ascii=False)  # line 255
-        out = wrapChannels(lambda _=None: sos.status(options=["--repo"]))  # line 256
-        _.assertAllIn(["pre-1.2", "Upgraded repository metadata to match SOS version '2018.1210.3028'", "Upgraded repository metadata to match SOS version '1.3.5'"], out)  # line 257
+    def testAutoMetadataUpgrade(_):  # line 250
+        sos.offline()  # line 251
+        with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "r", encoding=sos.UTF8) as fd:  # line 252
+            repo, branches, config = json.load(fd)  # line 252
+        repo["version"] = None  # lower than any pip version  # line 253
+        branches[:] = [branch[:5] for branch in branches]  # simulate some older state  # line 254
+        del repo["format"]  # simulate pre-1.3.5  # line 255
+        with codecs.open(sos.encode(os.path.join(sos.metaFolder, sos.metaFile)), "w", encoding=sos.UTF8) as fd:  # line 256
+            json.dump((repo, branches, config), fd, ensure_ascii=False)  # line 256
+        out = wrapChannels(lambda _=None: sos.status(options=["--repo"]))  # type: str  # line 257
+        _.assertAllIn(["pre-1.2", "Upgraded repository metadata to match SOS version '2018.1210.3028'", "Upgraded repository metadata to match SOS version '1.3.5'"], out)  # line 258
 
-    def testFastBranching(_):  # line 259
-        _.createFile(1)  # line 260
-        out = wrapChannels(lambda _=None: sos.offline(options=["--strict"]))  # b0/r0 = ./file1  # line 261
-        _.assertIn("1 file added to initial branch 'trunk'", out)  # line 262
-        _.createFile(2)  # line 263
-        os.unlink("file1")  # line 264
-        sos.commit()  # b0/r1 = +./file2  -./file1  # line 265
-        sos.branch(options=["--fast", "--last"])  # branch b1 from b0/1 TODO modify option switch once --fast becomes the new normal  # line 266
-        _.assertAllIn([sos.metaFile, sos.metaBack, "b0", "b1"], os.listdir(sos.metaFolder), only=True)  # line 267
-        _.createFile(3)  # line 268
-        sos.commit()  # b1/r2 = ./file2, ./file3  # line 269
-        _.assertAllIn([sos.metaFile, "r2"], os.listdir(sos.branchFolder(1)), only=True)  # line 270
-        sos.branch(options=["--fast", "--last"])  # branch b2 from b1/2  # line 271
-        sos.destroy("0")  # remove parent of b1 and transitive parent of b2  # line 272
-        _.assertAllIn([sos.metaFile, sos.metaBack, "b0_last", "b1", "b2"], os.listdir(sos.metaFolder), only=True)  # branch 0 was removed  # line 273
-        _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(1)), only=True)  # all revisions before branch point were copied to branch 1  # line 274
-        _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(2)), only=True)  # line 275
+    def testFastBranching(_):  # line 260
+        _.createFile(1)  # line 261
+        out = wrapChannels(lambda _=None: sos.offline(options=["--strict", "--verbose"]))  # type: str  # b0/r0 = ./file1  # line 262
+        _.assertIn("1 file added to initial branch 'trunk'", out)  # line 263
+        _.createFile(2)  # line 264
+        os.unlink("file1")  # line 265
+        sos.commit()  # b0/r1 = +./file2  -./file1  # line 266
+        sos.branch(options=["--fast", "--last"])  # branch b1 from b0/1 TODO modify option switch once --fast becomes the new normal  # line 267
+        _.assertAllIn([sos.metaFile, sos.metaBack, "b0", "b1"], os.listdir(sos.metaFolder), only=True)  # line 268
+        _.createFile(3)  # line 269
+        sos.commit()  # b1/r2 = ./file2, ./file3  # line 270
+        _.assertAllIn([sos.metaFile, "r2"], os.listdir(sos.branchFolder(1)), only=True)  # line 271
+        sos.branch(options=["--fast", "--last"])  # branch b2 from b1/2  # line 272
+        sos.destroy("0")  # remove parent of b1 and transitive parent of b2  # line 273
+        _.assertAllIn([sos.metaFile, sos.metaBack, "b0_last", "b1", "b2"], os.listdir(sos.metaFolder), only=True)  # branch 0 was removed  # line 274
+        _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(1)), only=True)  # all revisions before branch point were copied to branch 1  # line 275
+        _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(2)), only=True)  # line 276
 # TODO test also other functions like status --repo, log
 
-    def testModificationWithOldRevisionRecognition(_):  # line 278
-        now = time.time()  # type: float  # line 279
-        _.createFile(1)  # line 280
-        sync()  # line 281
-        sos.offline(options=["--strict"])  # line 282
-        _.createFile(1, "abc")  # modify contents  # line 283
-        os.utime(sos.encode("file1"), (now - 2000, now - 2000))  # make it look like an older version  # line 284
-        sync()  # line 285
-        out = wrapChannels(lambda _=None: sos.changes())  # line 286
-        _.assertIn("<older than previously committed>", out)  # line 287
-        out = wrapChannels(lambda _=None: sos.commit())  # line 288
-        _.assertIn("<older than previously committed>", out)  # line 289
+    def testModificationWithOldRevisionRecognition(_):  # line 279
+        now = time.time()  # type: float  # line 280
+        _.createFile(1)  # line 281
+        sync()  # line 282
+        sos.offline(options=["--strict"])  # line 283
+        _.createFile(1, "abc")  # modify contents  # line 284
+        os.utime(sos.encode("file1"), (now - 2000, now - 2000))  # make it look like an older version  # line 285
+        sync()  # line 286
+        out = wrapChannels(lambda _=None: sos.changes())  # type: str  # line 287
+        _.assertIn("<older than previously committed>", out)  # line 288
+        out = wrapChannels(lambda _=None: sos.commit())  # line 289
+        _.assertIn("<older than previously committed>", out)  # line 290
 
-    def testGetParentBranch(_):  # line 291
-        m = sos.Accessor({"branches": {0: sos.Accessor({"parent": None, "revision": None}), 1: sos.Accessor({"parent": 0, "revision": 1})}, "getParentBranches": lambda b, r: sos.Metadata.getParentBranches(m, b, r)})  # stupid workaround for the self-reference in the implementation  # line 292
-        _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 0))  # line 293
-        _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 1))  # line 294
-        _.assertEqual(1, sos.Metadata.getParentBranch(m, 1, 2))  # line 295
-        _.assertEqual(0, sos.Metadata.getParentBranch(m, 0, 10))  # line 296
+    def testGetParentBranch(_):  # line 292
+        m = sos.Accessor({"branches": {0: sos.Accessor({"parent": None, "revision": None}), 1: sos.Accessor({"parent": 0, "revision": 1})}, "getParentBranches": lambda b, r: sos.Metadata.getParentBranches(m, b, r)})  # stupid workaround for the self-reference in the implementation  # line 293
+        _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 0))  # line 294
+        _.assertEqual(0, sos.Metadata.getParentBranch(m, 1, 1))  # line 295
+        _.assertEqual(1, sos.Metadata.getParentBranch(m, 1, 2))  # line 296
+        _.assertEqual(0, sos.Metadata.getParentBranch(m, 0, 10))  # line 297
 
-    def testTokenizeGlobPattern(_):  # line 298
-        _.assertEqual([], sos.tokenizeGlobPattern(""))  # line 299
-        _.assertEqual([sos.GlobBlock(False, "*", 0)], sos.tokenizeGlobPattern("*"))  # line 300
-        _.assertEqual([sos.GlobBlock(False, "*", 0), sos.GlobBlock(False, "???", 1)], sos.tokenizeGlobPattern("*???"))  # line 301
-        _.assertEqual([sos.GlobBlock(True, "x", 0), sos.GlobBlock(False, "*", 1), sos.GlobBlock(True, "x", 2)], sos.tokenizeGlobPattern("x*x"))  # line 302
-        _.assertEqual([sos.GlobBlock(True, "x", 0), sos.GlobBlock(False, "*", 1), sos.GlobBlock(False, "??", 2), sos.GlobBlock(False, "*", 4), sos.GlobBlock(True, "x", 5)], sos.tokenizeGlobPattern("x*??*x"))  # line 303
-        _.assertEqual([sos.GlobBlock(False, "?", 0), sos.GlobBlock(True, "abc", 1), sos.GlobBlock(False, "*", 4)], sos.tokenizeGlobPattern("?abc*"))  # line 304
+    def testTokenizeGlobPattern(_):  # line 299
+        _.assertEqual([], sos.tokenizeGlobPattern(""))  # line 300
+        _.assertEqual([sos.GlobBlock(False, "*", 0)], sos.tokenizeGlobPattern("*"))  # line 301
+        _.assertEqual([sos.GlobBlock(False, "*", 0), sos.GlobBlock(False, "???", 1)], sos.tokenizeGlobPattern("*???"))  # line 302
+        _.assertEqual([sos.GlobBlock(True, "x", 0), sos.GlobBlock(False, "*", 1), sos.GlobBlock(True, "x", 2)], sos.tokenizeGlobPattern("x*x"))  # line 303
+        _.assertEqual([sos.GlobBlock(True, "x", 0), sos.GlobBlock(False, "*", 1), sos.GlobBlock(False, "??", 2), sos.GlobBlock(False, "*", 4), sos.GlobBlock(True, "x", 5)], sos.tokenizeGlobPattern("x*??*x"))  # line 304
+        _.assertEqual([sos.GlobBlock(False, "?", 0), sos.GlobBlock(True, "abc", 1), sos.GlobBlock(False, "*", 4)], sos.tokenizeGlobPattern("?abc*"))  # line 305
 
-    def testTokenizeGlobPatterns(_):  # line 306
-        try:  # because number of literal strings differs  # line 307
-            sos.tokenizeGlobPatterns("x*x", "x*")  # because number of literal strings differs  # line 307
-            _.fail()  # because number of literal strings differs  # line 307
-        except:  # line 308
-            pass  # line 308
-        try:  # because glob patterns differ  # line 309
-            sos.tokenizeGlobPatterns("x*", "x?")  # because glob patterns differ  # line 309
-            _.fail()  # because glob patterns differ  # line 309
-        except:  # line 310
-            pass  # line 310
-        try:  # glob patterns differ, regardless of position  # line 311
-            sos.tokenizeGlobPatterns("x*", "?x")  # glob patterns differ, regardless of position  # line 311
-            _.fail()  # glob patterns differ, regardless of position  # line 311
-        except:  # line 312
-            pass  # line 312
-        sos.tokenizeGlobPatterns("x*", "*x")  # succeeds, because glob patterns match (differ only in position)  # line 313
-        sos.tokenizeGlobPatterns("*xb?c", "*x?bc")  # succeeds, because glob patterns match (differ only in position)  # line 314
-        try:  # succeeds, because glob patterns match (differ only in position)  # line 315
-            sos.tokenizeGlobPatterns("a???b*", "ab???*")  # succeeds, because glob patterns match (differ only in position)  # line 315
-            _.fail()  # succeeds, because glob patterns match (differ only in position)  # line 315
-        except:  # line 316
-            pass  # line 316
+    def testTokenizeGlobPatterns(_):  # line 307
+        try:  # because number of literal strings differs  # line 308
+            sos.tokenizeGlobPatterns("x*x", "x*")  # because number of literal strings differs  # line 308
+            _.fail()  # because number of literal strings differs  # line 308
+        except:  # line 309
+            pass  # line 309
+        try:  # because glob patterns differ  # line 310
+            sos.tokenizeGlobPatterns("x*", "x?")  # because glob patterns differ  # line 310
+            _.fail()  # because glob patterns differ  # line 310
+        except:  # line 311
+            pass  # line 311
+        try:  # glob patterns differ, regardless of position  # line 312
+            sos.tokenizeGlobPatterns("x*", "?x")  # glob patterns differ, regardless of position  # line 312
+            _.fail()  # glob patterns differ, regardless of position  # line 312
+        except:  # line 313
+            pass  # line 313
+        sos.tokenizeGlobPatterns("x*", "*x")  # succeeds, because glob patterns match (differ only in position)  # line 314
+        sos.tokenizeGlobPatterns("*xb?c", "*x?bc")  # succeeds, because glob patterns match (differ only in position)  # line 315
+        try:  # succeeds, because glob patterns match (differ only in position)  # line 316
+            sos.tokenizeGlobPatterns("a???b*", "ab???*")  # succeeds, because glob patterns match (differ only in position)  # line 316
+            _.fail()  # succeeds, because glob patterns match (differ only in position)  # line 316
+        except:  # line 317
+            pass  # line 317
 
-    def testConvertGlobFiles(_):  # line 318
-        _.assertEqual(["xxayb", "aacb"], [r[1] for r in sos.convertGlobFiles(["axxby", "aabc"], *sos.tokenizeGlobPatterns("a*b?", "*a?b"))])  # line 319
-        _.assertEqual(["1qq2ww3", "1abcbx2xbabc3"], [r[1] for r in sos.convertGlobFiles(["qqxbww", "abcbxxbxbabc"], *sos.tokenizeGlobPatterns("*xb*", "1*2*3"))])  # line 320
+    def testConvertGlobFiles(_):  # line 319
+        _.assertEqual(["xxayb", "aacb"], [r[1] for r in sos.convertGlobFiles(["axxby", "aabc"], *sos.tokenizeGlobPatterns("a*b?", "*a?b"))])  # line 320
+        _.assertEqual(["1qq2ww3", "1abcbx2xbabc3"], [r[1] for r in sos.convertGlobFiles(["qqxbww", "abcbxxbxbabc"], *sos.tokenizeGlobPatterns("*xb*", "1*2*3"))])  # line 321
 
-    def testFolderRemove(_):  # line 322
-        m = sos.Metadata(os.getcwd())  # line 323
-        _.createFile(1)  # line 324
-        _.createFile("a", prefix="sub")  # line 325
-        sos.offline()  # line 326
-        _.createFile(2)  # line 327
-        os.unlink("sub" + os.sep + "a")  # line 328
-        os.rmdir("sub")  # line 329
-        changes = sos.changes()  # TODO replace by output check  # line 330
-        _.assertEqual(1, len(changes.additions))  # line 331
-        _.assertEqual(0, len(changes.modifications))  # line 332
-        _.assertEqual(1, len(changes.deletions))  # line 333
-        _.createFile("a", prefix="sub")  # line 334
-        changes = sos.changes()  # line 335
-        _.assertEqual(0, len(changes.deletions))  # line 336
+    def testFolderRemove(_):  # line 323
+        m = sos.Metadata(os.getcwd())  # line 324
+        _.createFile(1)  # line 325
+        _.createFile("a", prefix="sub")  # line 326
+        sos.offline()  # line 327
+        _.createFile(2)  # line 328
+        os.unlink("sub" + os.sep + "a")  # line 329
+        os.rmdir("sub")  # line 330
+        changes = sos.changes()  # TODO replace by output check  # line 331
+        _.assertEqual(1, len(changes.additions))  # line 332
+        _.assertEqual(0, len(changes.modifications))  # line 333
+        _.assertEqual(1, len(changes.deletions))  # line 334
+        _.createFile("a", prefix="sub")  # line 335
+        changes = sos.changes()  # line 336
+        _.assertEqual(0, len(changes.deletions))  # line 337
 
-    def testSwitchConflict(_):  # line 338
-        sos.offline(options=["--strict"])  # (r0)  # line 339
-        _.createFile(1)  # line 340
-        sos.commit()  # add file (r1)  # line 341
-        os.unlink("file1")  # line 342
-        sos.commit()  # remove (r2)  # line 343
-        _.createFile(1, "something else")  # line 344
-        sos.commit()  # (r3)  # line 345
-        sos.switch("/1")  # updates file1 - marked as MOD, because mtime was changed  # line 346
-        _.existsFile(1, "x" * 10)  # line 347
-        sos.switch("/2", ["--force"])  # remove file1 requires --force, because size/content (or mtime in non-strict mode) is different to head of branch  # line 348
-        sos.switch("/0")  # do nothing, as file1 is already removed  # line 349
-        sos.switch("/1")  # add file1 back  # line 350
-        sos.switch("/", ["--force"])  # requires force because changed vs. head of branch  # line 351
-        _.existsFile(1, "something else")  # line 352
+    def testSwitchConflict(_):  # line 339
+        sos.offline(options=["--strict"])  # (r0)  # line 340
+        _.createFile(1)  # line 341
+        sos.commit()  # add file (r1)  # line 342
+        os.unlink("file1")  # line 343
+        sos.commit()  # remove (r2)  # line 344
+        _.createFile(1, "something else")  # line 345
+        sos.commit()  # (r3)  # line 346
+        sos.switch("/1")  # updates file1 - marked as MOD, because mtime was changed  # line 347
+        _.existsFile(1, "x" * 10)  # line 348
+        sos.switch("/2", ["--force"])  # remove file1 requires --force, because size/content (or mtime in non-strict mode) is different to head of branch  # line 349
+        sos.switch("/0")  # do nothing, as file1 is already removed  # line 350
+        sos.switch("/1")  # add file1 back  # line 351
+        sos.switch("/", ["--force"])  # requires force because changed vs. head of branch  # line 352
+        _.existsFile(1, "something else")  # line 353
 
-    def testComputeSequentialPathSet(_):  # line 354
-        os.makedirs(sos.revisionFolder(0, 0))  # line 355
-        os.makedirs(sos.revisionFolder(0, 1))  # line 356
-        os.makedirs(sos.revisionFolder(0, 2))  # line 357
-        os.makedirs(sos.revisionFolder(0, 3))  # line 358
-        os.makedirs(sos.revisionFolder(0, 4))  # line 359
-        m = sos.Metadata(os.getcwd())  # line 360
-        m.branch = 0  # line 361
-        m.commit = 2  # line 362
-        m.saveBranches()  # line 363
-        m.paths = {"./a": sos.PathInfo("", 0, 0, "")}  # line 364
-        m.saveCommit(0, 0)  # initial  # line 365
-        m.paths["./a"] = sos.PathInfo("", 1, 0, "")  # line 366
-        m.saveCommit(0, 1)  # mod  # line 367
-        m.paths["./b"] = sos.PathInfo("", 0, 0, "")  # line 368
-        m.saveCommit(0, 2)  # add  # line 369
-        m.paths["./a"] = sos.PathInfo("", None, 0, "")  # line 370
-        m.saveCommit(0, 3)  # del  # line 371
-        m.paths["./a"] = sos.PathInfo("", 2, 0, "")  # line 372
-        m.saveCommit(0, 4)  # readd  # line 373
-        m.commits = {i: sos.CommitInfo(i, 0, None) for i in range(5)}  # line 374
-        m.saveBranch(0)  # line 375
-        m.branches = {0: sos.BranchInfo(0, 0), 1: sos.BranchInfo(1, 0)}  # line 376
-        m.saveBranches()  # line 377
-        m.computeSequentialPathSet(0, 4)  # line 378
-        _.assertEqual(2, len(m.paths))  # line 379
+    def testComputeSequentialPathSet(_):  # line 355
+        os.makedirs(sos.revisionFolder(0, 0))  # line 356
+        os.makedirs(sos.revisionFolder(0, 1))  # line 357
+        os.makedirs(sos.revisionFolder(0, 2))  # line 358
+        os.makedirs(sos.revisionFolder(0, 3))  # line 359
+        os.makedirs(sos.revisionFolder(0, 4))  # line 360
+        m = sos.Metadata(os.getcwd())  # line 361
+        m.branch = 0  # line 362
+        m.commit = 2  # line 363
+        m.saveBranches()  # line 364
+        m.paths = {"./a": sos.PathInfo("", 0, 0, "")}  # line 365
+        m.saveCommit(0, 0)  # initial  # line 366
+        m.paths["./a"] = sos.PathInfo("", 1, 0, "")  # line 367
+        m.saveCommit(0, 1)  # mod  # line 368
+        m.paths["./b"] = sos.PathInfo("", 0, 0, "")  # line 369
+        m.saveCommit(0, 2)  # add  # line 370
+        m.paths["./a"] = sos.PathInfo("", None, 0, "")  # line 371
+        m.saveCommit(0, 3)  # del  # line 372
+        m.paths["./a"] = sos.PathInfo("", 2, 0, "")  # line 373
+        m.saveCommit(0, 4)  # readd  # line 374
+        m.commits = {i: sos.CommitInfo(i, 0, None) for i in range(5)}  # line 375
+        m.saveBranch(0)  # line 376
+        m.branches = {0: sos.BranchInfo(0, 0), 1: sos.BranchInfo(1, 0)}  # line 377
+        m.saveBranches()  # line 378
+        m.computeSequentialPathSet(0, 4)  # line 379
+        _.assertEqual(2, len(m.paths))  # line 380
 
-    def testParseRevisionString(_):  # line 381
-        m = sos.Metadata(os.getcwd())  # line 382
-        m.branch = 1  # line 383
-        m.commits = {0: 0, 1: 1, 2: 2}  # line 384
-        _.assertEqual((1, 3), m.parseRevisionString("3"))  # line 385
-        _.assertEqual((2, 3), m.parseRevisionString("2/3"))  # line 386
-        _.assertEqual((1, -1), m.parseRevisionString(None))  # line 387
-        _.assertEqual((1, -1), m.parseRevisionString(""))  # line 388
-        _.assertEqual((2, -1), m.parseRevisionString("2/"))  # line 389
-        _.assertEqual((1, -2), m.parseRevisionString("/-2"))  # line 390
-        _.assertEqual((1, -1), m.parseRevisionString("/"))  # line 391
+    def testParseRevisionString(_):  # line 382
+        m = sos.Metadata(os.getcwd())  # line 383
+        m.branch = 1  # line 384
+        m.commits = {0: 0, 1: 1, 2: 2}  # line 385
+        _.assertEqual((1, 3), m.parseRevisionString("3"))  # line 386
+        _.assertEqual((2, 3), m.parseRevisionString("2/3"))  # line 387
+        _.assertEqual((1, -1), m.parseRevisionString(None))  # line 388
+        _.assertEqual((1, -1), m.parseRevisionString(""))  # line 389
+        _.assertEqual((2, -1), m.parseRevisionString("2/"))  # line 390
+        _.assertEqual((1, -2), m.parseRevisionString("/-2"))  # line 391
+        _.assertEqual((1, -1), m.parseRevisionString("/"))  # line 392
 
-    def testOfflineEmpty(_):  # line 393
-        os.mkdir("." + os.sep + sos.metaFolder)  # line 394
-        try:  # line 395
-            sos.offline("trunk")  # line 395
-            _.fail()  # line 395
-        except SystemExit as E:  # line 396
-            _.assertEqual(1, E.code)  # line 396
-        os.rmdir("." + os.sep + sos.metaFolder)  # line 397
-        sos.offline("test")  # line 398
-        _.assertIn(sos.metaFolder, os.listdir("."))  # line 399
-        _.assertAllIn(["b0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder))  # line 400
-        _.assertAllIn(["r0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))  # line 401
-        _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # only branch folder and meta data file  # line 402
-        _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0")))  # only commit folder and meta data file  # line 403
-        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 0))))  # only meta data file  # line 404
+    def testOfflineEmpty(_):  # line 394
+        os.mkdir("." + os.sep + sos.metaFolder)  # line 395
+        try:  # line 396
+            sos.offline("trunk")  # line 396
+            _.fail()  # line 396
+        except SystemExit as E:  # line 397
+            _.assertEqual(1, E.code)  # line 397
+        os.rmdir("." + os.sep + sos.metaFolder)  # line 398
+        sos.offline("test")  # line 399
+        _.assertIn(sos.metaFolder, os.listdir("."))  # line 400
+        _.assertAllIn(["b0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder))  # line 401
+        _.assertAllIn(["r0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))  # line 402
+        _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # only branch folder and meta data file  # line 403
+        _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0")))  # only commit folder and meta data file  # line 404
+        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 0))))  # only meta data file  # line 405
 
-    def testOfflineWithFiles(_):  # line 406
-        _.createFile(1, "x" * 100)  # line 407
-        _.createFile(2)  # line 408
-        sos.offline("test")  # line 409
-        _.assertAllIn(["file1", "file2", sos.metaFolder], os.listdir("."))  # line 410
-        _.assertAllIn(["b0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder))  # line 411
-        _.assertAllIn(["r0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))  # line 412
-        _.assertAllIn([sos.metaFile, "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2", "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r0"))  # line 413
-        _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # only branch folder and meta data file  # line 414
-        _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0")))  # only commit folder and meta data file  # line 415
-        _.assertEqual(3, len(os.listdir(sos.revisionFolder(0, 0))))  # only meta data file plus branch base file copies  # line 416
+    def testOfflineWithFiles(_):  # line 407
+        _.createFile(1, "x" * 100)  # line 408
+        _.createFile(2)  # line 409
+        sos.offline("test")  # line 410
+        _.assertAllIn(["file1", "file2", sos.metaFolder], os.listdir("."))  # line 411
+        _.assertAllIn(["b0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder))  # line 412
+        _.assertAllIn(["r0", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))  # line 413
+        _.assertAllIn([sos.metaFile, "03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2", "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0" + os.sep + "r0"))  # line 414
+        _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder)))  # only branch folder and meta data file  # line 415
+        _.assertEqual(2, len(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0")))  # only commit folder and meta data file  # line 416
+        _.assertEqual(3, len(os.listdir(sos.revisionFolder(0, 0))))  # only meta data file plus branch base file copies  # line 417
 
-    def testBranch(_):  # line 418
-        _.createFile(1, "x" * 100)  # line 419
-        _.createFile(2)  # line 420
-        sos.offline("test")  # b0/r0  # line 421
-        sos.branch("other")  # b1/r0  # line 422
-        _.assertAllIn(["b0", "b1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder))  # line 423
-        _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))), list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b1"))))  # line 424
-        _.assertEqual(list(sorted(os.listdir(sos.revisionFolder(0, 0)))), list(sorted(os.listdir(sos.revisionFolder(1, 0)))))  # line 426
-        _.createFile(1, "z")  # modify file  # line 428
-        sos.branch()  # b2/r0  branch to unnamed branch with modified file tree contents  # line 429
-        _.assertNotEqual(os.stat(sos.encode("." + os.sep + sos.metaFolder + os.sep + "b1" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa")).st_size, os.stat(sos.encode("." + os.sep + sos.metaFolder + os.sep + "b2" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa")).st_size)  # line 430
-        _.createFile(3, "z")  # line 432
-        sos.branch("from_last_revision", options=["--last", "--stay"])  # b3/r0 create copy of other file1,file2 and don't switch  # line 433
-        _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b3" + os.sep + "r0"))), list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b2" + os.sep + "r0"))))  # line 434
+    def testBranch(_):  # line 419
+        _.createFile(1, "x" * 100)  # line 420
+        _.createFile(2)  # line 421
+        sos.offline("test")  # b0/r0  # line 422
+        sos.branch("other")  # b1/r0  # line 423
+        _.assertAllIn(["b0", "b1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder))  # line 424
+        _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))), list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b1"))))  # line 425
+        _.assertEqual(list(sorted(os.listdir(sos.revisionFolder(0, 0)))), list(sorted(os.listdir(sos.revisionFolder(1, 0)))))  # line 427
+        _.createFile(1, "z")  # modify file  # line 429
+        sos.branch()  # b2/r0  branch to unnamed branch with modified file tree contents  # line 430
+        _.assertNotEqual(os.stat(sos.encode("." + os.sep + sos.metaFolder + os.sep + "b1" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa")).st_size, os.stat(sos.encode("." + os.sep + sos.metaFolder + os.sep + "b2" + os.sep + "r0" + os.sep + "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa")).st_size)  # line 431
+        _.createFile(3, "z")  # line 433
+        sos.branch("from_last_revision", options=["--last", "--stay"])  # b3/r0 create copy of other file1,file2 and don't switch  # line 434
+        _.assertEqual(list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b3" + os.sep + "r0"))), list(sorted(os.listdir("." + os.sep + sos.metaFolder + os.sep + "b2" + os.sep + "r0"))))  # line 435
 # Check sos.status output which branch is marked
 
 
-    def testComittingAndChanges(_):  # line 439
-        _.createFile(1, "x" * 100)  # line 440
-        _.createFile(2)  # line 441
-        sos.offline("test")  # line 442
-        changes = sos.changes()  # line 443
-        _.assertEqual(0, len(changes.additions))  # line 444
-        _.assertEqual(0, len(changes.deletions))  # line 445
-        _.assertEqual(0, len(changes.modifications))  # line 446
-        _.createFile(1, "z")  # size change  # line 447
-        changes = sos.changes()  # line 448
-        _.assertEqual(0, len(changes.additions))  # line 449
-        _.assertEqual(0, len(changes.deletions))  # line 450
-        _.assertEqual(1, len(changes.modifications))  # line 451
-        sos.commit("message")  # line 452
-        _.assertAllIn(["r0", "r1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))  # line 453
-        _.assertAllIn([sos.metaFile, "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir(sos.revisionFolder(0, 1)))  # line 454
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # no further files, only the modified one  # line 455
-        _.assertEqual(1, len(sos.changes("/0").modifications))  # vs. explicit revision on current branch  # line 456
-        _.assertEqual(1, len(sos.changes("0/0").modifications))  # vs. explicit branch/revision  # line 457
-        _.createFile(1, "")  # modify to empty file, mentioned in meta data, but not stored as own file  # line 458
-        os.unlink("file2")  # line 459
-        changes = sos.changes()  # line 460
-        _.assertEqual(0, len(changes.additions))  # line 461
-        _.assertEqual(1, len(changes.deletions))  # line 462
-        _.assertEqual(1, len(changes.modifications))  # line 463
-        sos.commit("modified")  # line 464
-        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 2))))  # no additional files, only mentions in metadata  # line 465
-        try:  # expecting Exit due to no changes  # line 466
-            sos.commit("nothing")  # expecting Exit due to no changes  # line 466
-            _.fail()  # expecting Exit due to no changes  # line 466
-        except:  # line 467
-            pass  # line 467
+    def testComittingAndChanges(_):  # line 440
+        _.createFile(1, "x" * 100)  # line 441
+        _.createFile(2)  # line 442
+        sos.offline("test")  # line 443
+        changes = sos.changes()  # line 444
+        _.assertEqual(0, len(changes.additions))  # line 445
+        _.assertEqual(0, len(changes.deletions))  # line 446
+        _.assertEqual(0, len(changes.modifications))  # line 447
+        _.createFile(1, "z")  # size change  # line 448
+        changes = sos.changes()  # line 449
+        _.assertEqual(0, len(changes.additions))  # line 450
+        _.assertEqual(0, len(changes.deletions))  # line 451
+        _.assertEqual(1, len(changes.modifications))  # line 452
+        sos.commit("message")  # line 453
+        _.assertAllIn(["r0", "r1", sos.metaFile], os.listdir("." + os.sep + sos.metaFolder + os.sep + "b0"))  # line 454
+        _.assertAllIn([sos.metaFile, "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"], os.listdir(sos.revisionFolder(0, 1)))  # line 455
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # no further files, only the modified one  # line 456
+        _.assertEqual(1, len(sos.changes("/0").modifications))  # vs. explicit revision on current branch  # line 457
+        _.assertEqual(1, len(sos.changes("0/0").modifications))  # vs. explicit branch/revision  # line 458
+        _.createFile(1, "")  # modify to empty file, mentioned in meta data, but not stored as own file  # line 459
+        os.unlink("file2")  # line 460
+        changes = sos.changes()  # line 461
+        _.assertEqual(0, len(changes.additions))  # line 462
+        _.assertEqual(1, len(changes.deletions))  # line 463
+        _.assertEqual(1, len(changes.modifications))  # line 464
+        sos.commit("modified")  # line 465
+        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 2))))  # no additional files, only mentions in metadata  # line 466
+        try:  # expecting Exit due to no changes  # line 467
+            sos.commit("nothing")  # expecting Exit due to no changes  # line 467
+            _.fail()  # expecting Exit due to no changes  # line 467
+        except:  # line 468
+            pass  # line 468
 
-    def testGetBranch(_):  # line 469
-        m = sos.Metadata(os.getcwd())  # line 470
-        m.branch = 1  # current branch  # line 471
-        m.branches = {0: sos.BranchInfo(0, 0, "trunk")}  # line 472
-        _.assertEqual(27, m.getBranchByName(27))  # line 473
-        _.assertEqual(0, m.getBranchByName("trunk"))  # line 474
-        _.assertEqual(1, m.getBranchByName(""))  # split from "/"  # line 475
-        _.assertIsNone(m.getBranchByName("unknown"))  # line 476
-        m.commits = {0: sos.CommitInfo(0, 0, "bla")}  # line 477
-        _.assertEqual(13, m.getRevisionByName("13"))  # line 478
-        _.assertEqual(0, m.getRevisionByName("bla"))  # line 479
-        _.assertEqual(-1, m.getRevisionByName(""))  # split from "/"  # line 480
+    def testGetBranch(_):  # line 470
+        m = sos.Metadata(os.getcwd())  # line 471
+        m.branch = 1  # current branch  # line 472
+        m.branches = {0: sos.BranchInfo(0, 0, "trunk")}  # line 473
+        _.assertEqual(27, m.getBranchByName(27))  # line 474
+        _.assertEqual(0, m.getBranchByName("trunk"))  # line 475
+        _.assertEqual(1, m.getBranchByName(""))  # split from "/"  # line 476
+        _.assertIsNone(m.getBranchByName("unknown"))  # line 477
+        m.commits = {0: sos.CommitInfo(0, 0, "bla")}  # line 478
+        _.assertEqual(13, m.getRevisionByName("13"))  # line 479
+        _.assertEqual(0, m.getRevisionByName("bla"))  # line 480
+        _.assertEqual(-1, m.getRevisionByName(""))  # split from "/"  # line 481
 
-    def testTagging(_):  # line 482
-        m = sos.Metadata(os.getcwd())  # line 483
-        sos.offline()  # line 484
-        _.createFile(111)  # line 485
-        sos.commit("tag", ["--tag"])  # line 486
-        out = wrapChannels(lambda _=None: sos.log()).replace("\r", "").split("\n")  # line 487
-        _.assertTrue(any(("|tag" in line and line.endswith("|TAG") for line in out)))  # line 488
-        _.createFile(2)  # line 489
-        try:  # line 490
-            sos.commit("tag")  # line 490
-            _.fail()  # line 490
-        except:  # line 491
-            pass  # line 491
-        sos.commit("tag-2", ["--tag"])  # line 492
-        out = wrapChannels(lambda _=None: sos.ls(options=["--tags"])).replace("\r", "")  # line 493
-        _.assertIn("TAG tag", out)  # line 494
+    def testTagging(_):  # line 483
+        m = sos.Metadata(os.getcwd())  # line 484
+        sos.offline()  # line 485
+        _.createFile(111)  # line 486
+        sos.commit("tag", ["--tag"])  # line 487
+        out = wrapChannels(lambda _=None: sos.log()).replace("\r", "").split("\n")  # type: str  # line 488
+        _.assertTrue(any(("|tag" in line and line.endswith("|TAG") for line in out)))  # line 489
+        _.createFile(2)  # line 490
+        try:  # line 491
+            sos.commit("tag")  # line 491
+            _.fail()  # line 491
+        except:  # line 492
+            pass  # line 492
+        sos.commit("tag-2", ["--tag"])  # line 493
+        out = wrapChannels(lambda _=None: sos.ls(options=["--tags"])).replace("\r", "")  # line 494
+        _.assertIn("TAG tag", out)  # line 495
 
-    def testSwitch(_):  # line 496
-        _.createFile(1, "x" * 100)  # line 497
-        _.createFile(2, "y")  # line 498
-        sos.offline("test")  # file1-2  in initial branch commit  # line 499
-        sos.branch("second")  # file1-2  switch, having same files  # line 500
-        sos.switch("0")  # no change  switch back, no problem  # line 501
-        sos.switch("second")  # no change  # switch back, no problem  # line 502
-        _.createFile(3, "y")  # generate a file  # line 503
-        try:  # uncommited changes detected  # line 504
-            sos.switch("test")  # uncommited changes detected  # line 504
-            _.fail()  # uncommited changes detected  # line 504
-        except SystemExit as E:  # line 505
-            _.assertEqual(1, E.code)  # line 505
-        sos.commit("Finish")  # file1-3  commit third file into branch second  # line 506
-        sos.changes()  # line 507
-        sos.switch("test")  # file1-2, remove file3 from file tree  # line 508
-        _.assertFalse(_.existsFile(3))  # removed when switching back to test  # line 509
-        _.createFile("XXX")  # line 510
-        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # line 511
-        _.assertIn("File tree has changes", out)  # line 512
-        _.assertNotIn("File tree is unchanged", out)  # line 513
-        _.assertIn("  * b0   'test'", out)  # line 514
-        _.assertIn("    b1 'second'", out)  # line 515
-        _.assertIn("(modified)", out)  # one branch has commits  # line 516
-        _.assertIn("(in sync)", out)  # the other doesn't  # line 517
-        sos.defaults["useChangesCommand"] = False  # because sos.main() is never called  # line 518
-        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # trigger repo info  # line 519
-        _.assertAllIn(["Metadata format", "Content checking:    deactivated", "Data compression:    deactivated", "Repository mode:     simple", "Number of branches:  2"], out)  # line 520
-        sos.defaults["useChangesCommand"] = True  # because sos.main() is never called  # line 521
-        _.createFile(4, "xy")  # generate a file  # line 522
-        sos.switch("second", ["--force"])  # avoids warning on uncommited changes, but keeps file4  # line 523
-        _.assertFalse(_.existsFile(4))  # removed when forcedly switching back to test  # line 524
-        _.assertTrue(_.existsFile(3))  # was restored from branch's revision r1  # line 525
-        os.unlink("." + os.sep + "file1")  # remove old file1  # line 526
-        sos.switch("test", ["--force"])  # should restore file1 and remove file3  # line 527
-        _.assertTrue(_.existsFile(1))  # was restored from branch's revision r1  # line 528
-        _.assertFalse(_.existsFile(3))  # was restored from branch's revision r1  # line 529
-        sos.verbose.append(None)  # dict access necessary, as references on module-top-level are frozen  # line 530
-        out = wrapChannels(lambda _=None: sos.dump("dumped.sos.zip", options=["--skip-backup", "--full"])).replace("\r", "")  # line 531
-        _.assertAllIn(["Dumping revisions"], out)  # TODO cannot set verbose flag afer module loading. Use transparent wrapper instead  # line 532
-        _.assertNotIn("Creating backup", out)  # line 533
-        out = wrapChannels(lambda _=None: sos.dump("dumped.sos.zip", options=["--skip-backup"])).replace("\r", "")  # line 534
-        _.assertIn("Dumping revisions", out)  # line 535
-        _.assertNotIn("Creating backup", out)  # line 536
-        out = wrapChannels(lambda _=None: sos.dump("dumped.sos.zip", options=["--full"])).replace("\r", "")  # line 537
-        _.assertAllIn(["Creating backup"], out)  # line 538
-        _.assertIn("Dumping revisions", out)  # line 539
-        sos.verbose.pop()  # line 540
+    def testSwitch(_):  # line 497
+        _.createFile(1, "x" * 100)  # line 498
+        _.createFile(2, "y")  # line 499
+        sos.offline("test")  # file1-2  in initial branch commit  # line 500
+        sos.branch("second")  # file1-2  switch, having same files  # line 501
+        sos.switch("0")  # no change  switch back, no problem  # line 502
+        sos.switch("second")  # no change  # switch back, no problem  # line 503
+        _.createFile(3, "y")  # generate a file  # line 504
+        try:  # uncommited changes detected  # line 505
+            sos.switch("test")  # uncommited changes detected  # line 505
+            _.fail()  # uncommited changes detected  # line 505
+        except SystemExit as E:  # line 506
+            _.assertEqual(1, E.code)  # line 506
+        sos.commit("Finish")  # file1-3  commit third file into branch second  # line 507
+        sos.changes()  # line 508
+        sos.switch("test")  # file1-2, remove file3 from file tree  # line 509
+        _.assertFalse(_.existsFile(3))  # removed when switching back to test  # line 510
+        _.createFile("XXX")  # line 511
+        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # type: str  # line 512
+        _.assertIn("File tree has changes", out)  # line 513
+        _.assertNotIn("File tree is unchanged", out)  # line 514
+        _.assertIn("  * b0   'test'", out)  # line 515
+        _.assertIn("    b1 'second'", out)  # line 516
+        _.assertIn("(modified)", out)  # one branch has commits  # line 517
+        _.assertIn("(in sync)", out)  # the other doesn't  # line 518
+        sos.defaults["useChangesCommand"] = False  # because sos.main() is never called  # line 519
+        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # trigger repo info  # line 520
+        _.assertAllIn(["Metadata format", "Content checking:    deactivated", "Data compression:    deactivated", "Repository mode:     simple", "Number of branches:  2"], out)  # line 521
+        sos.defaults["useChangesCommand"] = True  # because sos.main() is never called  # line 522
+        _.createFile(4, "xy")  # generate a file  # line 523
+        sos.switch("second", ["--force"])  # avoids warning on uncommited changes, but keeps file4  # line 524
+        _.assertFalse(_.existsFile(4))  # removed when forcedly switching back to test  # line 525
+        _.assertTrue(_.existsFile(3))  # was restored from branch's revision r1  # line 526
+        os.unlink("." + os.sep + "file1")  # remove old file1  # line 527
+        sos.switch("test", ["--force"])  # should restore file1 and remove file3  # line 528
+        _.assertTrue(_.existsFile(1))  # was restored from branch's revision r1  # line 529
+        _.assertFalse(_.existsFile(3))  # was restored from branch's revision r1  # line 530
+        sos.verbose.append(None)  # dict access necessary, as references on module-top-level are frozen  # line 531
+        out = wrapChannels(lambda _=None: sos.dump("dumped.sos.zip", options=["--skip-backup", "--full"])).replace("\r", "")  # line 532
+        _.assertAllIn(["Dumping revisions"], out)  # TODO cannot set verbose flag afer module loading. Use transparent wrapper instead  # line 533
+        _.assertNotIn("Creating backup", out)  # line 534
+        out = wrapChannels(lambda _=None: sos.dump("dumped.sos.zip", options=["--skip-backup"])).replace("\r", "")  # line 535
+        _.assertIn("Dumping revisions", out)  # line 536
+        _.assertNotIn("Creating backup", out)  # line 537
+        out = wrapChannels(lambda _=None: sos.dump("dumped.sos.zip", options=["--full"])).replace("\r", "")  # line 538
+        _.assertAllIn(["Creating backup"], out)  # line 539
+        _.assertIn("Dumping revisions", out)  # line 540
+        sos.verbose.pop()  # line 541
 
-    def testAutoDetectVCS(_):  # line 542
-        os.mkdir(".git")  # line 543
-        sos.offline(sos.vcsBranches[sos.findSosVcsBase()[2]])  # create initial branch  # line 544
-        with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd:  # line 545
-            meta = fd.read()  # line 545
-        _.assertTrue("\"master\"" in meta)  # line 546
-        os.rmdir(".git")  # line 547
+    def testAutoDetectVCS(_):  # line 543
+        os.mkdir(".git")  # line 544
+        sos.offline(sos.vcsBranches[sos.findSosVcsBase()[2]])  # create initial branch  # line 545
+        with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd:  # line 546
+            meta = fd.read()  # line 546
+        _.assertTrue("\"master\"" in meta)  # line 547
+        os.rmdir(".git")  # line 548
 
-    def testUpdate(_):  # line 549
-        sos.offline("trunk")  # create initial branch b0/r0  # line 550
-        _.createFile(1, "x" * 100)  # line 551
-        sos.commit("second")  # create b0/r1  # line 552
+    def testUpdate(_):  # line 550
+        sos.offline("trunk")  # create initial branch b0/r0  # line 551
+        _.createFile(1, "x" * 100)  # line 552
+        sos.commit("second")  # create b0/r1  # line 553
 
-        sos.switch("/0")  # go back to b0/r0 - deletes file1  # line 554
-        _.assertFalse(_.existsFile(1))  # line 555
+        sos.switch("/0")  # go back to b0/r0 - deletes file1  # line 555
+        _.assertFalse(_.existsFile(1))  # line 556
 
-        sos.update("/1")  # recreate file1  # line 557
-        _.assertTrue(_.existsFile(1))  # line 558
+        sos.update("/1")  # recreate file1  # line 558
+        _.assertTrue(_.existsFile(1))  # line 559
 
-        sos.commit("third", ["--force"])  # force because nothing to commit. should create r2 with same contents as r1, but as differential from r1, not from r0 (= no changes in meta folder)  # line 560
-        _.assertTrue(os.path.exists(sos.revisionFolder(0, 2)))  # line 561
-        _.assertTrue(os.path.exists(sos.revisionFolder(0, 2, file=sos.metaFile)))  # line 562
-        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 2))))  # only meta data file, no differential files  # line 563
+        sos.commit("third", ["--force"])  # force because nothing to commit. should create r2 with same contents as r1, but as differential from r1, not from r0 (= no changes in meta folder)  # line 561
+        _.assertTrue(os.path.exists(sos.revisionFolder(0, 2)))  # line 562
+        _.assertTrue(os.path.exists(sos.revisionFolder(0, 2, file=sos.metaFile)))  # line 563
+        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 2))))  # only meta data file, no differential files  # line 564
 
-        sos.update("/1")  # do nothing, as nothing has changed  # line 565
-        _.assertTrue(_.existsFile(1))  # line 566
+        sos.update("/1")  # do nothing, as nothing has changed  # line 566
+        _.assertTrue(_.existsFile(1))  # line 567
 
-        _.createFile(2, "y" * 100)  # line 568
-#    out = wrapChannels(-> sos.branch("other"))  # won't comply as there are changes
+        _.createFile(2, "y" * 100)  # line 569
+#    out:str = wrapChannels(-> sos.branch("other"))  # won't comply as there are changes
 #    _.assertIn("--force", out)
-        sos.branch("other", options=["--force"])  # automatically including file 2 (as we are in simple mode)  # line 571
-        _.assertTrue(_.existsFile(2))  # line 572
-        sos.update("trunk", ["--add"])  # only add stuff  # line 573
-        _.assertTrue(_.existsFile(2))  # line 574
-        sos.update("trunk")  # nothing to do  # line 575
-        _.assertFalse(_.existsFile(2))  # removes file not present in original branch  # line 576
+        sos.branch("other", options=["--force"])  # automatically including file 2 (as we are in simple mode)  # line 572
+        _.assertTrue(_.existsFile(2))  # line 573
+        sos.update("trunk", ["--add"])  # only add stuff  # line 574
+        _.assertTrue(_.existsFile(2))  # line 575
+        sos.update("trunk")  # nothing to do  # line 576
+        _.assertFalse(_.existsFile(2))  # removes file not present in original branch  # line 577
 
-        theirs = b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk"  # line 578
-        _.createFile(10, theirs)  # line 579
-        mine = b"a\nc\nd\ne\ng\nf\nx\nh\ny\ny\nj"  # missing "b", inserted g, modified g->x, replace x/x -> y/y, removed k  # line 580
-        _.createFile(11, mine)  # line 581
-        _.assertEqual((b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk", b"\n"), sos.merge(filename="." + os.sep + "file10", intoname="." + os.sep + "file11", mergeOperation=sos.MergeOperation.BOTH))  # completely recreated other file  # line 582
-        _.assertEqual((b'a\nb\nc\nd\ne\ng\nf\ng\nh\ny\ny\nx\nx\nj\nk', b"\n"), sos.merge(filename="." + os.sep + "file10", intoname="." + os.sep + "file11", mergeOperation=sos.MergeOperation.INSERT))  # line 583
+        theirs = b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk"  # line 579
+        _.createFile(10, theirs)  # line 580
+        mine = b"a\nc\nd\ne\ng\nf\nx\nh\ny\ny\nj"  # missing "b", inserted g, modified g->x, replace x/x -> y/y, removed k  # line 581
+        _.createFile(11, mine)  # line 582
+        _.assertEqual((b"a\nb\nc\nd\ne\nf\ng\nh\nx\nx\nj\nk", b"\n"), sos.merge(filename="." + os.sep + "file10", intoname="." + os.sep + "file11", mergeOperation=sos.MergeOperation.BOTH))  # completely recreated other file  # line 583
+        _.assertEqual((b'a\nb\nc\nd\ne\ng\nf\ng\nh\ny\ny\nx\nx\nj\nk', b"\n"), sos.merge(filename="." + os.sep + "file10", intoname="." + os.sep + "file11", mergeOperation=sos.MergeOperation.INSERT))  # line 584
 
-    def testUpdate2(_):  # line 585
-        _.createFile("test.txt", "x" * 10)  # line 586
-        sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing  # line 587
-        sync()  # line 588
-        sos.branch("mod")  # line 589
-        _.createFile("test.txt", "x" * 5 + "y" * 5)  # line 590
-        sos.commit("mod")  # create b0/r1  # line 591
-        sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more  # line 592
-        _.assertTrue(_.existsFile("test.txt", b"x" * 10))  # line 593
-        sos.update("mod")  # integrate changes TODO same with ask -> theirs  # line 594
-        _.existsFile("test.txt", b"x" * 5 + b"y" * 5)  # line 595
-        _.createFile("test.txt", "x" * 10)  # line 596
-        mockInput(["t"], lambda _=None: sos.update("mod", ["--ask-lines"]))  # line 597
-        sync()  # line 598
-        _.assertTrue(_.existsFile("test.txt", b"x" * 5 + b"y" * 5))  # line 599
-        _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)  # line 600
-        sos.update("mod")  # auto-insert/removes (no intra-line conflict)  # line 601
-        _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)  # line 602
-        sync()  # line 603
-        mockInput(["t"], lambda _=None: sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)  # line 604
-        _.assertTrue(_.existsFile("test.txt", b"x" * 5 + b"y" * 5))  # line 605
+    def testUpdate2(_):  # line 586
+        _.createFile("test.txt", "x" * 10)  # line 587
+        sos.offline("trunk", ["--strict"])  # use strict mode, as timestamp differences are too small for testing  # line 588
+        sync()  # line 589
+        sos.branch("mod")  # line 590
+        _.createFile("test.txt", "x" * 5 + "y" * 5)  # line 591
+        sos.commit("mod")  # create b0/r1  # line 592
+        sos.switch("trunk", ["--force"])  # should replace contents, force in case some other files were modified (e.g. during working on the code) TODO investigate more  # line 593
+        _.assertTrue(_.existsFile("test.txt", b"x" * 10))  # line 594
+        sos.update("mod")  # integrate changes TODO same with ask -> theirs  # line 595
+        _.existsFile("test.txt", b"x" * 5 + b"y" * 5)  # line 596
+        _.createFile("test.txt", "x" * 10)  # line 597
+        mockInput(["t"], lambda _=None: sos.update("mod", ["--ask-lines"]))  # line 598
+        sync()  # line 599
+        _.assertTrue(_.existsFile("test.txt", b"x" * 5 + b"y" * 5))  # line 600
+        _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)  # line 601
+        sos.update("mod")  # auto-insert/removes (no intra-line conflict)  # line 602
+        _.createFile("test.txt", "x" * 5 + "z" + "y" * 4)  # line 603
+        sync()  # line 604
+        mockInput(["t"], lambda _=None: sos.update("mod", ["--ask"]))  # same as above with interaction -> use theirs (overwrite current file state)  # line 605
+        _.assertTrue(_.existsFile("test.txt", b"x" * 5 + b"y" * 5))  # line 606
 
-    def testIsTextType(_):  # line 607
-        m = sos.Metadata(".")  # line 608
-        m.c.texttype = ["*.x", "*.md", "*.md.*"]  # line 609
-        m.c.bintype = ["*.md.confluence"]  # line 610
-        _.assertTrue(m.isTextType("ab.txt"))  # line 611
-        _.assertTrue(m.isTextType("./ab.txt"))  # line 612
-        _.assertTrue(m.isTextType("bc/ab.txt"))  # line 613
-        _.assertFalse(m.isTextType("bc/ab."))  # line 614
-        _.assertTrue(m.isTextType("23_3.x.x"))  # line 615
-        _.assertTrue(m.isTextType("dfg/dfglkjdf7/test.md"))  # line 616
-        _.assertTrue(m.isTextType("./test.md.pdf"))  # line 617
-        _.assertFalse(m.isTextType("./test_a.md.confluence"))  # line 618
+    def testIsTextType(_):  # line 608
+        m = sos.Metadata(".")  # line 609
+        m.c.texttype = ["*.x", "*.md", "*.md.*"]  # line 610
+        m.c.bintype = ["*.md.confluence"]  # line 611
+        _.assertTrue(m.isTextType("ab.txt"))  # line 612
+        _.assertTrue(m.isTextType("./ab.txt"))  # line 613
+        _.assertTrue(m.isTextType("bc/ab.txt"))  # line 614
+        _.assertFalse(m.isTextType("bc/ab."))  # line 615
+        _.assertTrue(m.isTextType("23_3.x.x"))  # line 616
+        _.assertTrue(m.isTextType("dfg/dfglkjdf7/test.md"))  # line 617
+        _.assertTrue(m.isTextType("./test.md.pdf"))  # line 618
+        _.assertFalse(m.isTextType("./test_a.md.confluence"))  # line 619
 
-    def testEolDet(_):  # line 620
-        ''' Check correct end-of-line detection. '''  # line 621
-        _.assertEqual(b"\n", sos.eoldet(b"a\nb"))  # line 622
-        _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))  # line 623
-        _.assertEqual(b"\r", sos.eoldet(b"\ra\rb"))  # line 624
-        _.assertAllIn(["Inconsistent", "with "], wrapChannels(lambda: _.assertEqual(b"\n", sos.eoldet(b"\r\na\r\nb\n"))))  # line 625
-        _.assertAllIn(["Inconsistent", "without"], wrapChannels(lambda: _.assertEqual(b"\n", sos.eoldet(b"\ra\nnb\n"))))  # line 626
-        _.assertIsNone(sos.eoldet(b""))  # line 627
-        _.assertIsNone(sos.eoldet(b"sdf"))  # line 628
+    def testEolDet(_):  # line 621
+        ''' Check correct end-of-line detection. '''  # line 622
+        _.assertEqual(b"\n", sos.eoldet(b"a\nb"))  # line 623
+        _.assertEqual(b"\r\n", sos.eoldet(b"a\r\nb\r\n"))  # line 624
+        _.assertEqual(b"\r", sos.eoldet(b"\ra\rb"))  # line 625
+        _.assertAllIn(["Inconsistent", "with "], wrapChannels(lambda: _.assertEqual(b"\n", sos.eoldet(b"\r\na\r\nb\n"))))  # line 626
+        _.assertAllIn(["Inconsistent", "without"], wrapChannels(lambda: _.assertEqual(b"\n", sos.eoldet(b"\ra\nnb\n"))))  # line 627
+        _.assertIsNone(sos.eoldet(b""))  # line 628
+        _.assertIsNone(sos.eoldet(b"sdf"))  # line 629
 
-    def testMerge(_):  # line 630
-        ''' Check merge results depending on user options. '''  # line 631
-        a = b"a\nb\ncc\nd"  # type: bytes  # line 632
-        b = b"a\nb\nee\nd"  # type: bytes  # replaces cc by ee  # line 633
-        _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.INSERT)[0])  # one-line block replacement using lineMerge  # line 634
-        _.assertEqual(b"a\nb\neecc\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.INSERT, charMergeOperation=sos.MergeOperation.INSERT)[0])  # means insert changes from a into b, but don't replace  # line 635
-        _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.INSERT, charMergeOperation=sos.MergeOperation.REMOVE)[0])  # means insert changes from a into b, but don't replace  # line 636
-        _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.REMOVE)[0])  # one-line block replacement using lineMerge  # line 637
-        _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.REMOVE, charMergeOperation=sos.MergeOperation.REMOVE)[0])  # line 638
-        _.assertEqual(a, sos.merge(a, b, mergeOperation=sos.MergeOperation.BOTH)[0])  # keeps any changes in b  # line 639
-        a = b"a\nb\ncc\nd"  # line 640
-        b = b"a\nb\nee\nf\nd"  # replaces cc by block of two lines ee, f  # line 641
-        _.assertEqual(b"a\nb\nee\nf\ncc\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.INSERT)[0])  # multi-line block replacement  # line 642
-        _.assertEqual(b"a\nb\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.REMOVE)[0])  # line 643
-        _.assertEqual(a, sos.merge(a, b, mergeOperation=sos.MergeOperation.BOTH)[0])  # keeps any changes in b  # line 644
+    def testMerge(_):  # line 631
+        ''' Check merge results depending on user options. '''  # line 632
+        a = b"a\nb\ncc\nd"  # type: bytes  # line 633
+        b = b"a\nb\nee\nd"  # type: bytes  # replaces cc by ee  # line 634
+        _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.INSERT)[0])  # one-line block replacement using lineMerge  # line 635
+        _.assertEqual(b"a\nb\neecc\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.INSERT, charMergeOperation=sos.MergeOperation.INSERT)[0])  # means insert changes from a into b, but don't replace  # line 636
+        _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.INSERT, charMergeOperation=sos.MergeOperation.REMOVE)[0])  # means insert changes from a into b, but don't replace  # line 637
+        _.assertEqual(b"a\nb\ncc\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.REMOVE)[0])  # one-line block replacement using lineMerge  # line 638
+        _.assertEqual(b"a\nb\n\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.REMOVE, charMergeOperation=sos.MergeOperation.REMOVE)[0])  # line 639
+        _.assertEqual(a, sos.merge(a, b, mergeOperation=sos.MergeOperation.BOTH)[0])  # keeps any changes in b  # line 640
+        a = b"a\nb\ncc\nd"  # line 641
+        b = b"a\nb\nee\nf\nd"  # replaces cc by block of two lines ee, f  # line 642
+        _.assertEqual(b"a\nb\nee\nf\ncc\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.INSERT)[0])  # multi-line block replacement  # line 643
+        _.assertEqual(b"a\nb\nd", sos.merge(a, b, mergeOperation=sos.MergeOperation.REMOVE)[0])  # line 644
+        _.assertEqual(a, sos.merge(a, b, mergeOperation=sos.MergeOperation.BOTH)[0])  # keeps any changes in b  # line 645
 # Test with change + insert
-        _.assertEqual(b"a\nb fdcd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation=sos.MergeOperation.INSERT)[0])  # line 646
-        _.assertEqual(b"a\nb d d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation=sos.MergeOperation.REMOVE)[0])  # line 647
+        _.assertEqual(b"a\nb fdcd d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation=sos.MergeOperation.INSERT)[0])  # line 647
+        _.assertEqual(b"a\nb d d\ne", sos.merge(b"a\nb cd d\ne", b"a\nb fdd d\ne", charMergeOperation=sos.MergeOperation.REMOVE)[0])  # line 648
 # Test interactive merge
-        a = b"a\nb\nb\ne"  # block-wise replacement  # line 649
-        b = b"a\nc\ne"  # line 650
-        _.assertEqual(b, mockInput(["i"], lambda _=None: sos.merge(a, b, mergeOperation=sos.MergeOperation.ASK)[0]))  # line 651
-        _.assertEqual(a, mockInput(["t"], lambda _=None: sos.merge(a, b, mergeOperation=sos.MergeOperation.ASK)[0]))  # line 652
-        a = b"a\nb\ne"  # intra-line merge  # line 653
-        _.assertEqual(b, mockInput(["i"], lambda _=None: sos.merge(a, b, charMergeOperation=sos.MergeOperation.ASK)[0]))  # line 654
-        _.assertEqual(a, mockInput(["t"], lambda _=None: sos.merge(a, b, charMergeOperation=sos.MergeOperation.ASK)[0]))  # line 655
-        _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aaaacaaa")[0])  # line 656
-        _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aaaaaaa")[0])  # line 657
-        _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aabaacaaaa")[0])  # line 658
-        _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"xaaaadaaac")[0])  # line 659
+        a = b"a\nb\nb\ne"  # block-wise replacement  # line 650
+        b = b"a\nc\ne"  # line 651
+        _.assertEqual(b, mockInput(["i"], lambda _=None: sos.merge(a, b, mergeOperation=sos.MergeOperation.ASK)[0]))  # line 652
+        _.assertEqual(a, mockInput(["t"], lambda _=None: sos.merge(a, b, mergeOperation=sos.MergeOperation.ASK)[0]))  # line 653
+        a = b"a\nb\ne"  # intra-line merge  # line 654
+        _.assertEqual(b, mockInput(["i"], lambda _=None: sos.merge(a, b, charMergeOperation=sos.MergeOperation.ASK)[0]))  # line 655
+        _.assertEqual(a, mockInput(["t"], lambda _=None: sos.merge(a, b, charMergeOperation=sos.MergeOperation.ASK)[0]))  # line 656
+        _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aaaacaaa")[0])  # line 657
+        _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aaaaaaa")[0])  # line 658
+        _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"aabaacaaaa")[0])  # line 659
+        _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"xaaaadaaac")[0])  # line 660
 
-    def testMergeEol(_):  # line 661
-        _.assertEqual(b"\r\n", sos.merge(b"a\nb", b"a\r\nb")[1])  # line 662
-        _.assertIn("Differing EOL-styles", wrapChannels(lambda _=None: sos.merge(b"a\nb", b"a\r\nb")))  # expects a warning  # line 663
-        _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb")[0])  # when in doubt, use "mine" CR-LF  # line 664
-        _.assertIn(b"a\nb", sos.merge(b"a\nb", b"a\r\nb", eol=True)[0])  # line 665
-        _.assertEqual(b"\n", sos.merge(b"a\nb", b"a\r\nb", eol=True)[1])  # line 666
+    def testMergeEol(_):  # line 662
+        _.assertEqual(b"\r\n", sos.merge(b"a\nb", b"a\r\nb")[1])  # line 663
+        _.assertIn("Differing EOL-styles", wrapChannels(lambda _=None: sos.merge(b"a\nb", b"a\r\nb")))  # expects a warning  # line 664
+        _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb")[0])  # when in doubt, use "mine" CR-LF  # line 665
+        _.assertIn(b"a\nb", sos.merge(b"a\nb", b"a\r\nb", eol=True)[0])  # line 666
+        _.assertEqual(b"\n", sos.merge(b"a\nb", b"a\r\nb", eol=True)[1])  # line 667
 
-    def testPickyMode(_):  # line 668
-        ''' Confirm that picky mode reset tracked patterns after commits. '''  # line 669
-        sos.offline("trunk", None, ["--picky"])  # line 670
-        changes = sos.changes()  # line 671
-        _.assertEqual(0, len(changes.additions))  # do not list any existing file as an addition  # line 672
-        sos.add(".", "./file?", ["--force"])  # line 673
-        _.createFile(1, "aa")  # line 674
-        sos.commit("First")  # add one file  # line 675
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # line 676
-        _.createFile(2, "b")  # line 677
-        try:  # add nothing, because picky  # line 678
-            sos.commit("Second")  # add nothing, because picky  # line 678
-        except:  # line 679
-            pass  # line 679
-        sos.add(".", "./file?")  # line 680
-        sos.commit("Third")  # line 681
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # line 682
-        out = wrapChannels(lambda _=None: sos.log()).replace("\r", "")  # line 683
-        _.assertIn("    r0", out)  # line 684
-        sys.argv.extend(["-n", "2"])  # line 685
-        out = wrapChannels(lambda _=None: sos.log()).replace("\r", "")  # line 686
-        sys.argv.pop()  # line 687
-        sys.argv.pop()  # line 687
-        _.assertNotIn("    r0", out)  # because number of log lines was limited by argument  # line 688
-        _.assertIn("    r1", out)  # line 689
-        _.assertIn("  * r2", out)  # line 690
-        try:  # line 691
-            sos.config(["set", "logLines", "1"], options=["--local"])  # line 691
-        except SystemExit as E:  # line 692
-            _.assertEqual(0, E.code)  # line 692
-        out = wrapChannels(lambda _=None: sos.log([])).replace("\r", "")  # line 693
-        _.assertNotIn("    r0", out)  # because number of log lines was limited  # line 694
-        _.assertNotIn("    r1", out)  # line 695
-        _.assertIn("  * r2", out)  # line 696
-        _.createFile(3, prefix="sub")  # line 697
-        sos.add("sub", "sub/file?")  # line 698
-        changes = sos.changes()  # line 699
-        _.assertEqual(1, len(changes.additions))  # line 700
-        _.assertTrue("sub/file3" in changes.additions)  # line 701
+    def testPickyMode(_):  # line 669
+        ''' Confirm that picky mode reset tracked patterns after commits. '''  # line 670
+        sos.offline("trunk", None, ["--picky"])  # line 671
+        changes = sos.changes()  # line 672
+        _.assertEqual(0, len(changes.additions))  # do not list any existing file as an addition  # line 673
+        out = wrapChannels(lambda _=None: sos.add(".", "./file?", options=["--force", "--relative"]))  # type: str  # line 674
+        _.assertAllIn(["Added tracking pattern", "'%s'" % "file?", "'.'"], out)  # line 675
+        _.createFile(1, "aa")  # line 676
+        sos.commit("First")  # add one file  # line 677
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # line 678
+        _.createFile(2, "b")  # line 679
+        try:  # add nothing, because picky  # line 680
+            sos.commit("Second")  # add nothing, because picky  # line 680
+        except:  # line 681
+            pass  # line 681
+        sos.add(".", "./file?")  # line 682
+        sos.commit("Third")  # line 683
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # line 684
+        out = wrapChannels(lambda _=None: sos.log()).replace("\r", "")  # line 685
+        _.assertIn("    r0", out)  # line 686
+        sys.argv.extend(["-n", "2"])  # We cannot use the opions array for named argument options  # line 687
+        out = wrapChannels(lambda _=None: sos.log()).replace("\r", "")  # line 688
+        sys.argv.pop()  # line 689
+        sys.argv.pop()  # line 689
+        _.assertNotIn("    r0", out)  # because number of log lines was limited by argument  # line 690
+        _.assertIn("    r1", out)  # line 691
+        _.assertIn("  * r2", out)  # line 692
+        try:  # line 693
+            sos.config(["set", "logLines", "1"], options=["--local"])  # line 693
+        except SystemExit as E:  # line 694
+            _.assertEqual(0, E.code)  # line 694
+        out = wrapChannels(lambda _=None: sos.log([])).replace("\r", "")  # line 695
+        _.assertNotIn("    r0", out)  # because number of log lines was limited  # line 696
+        _.assertNotIn("    r1", out)  # line 697
+        _.assertIn("  * r2", out)  # line 698
+        _.createFile(3, prefix="sub")  # line 699
+        sos.add("sub", "sub/file?")  # line 700
+        changes = sos.changes()  # line 701
+        _.assertEqual(1, len(changes.additions))  # line 702
+        _.assertTrue("sub/file3" in changes.additions)  # line 703
 
-    def testTrackedSubfolder(_):  # line 703
-        ''' See if patterns for files in sub folders are picked up correctly. '''  # line 704
-        os.mkdir("." + os.sep + "sub")  # line 705
-        sos.offline("trunk", None, ["--track"])  # line 706
-        _.createFile(1, "x")  # line 707
-        _.createFile(1, "x", prefix="sub")  # line 708
-        sos.add(".", "./file?")  # add glob pattern to track  # line 709
-        sos.commit("First")  # line 710
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file  # line 711
-        sos.add(".", "sub/file?")  # add glob pattern to track  # line 712
-        sos.commit("Second")  # one new file + meta  # line 713
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file  # line 714
-        os.unlink("file1")  # remove from basefolder  # line 715
-        _.createFile(2, "y")  # line 716
-        sos.remove(".", "sub/file?")  # line 717
-        try:  # raises Exit. TODO test the "suggest a pattern" case  # line 718
-            sos.remove(".", "sub/bla")  # raises Exit. TODO test the "suggest a pattern" case  # line 718
-            _.fail()  # raises Exit. TODO test the "suggest a pattern" case  # line 718
-        except:  # line 719
-            pass  # line 719
-        sos.commit("Third")  # line 720
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # one new file + meta  # line 721
+    def testTrackedSubfolder(_):  # line 705
+        ''' See if patterns for files in sub folders are picked up correctly. '''  # line 706
+        os.mkdir("." + os.sep + "sub")  # line 707
+        sos.offline("trunk", None, ["--track"])  # line 708
+        _.createFile(1, "x")  # line 709
+        _.createFile(1, "x", prefix="sub")  # line 710
+        sos.add(".", "./file?")  # add glob pattern to track  # line 711
+        sos.commit("First")  # line 712
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file  # line 713
+        sos.add(".", "sub/file?")  # add glob pattern to track  # line 714
+        sos.commit("Second")  # one new file + meta  # line 715
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file  # line 716
+        os.unlink("file1")  # remove from basefolder  # line 717
+        _.createFile(2, "y")  # line 718
+        sos.remove(".", "sub/file?")  # line 719
+        try:  # TODO check more textual details here  # line 720
+            sos.remove(".", "sub/bla")  # TODO check more textual details here  # line 720
+            _.fail("Expected exit")  # TODO check more textual details here  # line 720
+        except SystemExit as E:  # line 721
+            _.assertEqual(1, E.code)  # line 721
+        sos.commit("Third")  # line 722
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # one new file + meta  # line 723
 # TODO also check if /file1 and sub/file1 were removed from index
 
-    def testTrackedMode(_):  # line 724
+    def testTrackedMode(_):  # line 726
         ''' Difference in semantics vs simple mode:
           - For remote/other branch we can only know and consider tracked files, thus ignoring all complexity stemming from handling addition of untracked files.
           - For current branch, we can take into account tracked and untracked ones, in theory, but it doesn't make sense.
         In conclusion, using the union of tracking patterns from both sides to find affected files makes sense, but disallow deleting files not present in remote branch.
-    '''  # line 729
-        sos.offline("test", options=["--track"])  # set up repo in tracking mode (SVN- or gitless-style)  # line 730
-        _.createFile(1)  # line 731
-        _.createFile("a123a")  # untracked file "a123a"  # line 732
-        sos.add(".", "./file?")  # add glob tracking pattern  # line 733
-        sos.commit("second")  # versions "file1"  # line 734
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file  # line 735
-        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # line 736
-        _.assertIn("  | ./file?", out)  # line 737
+    '''  # line 731
+        sos.offline("test", options=["--track"])  # set up repo in tracking mode (SVN- or gitless-style)  # line 732
+        _.createFile(1)  # line 733
+        _.createFile("a123a")  # untracked file "a123a"  # line 734
+        sos.add(".", "./file?")  # add glob tracking pattern  # line 735
+        sos.commit("second")  # versions "file1"  # line 736
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file  # line 737
+        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # type: str  # line 738
+        _.assertIn("  | ./file?", out)  # line 739
 
-        _.createFile(2)  # untracked file "file2"  # line 739
-        sos.commit("third")  # versions "file2"  # line 740
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # one new file + meta file  # line 741
+        _.createFile(2)  # untracked file "file2"  # line 741
+        sos.commit("third")  # versions "file2"  # line 742
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # one new file + meta file  # line 743
 
-        os.mkdir("." + os.sep + "sub")  # line 743
-        _.createFile(3, prefix="sub")  # untracked file "sub/file3"  # line 744
-        sos.commit("fourth", ["--force"])  # no tracking pattern matches the subfolder  # line 745
-        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 3))))  # meta file only, no other tracked path/file  # line 746
+        os.mkdir("." + os.sep + "sub")  # line 745
+        _.createFile(3, prefix="sub")  # untracked file "sub/file3"  # line 746
+        sos.commit("fourth", ["--force"])  # no tracking pattern matches the subfolder  # line 747
+        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 3))))  # meta file only, no other tracked path/file  # line 748
 
-        sos.branch("Other")  # second branch containing file1 and file2 tracked by "./file?"  # line 748
-        sos.remove(".", "./file?")  # remove tracking pattern, but don't touch previously created and versioned files  # line 749
-        sos.add(".", "./a*a")  # add tracking pattern  # line 750
-        changes = sos.changes()  # should pick up addition only, because tracked, but not the deletion, as not tracked anymore  # line 751
-        _.assertEqual(0, len(changes.modifications))  # line 752
-        _.assertEqual(0, len(changes.deletions))  # not tracked anymore, but contained in version history and not removed  # line 753
-        _.assertEqual(1, len(changes.additions))  # detected one addition "a123a", but won't recognize untracking files as deletion  # line 754
+        sos.branch("Other")  # second branch containing file1 and file2 tracked by "./file?"  # line 750
+        sos.remove(".", "./file?")  # remove tracking pattern, but don't touch previously created and versioned files  # line 751
+        sos.add(".", "./a*a")  # add tracking pattern  # line 752
+        changes = sos.changes()  # should pick up addition only, because tracked, but not the deletion, as not tracked anymore  # line 753
+        _.assertEqual(0, len(changes.modifications))  # line 754
+        _.assertEqual(0, len(changes.deletions))  # not tracked anymore, but contained in version history and not removed  # line 755
+        _.assertEqual(1, len(changes.additions))  # detected one addition "a123a", but won't recognize untracking files as deletion  # line 756
 
-        sos.commit("Second_2")  # line 756
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(1, 1))))  # "a123a" + meta file  # line 757
-        _.existsFile(1, b"x" * 10)  # line 758
-        _.existsFile(2, b"x" * 10)  # line 759
+        sos.commit("Second_2")  # line 758
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(1, 1))))  # "a123a" + meta file  # line 759
+        _.existsFile(1, b"x" * 10)  # line 760
+        _.existsFile(2, b"x" * 10)  # line 761
 
-        sos.switch("test")  # go back to first branch - tracks only "file?", but not "a*a"  # line 761
-        _.existsFile(1, b"x" * 10)  # line 762
-        _.existsFile("a123a", b"x" * 10)  # line 763
+        sos.switch("test")  # go back to first branch - tracks only "file?", but not "a*a"  # line 763
+        _.existsFile(1, b"x" * 10)  # line 764
+        _.existsFile("a123a", b"x" * 10)  # line 765
 
-        sos.update("Other")  # integrate tracked files and tracking pattern from second branch into working state of master branch  # line 765
-        _.assertTrue(os.path.exists("." + os.sep + "file1"))  # line 766
-        _.assertTrue(os.path.exists("." + os.sep + "a123a"))  # line 767
+        sos.update("Other")  # integrate tracked files and tracking pattern from second branch into working state of master branch  # line 767
+        _.assertTrue(os.path.exists("." + os.sep + "file1"))  # line 768
+        _.assertTrue(os.path.exists("." + os.sep + "a123a"))  # line 769
 
-        _.createFile("axxxa")  # new file that should be tracked on "test" now that we integrated "Other"  # line 769
-        sos.commit("fifth")  # create new revision after integrating updates from second branch  # line 770
-        _.assertEqual(3, len(os.listdir(sos.revisionFolder(0, 4))))  # one new file from other branch + one new in current folder + meta file  # line 771
-        sos.switch("Other")  # switch back to just integrated branch that tracks only "a*a" - shouldn't do anything  # line 772
-        _.assertTrue(os.path.exists("." + os.sep + "file1"))  # line 773
-        _.assertTrue(os.path.exists("." + os.sep + "a123a"))  # line 774
-        _.assertFalse(os.path.exists("." + os.sep + "axxxa"))  # because tracked in both branches, but not present in other -> delete in file tree  # line 775
+        _.createFile("axxxa")  # new file that should be tracked on "test" now that we integrated "Other"  # line 771
+        sos.commit("fifth")  # create new revision after integrating updates from second branch  # line 772
+        _.assertEqual(3, len(os.listdir(sos.revisionFolder(0, 4))))  # one new file from other branch + one new in current folder + meta file  # line 773
+        sos.switch("Other")  # switch back to just integrated branch that tracks only "a*a" - shouldn't do anything  # line 774
+        _.assertTrue(os.path.exists("." + os.sep + "file1"))  # line 775
+        _.assertTrue(os.path.exists("." + os.sep + "a123a"))  # line 776
+        _.assertFalse(os.path.exists("." + os.sep + "axxxa"))  # because tracked in both branches, but not present in other -> delete in file tree  # line 777
 # TODO test switch --meta
 
-    def testLsTracked(_):  # line 778
-        sos.offline("test", options=["--track"])  # set up repo in tracking mode (SVN- or gitless-style)  # line 779
-        _.createFile(1)  # line 780
-        _.createFile("foo")  # line 781
-        sos.add(".", "./file*")  # capture one file  # line 782
-        sos.ls()  # line 783
-        out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls()).replace("\r", ""), "\n")  # line 784
-        _.assertInAny("TRK file1  (file*)", out)  # line 785
-        _.assertNotInAny("... file1  (file*)", out)  # line 786
-        _.assertInAny("    foo", out)  # line 787
-        out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls(options=["--patterns"])).replace("\r", ""), "\n")  # line 788
-        _.assertInAny("TRK file*", out)  # line 789
-        _.createFile("a", prefix="sub")  # line 790
-        sos.add("sub", "sub/a")  # line 791
-        sos.ls("sub")  # line 792
-        _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(lambda _=None: sos.ls("sub")).replace("\r", ""), "\n"))  # line 793
+    def testLsTracked(_):  # line 780
+        sos.offline("test", options=["--track"])  # set up repo in tracking mode (SVN- or gitless-style)  # line 781
+        _.createFile(1)  # line 782
+        _.createFile("foo")  # line 783
+        sos.add(".", "./file*")  # capture one file  # line 784
+        sos.ls()  # line 785
+        out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls()).replace("\r", ""), "\n")  # type: str  # line 786
+        _.assertInAny("TRK file1  (file*)", out)  # line 787
+        _.assertNotInAny("... file1  (file*)", out)  # line 788
+        _.assertInAny("    foo", out)  # line 789
+        out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls(options=["--patterns"])).replace("\r", ""), "\n")  # line 790
+        _.assertInAny("TRK file*", out)  # line 791
+        _.createFile("a", prefix="sub")  # line 792
+        sos.add("sub", "sub/a")  # line 793
+        sos.ls("sub")  # line 794
+        _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(lambda _=None: sos.ls("sub")).replace("\r", ""), "\n"))  # line 795
 
-    def testLineMerge(_):  # line 795
-        _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))  # line 796
-        _.assertEqual("xabxxc", sos.lineMerge("xabxxc", "a bd"))  # line 797
-        _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.INSERT))  # line 798
-        _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.REMOVE))  # line 799
+    def testLineMerge(_):  # line 797
+        _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))  # line 798
+        _.assertEqual("xabxxc", sos.lineMerge("xabxxc", "a bd"))  # line 799
+        _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.INSERT))  # line 800
+        _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.REMOVE))  # line 801
 
-    def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not  # line 801
-        _.createFile(1)  # line 802
-        sos.offline("master", options=["--force"])  # line 803
-        out = wrapChannels(lambda _=None: sos.changes(options=['--progress'])).replace("\r", "").split("\n")  # line 804
-        _.assertFalse(any(("Compression advantage" in line for line in out)))  # simple mode should always print this to stdout  # line 805
-        _.assertTrue(_.existsFile(sos.revisionFolder(0, 0, file="b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"), b"x" * 10))  # line 806
-        setRepoFlag("compress", True)  # was plain = uncompressed before  # line 807
-        _.createFile(2)  # line 808
-        out = wrapChannels(lambda _=None: sos.commit("Added file2", options=['--progress'])).replace("\r", "").split("\n")  # line 809
-        _.assertTrue(any(("Compression advantage" in line for line in out)))  # line 810
-        _.assertTrue(_.existsFile(sos.revisionFolder(0, 1, file="03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists  # line 811
-        _.assertFalse(_.existsFile(sos.revisionFolder(0, 1, file="03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead  # line 812
+    def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not  # line 803
+        _.createFile(1)  # line 804
+        sos.offline("master", options=["--force"])  # line 805
+        out = wrapChannels(lambda _=None: sos.changes(options=['--progress'])).replace("\r", "").split("\n")  # type: str  # line 806
+        _.assertFalse(any(("Compression advantage" in line for line in out)))  # simple mode should always print this to stdout  # line 807
+        _.assertTrue(_.existsFile(sos.revisionFolder(0, 0, file="b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa"), b"x" * 10))  # line 808
+        setRepoFlag("compress", True)  # was plain = uncompressed before  # line 809
+        _.createFile(2)  # line 810
+        out = wrapChannels(lambda _=None: sos.commit("Added file2", options=['--progress'])).replace("\r", "").split("\n")  # line 811
+        _.assertTrue(any(("Compression advantage" in line for line in out)))  # line 812
+        _.assertTrue(_.existsFile(sos.revisionFolder(0, 1, file="03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2")))  # exists  # line 813
+        _.assertFalse(_.existsFile(sos.revisionFolder(0, 1, file="03b69bc801ae11f1ff2a71a50f165996d0ad681b4f822df13329a27e53f0fcd2"), b"x" * 10))  # but is compressed instead  # line 814
 
-    def testLocalConfig(_):  # line 814
-        sos.offline("bla", options=[])  # line 815
-        try:  # line 816
-            sos.config(["set", "ignores", "one;two"], options=["--local"])  # line 816
-        except SystemExit as E:  # line 817
-            _.assertEqual(0, E.code)  # line 817
-        _.assertTrue(checkRepoFlag("ignores", value=["one", "two"]))  # line 818
+    def testLocalConfig(_):  # line 816
+        sos.offline("bla", options=[])  # line 817
+        try:  # line 818
+            sos.config(["set", "ignores", "one;two"], options=["--local"])  # line 818
+        except SystemExit as E:  # line 819
+            _.assertEqual(0, E.code)  # line 819
+        _.assertTrue(checkRepoFlag("ignores", value=["one", "two"]))  # line 820
 
-    def testConfigVariations(_):  # line 820
-        def makeRepo():  # line 821
-            try:  # line 822
-                os.unlink("file1")  # line 822
-            except:  # line 823
-                pass  # line 823
-            sos.offline("master", options=["--force"])  # line 824
-            _.createFile(1)  # line 825
-            sos.commit("Added file1")  # line 826
-        try:  # line 827
-            sos.config(["set", "strict", "on"])  # line 827
-        except SystemExit as E:  # line 828
-            _.assertEqual(0, E.code)  # line 828
-        makeRepo()  # line 829
-        _.assertTrue(checkRepoFlag("strict", True))  # line 830
-        try:  # line 831
-            sos.config(["set", "strict", "off"])  # line 831
-        except SystemExit as E:  # line 832
-            _.assertEqual(0, E.code)  # line 832
-        makeRepo()  # line 833
-        _.assertTrue(checkRepoFlag("strict", False))  # line 834
-        try:  # line 835
-            sos.config(["set", "strict", "yes"])  # line 835
-        except SystemExit as E:  # line 836
-            _.assertEqual(0, E.code)  # line 836
-        makeRepo()  # line 837
-        _.assertTrue(checkRepoFlag("strict", True))  # line 838
-        try:  # line 839
-            sos.config(["set", "strict", "no"])  # line 839
-        except SystemExit as E:  # line 840
-            _.assertEqual(0, E.code)  # line 840
-        makeRepo()  # line 841
-        _.assertTrue(checkRepoFlag("strict", False))  # line 842
-        try:  # line 843
-            sos.config(["set", "strict", "1"])  # line 843
-        except SystemExit as E:  # line 844
-            _.assertEqual(0, E.code)  # line 844
-        makeRepo()  # line 845
-        _.assertTrue(checkRepoFlag("strict", True))  # line 846
-        try:  # line 847
-            sos.config(["set", "strict", "0"])  # line 847
-        except SystemExit as E:  # line 848
-            _.assertEqual(0, E.code)  # line 848
-        makeRepo()  # line 849
-        _.assertTrue(checkRepoFlag("strict", False))  # line 850
-        try:  # line 851
-            sos.config(["set", "strict", "true"])  # line 851
-        except SystemExit as E:  # line 852
-            _.assertEqual(0, E.code)  # line 852
-        makeRepo()  # line 853
-        _.assertTrue(checkRepoFlag("strict", True))  # line 854
-        try:  # line 855
-            sos.config(["set", "strict", "false"])  # line 855
-        except SystemExit as E:  # line 856
-            _.assertEqual(0, E.code)  # line 856
-        makeRepo()  # line 857
-        _.assertTrue(checkRepoFlag("strict", False))  # line 858
-        try:  # line 859
-            sos.config(["set", "strict", "enable"])  # line 859
-        except SystemExit as E:  # line 860
-            _.assertEqual(0, E.code)  # line 860
-        makeRepo()  # line 861
-        _.assertTrue(checkRepoFlag("strict", True))  # line 862
-        try:  # line 863
-            sos.config(["set", "strict", "disable"])  # line 863
-        except SystemExit as E:  # line 864
-            _.assertEqual(0, E.code)  # line 864
-        makeRepo()  # line 865
-        _.assertTrue(checkRepoFlag("strict", False))  # line 866
-        try:  # line 867
-            sos.config(["set", "strict", "enabled"])  # line 867
-        except SystemExit as E:  # line 868
-            _.assertEqual(0, E.code)  # line 868
-        makeRepo()  # line 869
-        _.assertTrue(checkRepoFlag("strict", True))  # line 870
-        try:  # line 871
-            sos.config(["set", "strict", "disabled"])  # line 871
-        except SystemExit as E:  # line 872
-            _.assertEqual(0, E.code)  # line 872
-        makeRepo()  # line 873
-        _.assertTrue(checkRepoFlag("strict", False))  # line 874
-        try:  # line 875
-            sos.config(["set", "strict", "nope"])  # line 875
-            _.fail()  # line 875
-        except SystemExit as E:  # line 876
-            _.assertEqual(1, E.code)  # line 876
+    def testConfigVariations(_):  # line 822
+        def makeRepo():  # line 823
+            try:  # line 824
+                os.unlink("file1")  # line 824
+            except:  # line 825
+                pass  # line 825
+            sos.offline("master", options=["--force"])  # line 826
+            _.createFile(1)  # line 827
+            sos.commit("Added file1")  # line 828
+        try:  # line 829
+            sos.config(["set", "strict", "on"])  # line 829
+        except SystemExit as E:  # line 830
+            _.assertEqual(0, E.code)  # line 830
+        makeRepo()  # line 831
+        _.assertTrue(checkRepoFlag("strict", True))  # line 832
+        try:  # line 833
+            sos.config(["set", "strict", "off"])  # line 833
+        except SystemExit as E:  # line 834
+            _.assertEqual(0, E.code)  # line 834
+        makeRepo()  # line 835
+        _.assertTrue(checkRepoFlag("strict", False))  # line 836
+        try:  # line 837
+            sos.config(["set", "strict", "yes"])  # line 837
+        except SystemExit as E:  # line 838
+            _.assertEqual(0, E.code)  # line 838
+        makeRepo()  # line 839
+        _.assertTrue(checkRepoFlag("strict", True))  # line 840
+        try:  # line 841
+            sos.config(["set", "strict", "no"])  # line 841
+        except SystemExit as E:  # line 842
+            _.assertEqual(0, E.code)  # line 842
+        makeRepo()  # line 843
+        _.assertTrue(checkRepoFlag("strict", False))  # line 844
+        try:  # line 845
+            sos.config(["set", "strict", "1"])  # line 845
+        except SystemExit as E:  # line 846
+            _.assertEqual(0, E.code)  # line 846
+        makeRepo()  # line 847
+        _.assertTrue(checkRepoFlag("strict", True))  # line 848
+        try:  # line 849
+            sos.config(["set", "strict", "0"])  # line 849
+        except SystemExit as E:  # line 850
+            _.assertEqual(0, E.code)  # line 850
+        makeRepo()  # line 851
+        _.assertTrue(checkRepoFlag("strict", False))  # line 852
+        try:  # line 853
+            sos.config(["set", "strict", "true"])  # line 853
+        except SystemExit as E:  # line 854
+            _.assertEqual(0, E.code)  # line 854
+        makeRepo()  # line 855
+        _.assertTrue(checkRepoFlag("strict", True))  # line 856
+        try:  # line 857
+            sos.config(["set", "strict", "false"])  # line 857
+        except SystemExit as E:  # line 858
+            _.assertEqual(0, E.code)  # line 858
+        makeRepo()  # line 859
+        _.assertTrue(checkRepoFlag("strict", False))  # line 860
+        try:  # line 861
+            sos.config(["set", "strict", "enable"])  # line 861
+        except SystemExit as E:  # line 862
+            _.assertEqual(0, E.code)  # line 862
+        makeRepo()  # line 863
+        _.assertTrue(checkRepoFlag("strict", True))  # line 864
+        try:  # line 865
+            sos.config(["set", "strict", "disable"])  # line 865
+        except SystemExit as E:  # line 866
+            _.assertEqual(0, E.code)  # line 866
+        makeRepo()  # line 867
+        _.assertTrue(checkRepoFlag("strict", False))  # line 868
+        try:  # line 869
+            sos.config(["set", "strict", "enabled"])  # line 869
+        except SystemExit as E:  # line 870
+            _.assertEqual(0, E.code)  # line 870
+        makeRepo()  # line 871
+        _.assertTrue(checkRepoFlag("strict", True))  # line 872
+        try:  # line 873
+            sos.config(["set", "strict", "disabled"])  # line 873
+        except SystemExit as E:  # line 874
+            _.assertEqual(0, E.code)  # line 874
+        makeRepo()  # line 875
+        _.assertTrue(checkRepoFlag("strict", False))  # line 876
+        try:  # line 877
+            sos.config(["set", "strict", "nope"])  # line 877
+            _.fail()  # line 877
+        except SystemExit as E:  # line 878
+            _.assertEqual(1, E.code)  # line 878
 
-    def testLsSimple(_):  # line 878
-        _.createFile(1)  # line 879
-        _.createFile("foo")  # line 880
-        _.createFile("ign1")  # line 881
-        _.createFile("ign2")  # line 882
-        _.createFile("bar", prefix="sub")  # line 883
-        sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)  # line 884
-        try:  # define an ignore pattern  # line 885
-            sos.config(["set", "ignores", "ign1"])  # define an ignore pattern  # line 885
-        except SystemExit as E:  # line 886
-            _.assertEqual(0, E.code)  # line 886
-        try:  # additional ignore pattern  # line 887
-            sos.config(["add", "ignores", "ign2"])  # additional ignore pattern  # line 887
+    def testLsSimple(_):  # line 880
+        _.createFile(1)  # line 881
+        _.createFile("foo")  # line 882
+        _.createFile("ign1")  # line 883
+        _.createFile("ign2")  # line 884
+        _.createFile("bar", prefix="sub")  # line 885
+        sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)  # line 886
+        try:  # define an ignore pattern  # line 887
+            sos.config(["set", "ignores", "ign1"])  # define an ignore pattern  # line 887
         except SystemExit as E:  # line 888
             _.assertEqual(0, E.code)  # line 888
-        try:  # define a list of ignore patterns  # line 889
-            sos.config(["set", "ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns  # line 889
+        try:  # additional ignore pattern  # line 889
+            sos.config(["add", "ignores", "ign2"])  # additional ignore pattern  # line 889
         except SystemExit as E:  # line 890
             _.assertEqual(0, E.code)  # line 890
-        out = wrapChannels(lambda _=None: sos.config(["show"])).replace("\r", "")  # line 891
-        _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)  # line 892
-        out = wrapChannels(lambda _=None: sos.config(["show", "ignores"])).replace("\r", "")  # line 893
+        try:  # define a list of ignore patterns  # line 891
+            sos.config(["set", "ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns  # line 891
+        except SystemExit as E:  # line 892
+            _.assertEqual(0, E.code)  # line 892
+        out = wrapChannels(lambda _=None: sos.config(["show"])).replace("\r", "")  # type: str  # line 893
         _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)  # line 894
-        out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls()).replace("\r", ""), "\n")  # line 895
-        _.assertInAny('    file1', out)  # line 896
-        _.assertInAny('    ign1', out)  # line 897
-        _.assertInAny('    ign2', out)  # line 898
-        _.assertNotIn('DIR sub', out)  # line 899
-        _.assertNotIn('    bar', out)  # line 900
-        out = wrapChannels(lambda _=None: sos.ls(options=["--recursive"])).replace("\r", "")  # line 901
-        _.assertIn('DIR sub', out)  # line 902
-        _.assertIn('    bar', out)  # line 903
-        try:  # line 904
-            sos.config(["rm", "foo", "bar"])  # line 904
-            _.fail()  # line 904
-        except SystemExit as E:  # line 905
-            _.assertEqual(1, E.code)  # line 905
+        out = wrapChannels(lambda _=None: sos.config(["show", "ignores"])).replace("\r", "")  # line 895
+        _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)  # line 896
+        out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls()).replace("\r", ""), "\n")  # line 897
+        _.assertInAny('    file1', out)  # line 898
+        _.assertInAny('    ign1', out)  # line 899
+        _.assertInAny('    ign2', out)  # line 900
+        _.assertNotIn('DIR sub', out)  # line 901
+        _.assertNotIn('    bar', out)  # line 902
+        out = wrapChannels(lambda _=None: sos.ls(options=["--recursive"])).replace("\r", "")  # line 903
+        _.assertIn('DIR sub', out)  # line 904
+        _.assertIn('    bar', out)  # line 905
         try:  # line 906
-            sos.config(["rm", "ignores", "foo"])  # line 906
+            sos.config(["rm", "foo", "bar"])  # line 906
             _.fail()  # line 906
         except SystemExit as E:  # line 907
             _.assertEqual(1, E.code)  # line 907
         try:  # line 908
-            sos.config(["rm", "ignores", "ign1"])  # line 908
+            sos.config(["rm", "ignores", "foo"])  # line 908
+            _.fail()  # line 908
         except SystemExit as E:  # line 909
-            _.assertEqual(0, E.code)  # line 909
-        try:  # remove ignore pattern  # line 910
-            sos.config(["unset", "ignoresWhitelist"])  # remove ignore pattern  # line 910
+            _.assertEqual(1, E.code)  # line 909
+        try:  # line 910
+            sos.config(["rm", "ignores", "ign1"])  # line 910
         except SystemExit as E:  # line 911
             _.assertEqual(0, E.code)  # line 911
-        out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls()).replace("\r", ""), "\n")  # line 912
-        _.assertInAny('    ign1', out)  # line 913
-        _.assertInAny('IGN ign2', out)  # line 914
-        _.assertNotInAny('    ign2', out)  # line 915
+        try:  # remove ignore pattern  # line 912
+            sos.config(["unset", "ignoresWhitelist"])  # remove ignore pattern  # line 912
+        except SystemExit as E:  # line 913
+            _.assertEqual(0, E.code)  # line 913
+        out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls()).replace("\r", ""), "\n")  # line 914
+        _.assertInAny('    ign1', out)  # line 915
+        _.assertInAny('IGN ign2', out)  # line 916
+        _.assertNotInAny('    ign2', out)  # line 917
 
-    def testWhitelist(_):  # line 917
+    def testWhitelist(_):  # line 919
 # TODO test same for simple mode
-        _.createFile(1)  # line 919
-        sos.defaults.ignores[:] = ["file*"]  # replace in-place  # line 920
-        sos.offline("xx", options=["--track", "--strict"])  # because nothing to commit due to ignore pattern  # line 921
-        sos.add(".", "./file*")  # add tracking pattern for "file1"  # line 922
-        sos.commit(options=["--force"])  # attempt to commit the file  # line 923
-        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 1))))  # only meta data, file1 was ignored  # line 924
-        try:  # Exit because dirty  # line 925
-            sos.online()  # Exit because dirty  # line 925
-            _.fail()  # Exit because dirty  # line 925
-        except:  # exception expected  # line 926
-            pass  # exception expected  # line 926
-        _.createFile("x2")  # add another change  # line 927
-        sos.add(".", "./x?")  # add tracking pattern for "file1"  # line 928
-        try:  # force beyond dirty flag check  # line 929
-            sos.online(["--force"])  # force beyond dirty flag check  # line 929
-            _.fail()  # force beyond dirty flag check  # line 929
-        except:  # line 930
-            pass  # line 930
-        sos.online(["--force", "--force"])  # force beyond file tree modifications check  # line 931
-        _.assertFalse(os.path.exists(sos.metaFolder))  # line 932
+        _.createFile(1)  # line 921
+        sos.defaults.ignores[:] = ["file*"]  # replace in-place  # line 922
+        sos.offline("xx", options=["--track", "--strict"])  # because nothing to commit due to ignore pattern  # line 923
+        sos.add(".", "./file*")  # add tracking pattern for "file1"  # line 924
+        sos.commit(options=["--force"])  # attempt to commit the file  # line 925
+        _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 1))))  # only meta data, file1 was ignored  # line 926
+        try:  # Exit because dirty  # line 927
+            sos.online()  # Exit because dirty  # line 927
+            _.fail()  # Exit because dirty  # line 927
+        except:  # exception expected  # line 928
+            pass  # exception expected  # line 928
+        _.createFile("x2")  # add another change  # line 929
+        sos.add(".", "./x?")  # add tracking pattern for "file1"  # line 930
+        try:  # force beyond dirty flag check  # line 931
+            sos.online(["--force"])  # force beyond dirty flag check  # line 931
+            _.fail()  # force beyond dirty flag check  # line 931
+        except:  # line 932
+            pass  # line 932
+        sos.online(["--force", "--force"])  # force beyond file tree modifications check  # line 933
+        _.assertFalse(os.path.exists(sos.metaFolder))  # line 934
 
-        _.createFile(1)  # line 934
-        sos.defaults.ignoresWhitelist[:] = ["file*"]  # line 935
-        sos.offline("xx", None, ["--track"])  # line 936
-        sos.add(".", "./file*")  # line 937
-        sos.commit()  # should NOT ask for force here  # line 938
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # meta data and "file1", file1 was whitelisted  # line 939
+        _.createFile(1)  # line 936
+        sos.defaults.ignoresWhitelist[:] = ["file*"]  # line 937
+        sos.offline("xx", None, ["--track"])  # line 938
+        sos.add(".", "./file*")  # line 939
+        sos.commit()  # should NOT ask for force here  # line 940
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # meta data and "file1", file1 was whitelisted  # line 941
 
-    def testRemove(_):  # line 941
-        _.createFile(1, "x" * 100)  # line 942
-        sos.offline("trunk")  # line 943
-        try:  # line 944
-            sos.destroy("trunk")  # line 944
-            _fail()  # line 944
-        except:  # line 945
-            pass  # line 945
-        _.createFile(2, "y" * 10)  # line 946
-        sos.branch("added")  # creates new branch, writes repo metadata, and therefore creates backup copy  # line 947
-        sos.destroy("trunk")  # line 948
-        _.assertAllIn([sos.metaFile, sos.metaBack, "b0_last", "b1"], os.listdir("." + os.sep + sos.metaFolder))  # line 949
-        _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b1"))  # line 950
-        _.assertFalse(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0"))  # line 951
-        sos.branch("next")  # line 952
-        _.createFile(3, "y" * 10)  # make a change  # line 953
-        sos.destroy("added", "--force")  # should succeed  # line 954
+    def testRemove(_):  # line 943
+        _.createFile(1, "x" * 100)  # line 944
+        sos.offline("trunk")  # line 945
+        try:  # line 946
+            sos.destroy("trunk")  # line 946
+            _fail()  # line 946
+        except:  # line 947
+            pass  # line 947
+        _.createFile(2, "y" * 10)  # line 948
+        sos.branch("added")  # creates new branch, writes repo metadata, and therefore creates backup copy  # line 949
+        sos.destroy("trunk")  # line 950
+        _.assertAllIn([sos.metaFile, sos.metaBack, "b0_last", "b1"], os.listdir("." + os.sep + sos.metaFolder))  # line 951
+        _.assertTrue(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b1"))  # line 952
+        _.assertFalse(os.path.exists("." + os.sep + sos.metaFolder + os.sep + "b0"))  # line 953
+        sos.branch("next")  # line 954
+        _.createFile(3, "y" * 10)  # make a change  # line 955
+        sos.destroy("added", "--force")  # should succeed  # line 956
 
-    def testFastBranchingOnEmptyHistory(_):  # line 956
-        ''' Test fast branching without revisions and with them. '''  # line 957
-        sos.offline(options=["--strict", "--compress"])  # b0  # line 958
-        sos.branch("", "", options=["--fast", "--last"])  # b1  # line 959
-        sos.branch("", "", options=["--fast", "--last"])  # b2  # line 960
-        sos.branch("", "", options=["--fast", "--last"])  # b3  # line 961
-        sos.destroy("2")  # line 962
-        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # line 963
-        _.assertIn("b0 'trunk' @", out)  # line 964
-        _.assertIn("b1         @", out)  # line 965
-        _.assertIn("b3         @", out)  # line 966
-        _.assertNotIn("b2         @", out)  # line 967
-        sos.branch("", "")  # non-fast branching of b4  # line 968
-        _.createFile(1)  # line 969
-        _.createFile(2)  # line 970
-        sos.commit("")  # line 971
-        sos.branch("", "", options=["--fast", "--last"])  # b5  # line 972
-        sos.destroy("4")  # line 973
-        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # line 974
-        _.assertIn("b0 'trunk' @", out)  # line 975
-        _.assertIn("b1         @", out)  # line 976
-        _.assertIn("b3         @", out)  # line 977
-        _.assertIn("b5         @", out)  # line 978
-        _.assertNotIn("b2         @", out)  # line 979
-        _.assertNotIn("b4         @", out)  # line 980
+    def testFastBranchingOnEmptyHistory(_):  # line 958
+        ''' Test fast branching without revisions and with them. '''  # line 959
+        sos.offline(options=["--strict", "--compress"])  # b0  # line 960
+        sos.branch("", "", options=["--fast", "--last"])  # b1  # line 961
+        sos.branch("", "", options=["--fast", "--last"])  # b2  # line 962
+        sos.branch("", "", options=["--fast", "--last"])  # b3  # line 963
+        sos.destroy("2")  # line 964
+        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # type: str  # line 965
+        _.assertIn("b0 'trunk' @", out)  # line 966
+        _.assertIn("b1         @", out)  # line 967
+        _.assertIn("b3         @", out)  # line 968
+        _.assertNotIn("b2         @", out)  # line 969
+        sos.branch("", "")  # non-fast branching of b4  # line 970
+        _.createFile(1)  # line 971
+        _.createFile(2)  # line 972
+        sos.commit("")  # line 973
+        sos.branch("", "", options=["--fast", "--last"])  # b5  # line 974
+        sos.destroy("4")  # line 975
+        out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # line 976
+        _.assertIn("b0 'trunk' @", out)  # line 977
+        _.assertIn("b1         @", out)  # line 978
+        _.assertIn("b3         @", out)  # line 979
+        _.assertIn("b5         @", out)  # line 980
+        _.assertNotIn("b2         @", out)  # line 981
+        _.assertNotIn("b4         @", out)  # line 982
 # TODO add more files and branch again
 
-    def testUsage(_):  # line 983
-        try:  # TODO expect sys.exit(0)  # line 984
-            sos.usage()  # TODO expect sys.exit(0)  # line 984
-            _.fail()  # TODO expect sys.exit(0)  # line 984
-        except:  # line 985
-            pass  # line 985
+    def testUsage(_):  # line 985
         try:  # TODO expect sys.exit(0)  # line 986
-            sos.usage("help")  # TODO expect sys.exit(0)  # line 986
+            sos.usage()  # TODO expect sys.exit(0)  # line 986
             _.fail()  # TODO expect sys.exit(0)  # line 986
         except:  # line 987
             pass  # line 987
         try:  # TODO expect sys.exit(0)  # line 988
-            sos.usage("help", verbose=True)  # TODO expect sys.exit(0)  # line 988
+            sos.usage("help")  # TODO expect sys.exit(0)  # line 988
             _.fail()  # TODO expect sys.exit(0)  # line 988
         except:  # line 989
             pass  # line 989
-        try:  # line 990
-            sos.usage(version=True)  # line 990
-            _.fail()  # line 990
+        try:  # TODO expect sys.exit(0)  # line 990
+            sos.usage("help", verbose=True)  # TODO expect sys.exit(0)  # line 990
+            _.fail()  # TODO expect sys.exit(0)  # line 990
         except:  # line 991
             pass  # line 991
         try:  # line 992
@@ -1177,211 +1174,228 @@ class Tests(unittest.TestCase):  # line 98
             _.fail()  # line 992
         except:  # line 993
             pass  # line 993
+        try:  # line 994
+            sos.usage(version=True)  # line 994
+            _.fail()  # line 994
+        except:  # line 995
+            pass  # line 995
 
-    def testOnlyExcept(_):  # line 995
-        ''' Test blacklist glob rules. '''  # line 996
-        sos.offline(options=["--track"])  # line 997
-        _.createFile("a.1")  # line 998
-        _.createFile("a.2")  # line 999
-        _.createFile("b.1")  # line 1000
-        _.createFile("b.2")  # line 1001
-        sos.add(".", "./a.?")  # line 1002
-        sos.add(".", "./?.1", negative=True)  # line 1003
-        out = wrapChannels(lambda _=None: sos.commit())  # line 1004
-        _.assertIn("ADD ./a.2", out)  # line 1005
-        _.assertNotIn("ADD ./a.1", out)  # line 1006
-        _.assertNotIn("ADD ./b.1", out)  # line 1007
-        _.assertNotIn("ADD ./b.2", out)  # line 1008
+    def testOnlyExcept(_):  # line 997
+        ''' Test blacklist glob rules. '''  # line 998
+        sos.offline(options=["--track"])  # line 999
+        _.createFile("a.1")  # line 1000
+        _.createFile("a.2")  # line 1001
+        _.createFile("b.1")  # line 1002
+        _.createFile("b.2")  # line 1003
+        sos.add(".", "./a.?")  # line 1004
+        sos.add(".", "./?.1", negative=True)  # line 1005
+        out = wrapChannels(lambda _=None: sos.commit())  # type: str  # line 1006
+        _.assertIn("ADD ./a.2", out)  # line 1007
+        _.assertNotIn("ADD ./a.1", out)  # line 1008
+        _.assertNotIn("ADD ./b.1", out)  # line 1009
+        _.assertNotIn("ADD ./b.2", out)  # line 1010
 
-    def testOnly(_):  # line 1010
-        _.assertEqual((_coconut.frozenset(("./A", "x/B")), _coconut.frozenset(("./C",))), sos.parseOnlyOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--only"]))  # line 1011
-        _.assertEqual(_coconut.frozenset(("B",)), sos.conditionalIntersection(_coconut.frozenset(("A", "B", "C")), _coconut.frozenset(("B", "D"))))  # line 1012
-        _.assertEqual(_coconut.frozenset(("B", "D")), sos.conditionalIntersection(_coconut.frozenset(), _coconut.frozenset(("B", "D"))))  # line 1013
-        _.assertEqual(_coconut.frozenset(("B", "D")), sos.conditionalIntersection(None, _coconut.frozenset(("B", "D"))))  # line 1014
-        sos.offline(options=["--track", "--strict"])  # line 1015
-        _.createFile(1)  # line 1016
-        _.createFile(2)  # line 1017
-        sos.add(".", "./file1")  # line 1018
-        sos.add(".", "./file2")  # line 1019
-        sos.commit(onlys=_coconut.frozenset(("./file1",)))  # line 1020
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # only meta and file1  # line 1021
-        sos.commit()  # adds also file2  # line 1022
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # only meta and file1  # line 1023
-        _.createFile(1, "cc")  # modify both files  # line 1024
-        _.createFile(2, "dd")  # line 1025
-        try:  # line 1026
-            sos.config(["set", "texttype", "file2"])  # line 1026
-        except SystemExit as E:  # line 1027
-            _.assertEqual(0, E.code)  # line 1027
-        changes = sos.changes(excps=_coconut.frozenset(("./file1",)))  # line 1028
-        _.assertEqual(1, len(changes.modifications))  # only file2  # line 1029
-        _.assertTrue("./file2" in changes.modifications)  # line 1030
-        _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(lambda _=None: sos.diff(onlys=_coconut.frozenset(("./file2",)))))  # line 1031
-        _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(lambda _=None: sos.diff(onlys=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 1032
-        _.assertIn("MOD ./file1", wrapChannels(lambda _=None: sos.diff(excps=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 1033
-        _.assertNotIn("MOD ./file2", wrapChannels(lambda _=None: sos.diff(excps=_coconut.frozenset(("./file2",)))))  # line 1034
+    def testOnly(_):  # line 1012
+        _.assertEqual((_coconut.frozenset(("./A", "x/B")), _coconut.frozenset(("./C",))), sos.parseOnlyOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--only"]))  # line 1013
+        _.assertEqual(_coconut.frozenset(("B",)), sos.conditionalIntersection(_coconut.frozenset(("A", "B", "C")), _coconut.frozenset(("B", "D"))))  # line 1014
+        _.assertEqual(_coconut.frozenset(("B", "D")), sos.conditionalIntersection(_coconut.frozenset(), _coconut.frozenset(("B", "D"))))  # line 1015
+        _.assertEqual(_coconut.frozenset(("B", "D")), sos.conditionalIntersection(None, _coconut.frozenset(("B", "D"))))  # line 1016
+        sos.offline(options=["--track", "--strict"])  # line 1017
+        _.createFile(1)  # line 1018
+        _.createFile(2)  # line 1019
+        sos.add(".", "./file1")  # line 1020
+        sos.add(".", "./file2")  # line 1021
+        sos.commit(onlys=_coconut.frozenset(("./file1",)))  # line 1022
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # only meta and file1  # line 1023
+        sos.commit()  # adds also file2  # line 1024
+        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # only meta and file1  # line 1025
+        _.createFile(1, "cc")  # modify both files  # line 1026
+        _.createFile(2, "dd")  # line 1027
+        try:  # line 1028
+            sos.config(["set", "texttype", "file2"])  # line 1028
+        except SystemExit as E:  # line 1029
+            _.assertEqual(0, E.code)  # line 1029
+        changes = sos.changes(excps=_coconut.frozenset(("./file1",)))  # line 1030
+        _.assertEqual(1, len(changes.modifications))  # only file2  # line 1031
+        _.assertTrue("./file2" in changes.modifications)  # line 1032
+        _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(lambda _=None: sos.diff(onlys=_coconut.frozenset(("./file2",)))))  # line 1033
+        _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(lambda _=None: sos.diff(onlys=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 1034
+        _.assertIn("MOD ./file1", wrapChannels(lambda _=None: sos.diff(excps=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 1035
+        _.assertNotIn("MOD ./file2", wrapChannels(lambda _=None: sos.diff(excps=_coconut.frozenset(("./file2",)))))  # line 1036
 
-    def testDiff(_):  # line 1036
-        try:  # manually mark this file as "textual"  # line 1037
-            sos.config(["set", "texttype", "file1"])  # manually mark this file as "textual"  # line 1037
-        except SystemExit as E:  # line 1038
-            _.assertEqual(0, E.code)  # line 1038
-        sos.offline(options=["--strict"])  # line 1039
-        _.createFile(1)  # line 1040
-        _.createFile(2)  # line 1041
-        sos.commit()  # line 1042
-        _.createFile(1, "sdfsdgfsdf")  # line 1043
-        _.createFile(2, "12343")  # line 1044
-        sos.commit()  # line 1045
-        _.createFile(1, "foobar")  # line 1046
-        _.createFile(3)  # line 1047
-        out = wrapChannels(lambda _=None: sos.diff("/-2"))  # compare with r1 (second counting from last which is r2)  # line 1048
-        _.assertIn("ADD ./file3", out)  # line 1049
-        _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "-~- 0 |xxxxxxxxxx|", "+~+ 0 |foobar|"], out)  # line 1050
-        _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(lambda _=None: sos.diff("/-2", onlys=_coconut.frozenset(("./file2",)))))  # line 1051
+    def testDiff(_):  # line 1038
+        try:  # manually mark this file as "textual"  # line 1039
+            sos.config(["set", "texttype", "file1"])  # manually mark this file as "textual"  # line 1039
+        except SystemExit as E:  # line 1040
+            _.assertEqual(0, E.code)  # line 1040
+        sos.offline(options=["--strict"])  # line 1041
+        _.createFile(1)  # line 1042
+        _.createFile(2)  # line 1043
+        sos.commit()  # line 1044
+        _.createFile(1, "sdfsdgfsdf")  # line 1045
+        _.createFile(2, "12343")  # line 1046
+        sos.commit()  # line 1047
+        _.createFile(1, "foobar")  # line 1048
+        _.createFile(3)  # line 1049
+        out = wrapChannels(lambda _=None: sos.diff("/-2"))  # type: str  # compare with r1 (second counting from last which is r2)  # line 1050
+        _.assertIn("ADD ./file3", out)  # line 1051
+        _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "-~- 0 |xxxxxxxxxx|", "+~+ 0 |foobar|"], out)  # line 1052
+        _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(lambda _=None: sos.diff("/-2", onlys=_coconut.frozenset(("./file2",)))))  # line 1053
 
-    def testReorderRenameActions(_):  # line 1053
-        result = sos.reorderRenameActions([("123", "312"), ("312", "132"), ("321", "123")], exitOnConflict=False)  # type: Tuple[str, str]  # line 1054
-        _.assertEqual([("312", "132"), ("123", "312"), ("321", "123")], result)  # line 1055
-        try:  # line 1056
-            sos.reorderRenameActions([("123", "312"), ("312", "123")], exitOnConflict=True)  # line 1056
-            _.fail()  # line 1056
-        except:  # line 1057
-            pass  # line 1057
+    def testReorderRenameActions(_):  # line 1055
+        result = sos.reorderRenameActions([("123", "312"), ("312", "132"), ("321", "123")], exitOnConflict=False)  # type: Tuple[str, str]  # line 1056
+        _.assertEqual([("312", "132"), ("123", "312"), ("321", "123")], result)  # line 1057
+        try:  # line 1058
+            sos.reorderRenameActions([("123", "312"), ("312", "123")], exitOnConflict=True)  # line 1058
+            _.fail()  # line 1058
+        except:  # line 1059
+            pass  # line 1059
 
-    def testPublish(_):  # line 1059
-        pass  # TODO how to test without modifying anything underlying? probably use --test flag or similar?  # line 1060
+    def testPublish(_):  # line 1061
+        pass  # TODO how to test without modifying anything underlying? probably use --test flag or similar?  # line 1062
 
-    def testMove(_):  # line 1062
-        sos.offline(options=["--strict", "--track"])  # line 1063
-        _.createFile(1)  # line 1064
-        sos.add(".", "./file?")  # line 1065
-# test source folder missing
-        try:  # line 1067
-            sos.move("sub", "sub/file?", ".", "?file")  # line 1067
-            _.fail()  # line 1067
-        except:  # line 1068
-            pass  # line 1068
-# test target folder missing: create it
-        sos.move(".", "./file?", "sub", "sub/file?")  # line 1070
-        _.assertTrue(os.path.exists("sub"))  # line 1071
-        _.assertTrue(os.path.exists("sub/file1"))  # line 1072
-        _.assertFalse(os.path.exists("file1"))  # line 1073
-# test move
-        sos.move("sub", "sub/file?", ".", "./?file")  # line 1075
-        _.assertTrue(os.path.exists("1file"))  # line 1076
-        _.assertFalse(os.path.exists("sub/file1"))  # line 1077
-# test nothing matches source pattern
-        try:  # line 1079
-            sos.move(".", "a*", ".", "b*")  # line 1079
-            _.fail()  # line 1079
-        except:  # line 1080
-            pass  # line 1080
-        sos.add(".", "*")  # anything pattern  # line 1081
-        try:  # TODO check that alternative pattern "*" was suggested (1 hit)  # line 1082
-            sos.move(".", "a*", ".", "b*")  # TODO check that alternative pattern "*" was suggested (1 hit)  # line 1082
-            _.fail()  # TODO check that alternative pattern "*" was suggested (1 hit)  # line 1082
-        except:  # line 1083
-            pass  # line 1083
+    def testMove(_):  # line 1064
+        ''' Move primarily modifies tracking patterns and moves files around accordingly. '''  # line 1065
+        sos.offline(options=["--strict", "--track"])  # line 1066
+        _.createFile(1)  # line 1067
+        sos.add(".", "./file?")  # line 1068
+# assert error when source folder is missing
+        out = wrapChannels(lambda _=None: sos.move("sub", "sub/file?", ".", "./?file"))  # type: str  # line 1070
+        _.assertIn("Source folder doesn't exist", out)  # line 1071
+        _.assertIn("EXIT CODE 1", out)  # line 1072
+# if target folder missing: create it and move matching files into it
+        sos.move(".", "./file?", "sub", "sub/file?")  # line 1074
+        _.assertTrue(os.path.exists("sub"))  # line 1075
+        _.assertTrue(os.path.exists("sub/file1"))  # line 1076
+        _.assertFalse(os.path.exists("file1"))  # line 1077
+# test move back to previous location, plus rename the file
+        sos.move("sub", "sub/file?", ".", "./?file")  # line 1079
+        _.assertTrue(os.path.exists("1file"))  # line 1080
+        _.assertFalse(os.path.exists("sub/file1"))  # line 1081
+# assert error when nothing matches source pattern
+        out = wrapChannels(lambda _=None: sos.move(".", "./a*", ".", "./b*"))  # line 1083
+        _.assertIn("No files match the specified file pattern", out)  # line 1084
+        _.assertIn("EXIT CODE", out)  # line 1085
+        sos.add(".", "./*")  # add catch-all tracking pattern to root folder  # line 1086
+        out = wrapChannels(lambda _=None: sos.move(".", "./a*", ".", "./b*", options=["--force"]))  # line 1087
+        _.assertIn("  './*' matches 3 files", out)  # line 1088
+        _.assertIn("EXIT CODE", out)  # line 1089
 # test rename no conflict
-        _.createFile(1)  # line 1085
-        _.createFile(2)  # line 1086
-        _.createFile(3)  # line 1087
-        sos.add(".", "./file*")  # line 1088
-        try:  # define an ignore pattern  # line 1089
-            sos.config(["set", "ignores", "file3;file4"])  # define an ignore pattern  # line 1089
-        except SystemExit as E:  # line 1090
-            _.assertEqual(0, E.code)  # line 1090
-        try:  # line 1091
-            sos.config(["set", "ignoresWhitelist", "file3"])  # line 1091
-        except SystemExit as E:  # line 1092
-            _.assertEqual(0, E.code)  # line 1092
-        sos.move(".", "./file*", ".", "fi*le")  # line 1093
-        _.assertTrue(all((os.path.exists("fi%dle" % i) for i in range(1, 4))))  # line 1094
-        _.assertFalse(os.path.exists("fi4le"))  # line 1095
+        _.createFile(1)  # line 1091
+        _.createFile(2)  # line 1092
+        _.createFile(3)  # line 1093
+        sos.add(".", "./file*")  # line 1094
+        sos.remove(".", "./*")  # line 1095
+        try:  # define an ignore pattern  # line 1096
+            sos.config(["set", "ignores", "file3;file4"])  # define an ignore pattern  # line 1096
+        except SystemExit as E:  # line 1097
+            _.assertEqual(0, E.code)  # line 1097
+        try:  # line 1098
+            sos.config(["set", "ignoresWhitelist", "file3"])  # line 1098
+        except SystemExit as E:  # line 1099
+            _.assertEqual(0, E.code)  # line 1099
+        sos.move(".", "./file*", ".", "./fi*le")  # should only move not ignored files files  # line 1100
+        _.assertTrue(all((os.path.exists("fi%dle" % i) for i in range(1, 4))))  # line 1101
+        _.assertTrue(all((not os.path.exists("file%d" % i) for i in range(1, 4))))  # line 1102
+        _.assertFalse(os.path.exists("fi4le"))  # line 1103
 # test rename solvable conflicts
-        [_.createFile("%s-%s-%s" % tuple((c for c in n))) for n in ["312", "321", "123", "231"]]  # line 1097
+        [_.createFile("%s-%s-%s" % tuple((c for c in n))) for n in ["312", "321", "123", "231"]]  # line 1105
 #    sos.move("?-?-?")
 # test rename unsolvable conflicts
 # test --soft option
-        sos.remove(".", "./?file")  # was renamed before  # line 1101
-        sos.add(".", "./?a?b", ["--force"])  # line 1102
-        sos.move(".", "./?a?b", ".", "./a?b?", ["--force", "--soft"])  # line 1103
-        _.createFile("1a2b")  # should not be tracked  # line 1104
-        _.createFile("a1b2")  # should be tracked  # line 1105
-        sos.commit()  # line 1106
-        _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # line 1107
-        _.assertTrue(os.path.exists(sos.revisionFolder(0, 1, file="93b38f90892eb5c57779ca9c0b6fbdf6774daeee3342f56f3e78eb2fe5336c50")))  # a1b2  # line 1108
-        _.createFile("1a1b1")  # line 1109
-        _.createFile("1a1b2")  # line 1110
-        sos.add(".", "?a?b*")  # line 1111
-        _.assertIn("not unique", wrapChannels(lambda _=None: sos.move(".", "?a?b*", ".", "z?z?")))  # should raise error due to same target name  # line 1112
-# TODO only rename if actually any files are versioned? or simply what is alife?
+        sos.remove(".", "./?file")  # untrack pattern, which was renamed before  # line 1109
+        sos.add(".", "./?a?b", ["--force"])  # line 1110
+        sos.move(".", "./?a?b", ".", "./a?b?", ["--force", "--soft"])  # line 1111
+        _.createFile("1a2b")  # should not be tracked  # line 1112
+        _.createFile("a1b2")  # should be tracked  # line 1113
+        sos.commit()  # line 1114
+        _.assertEqual(5, len(os.listdir(sos.revisionFolder(0, 1))))  # meta, a1b2, fi[1-3]le  # line 1115
+        _.assertTrue(os.path.exists(sos.revisionFolder(0, 1, file="93b38f90892eb5c57779ca9c0b6fbdf6774daeee3342f56f3e78eb2fe5336c50")))  # a1b2  # line 1116
+        _.createFile("1a1b1")  # line 1117
+        _.createFile("1a1b2")  # line 1118
+        sos.add(".", "./?a?b*")  # line 1119
+# test target pattern exists
+        out = wrapChannels(lambda _=None: sos.move(".", "./?a?b*", ".", "./z?z?"))  # line 1121
+        _.assertIn("not unique", out)  # line 1122
+# TODO only rename if actually any files are versioned? or simply what is currently alife?
 # TODO add test if two single question marks will be moved into adjacent characters
 
-    def testAskUpdate(_):  # line 1116
-        _.createFile(1)  # line 1117
-        _.createFile(3)  # line 1118
-        _.createFile(5)  # line 1119
-        sos.offline()  # branch 0: only file1  # line 1120
-        sos.branch()  # line 1121
-        os.unlink("file1")  # line 1122
-        os.unlink("file3")  # line 1123
-        os.unlink("file5")  # line 1124
-        _.createFile(2)  # line 1125
-        _.createFile(4)  # line 1126
-        _.createFile(6)  # line 1127
-        sos.commit()  # branch 1: only file2  # line 1128
-        sos.switch("0/")  # line 1129
-        mockInput(["y", "a", "y", "a"], lambda _=None: sos.update("1/", ["--ask"]))  # line 1130
-        _.assertFalse(_.existsFile(1))  # line 1131
-        _.assertFalse(_.existsFile(3))  # line 1132
-        _.assertFalse(_.existsFile(5))  # line 1133
-        _.assertTrue(_.existsFile(2))  # line 1134
-        _.assertTrue(_.existsFile(4))  # line 1135
-        _.assertTrue(_.existsFile(6))  # line 1136
+    def testAskUpdate(_):  # line 1126
+        _.createFile(1)  # line 1127
+        _.createFile(3)  # line 1128
+        _.createFile(5)  # line 1129
+        sos.offline()  # branch 0: only file1  # line 1130
+        sos.branch()  # line 1131
+        os.unlink("file1")  # line 1132
+        os.unlink("file3")  # line 1133
+        os.unlink("file5")  # line 1134
+        _.createFile(2)  # line 1135
+        _.createFile(4)  # line 1136
+        _.createFile(6)  # line 1137
+        sos.commit()  # branch 1: only file2  # line 1138
+        sos.switch("0/")  # line 1139
+        mockInput(["y", "a", "y", "a"], lambda _=None: sos.update("1/", ["--ask"]))  # line 1140
+        _.assertFalse(_.existsFile(1))  # line 1141
+        _.assertFalse(_.existsFile(3))  # line 1142
+        _.assertFalse(_.existsFile(5))  # line 1143
+        _.assertTrue(_.existsFile(2))  # line 1144
+        _.assertTrue(_.existsFile(4))  # line 1145
+        _.assertTrue(_.existsFile(6))  # line 1146
 
-    def testMoveDetection(_):  # line 1138
-        _.createFile(1, "bla")  # line 1139
-        sos.offline()  # line 1140
-        os.mkdir("sub1")  # line 1141
-        os.mkdir("sub2")  # line 1142
-        shutil.copy2("file1", "sub1" + os.sep + "file_I")  # line 1143
-        shutil.move("file1", "sub2")  # line 1144
-        out = wrapChannels(lambda _=None: sos.changes())  # line 1145
-        _.assertIn("MOV sub2/file1  <-  ./file1", out)  # ensure that the correctly named while is detected as a move,  # line 1146
-        _.assertIn("ADD sub1/file_I", out)  # while the differently named (same file) is detected as added  # line 1147
-        sos.commit("Moved the file")  # line 1148
+    def testMoveDetection(_):  # line 1148
+        _.createFile(1, "bla")  # line 1149
+        sos.offline()  # line 1150
+        os.mkdir("sub1")  # line 1151
+        os.mkdir("sub2")  # line 1152
+        shutil.copy2("file1", "sub1" + os.sep + "file_I")  # line 1153
+        shutil.move("file1", "sub2")  # line 1154
+        out = wrapChannels(lambda _=None: sos.changes())  # type: str  # line 1155
+        _.assertIn("MOV sub2/file1  <-  ./file1", out)  # ensure that the correctly named while is detected as a move,  # line 1156
+        _.assertIn("ADD sub1/file_I", out)  # while the differently named (same file) is detected as added  # line 1157
+        sos.commit("Moved the file")  # line 1158
 #    out = wrapChannels(-> sos.log(["--changes"]))  # TODO moves detection not yet implemented
 #    _.assertIn("MOV sub2/file1  <-  ./file1", out)  # ensure that the correctly named while is detected as a move,
 #    _.assertIn("ADD sub1/file_I", out)  # while the differently named (same file) is detected as added
-        _.createFile(1, "bla", prefix="sub")  # line 1152
+        _.createFile(1, "bla", prefix="sub")  # line 1162
 
-    def testHashCollision(_):  # line 1154
-        sos.offline()  # line 1155
-        _.createFile(1)  # line 1156
-        os.mkdir(sos.revisionFolder(0, 1))  # line 1157
-        _.createFile("b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa", prefix=sos.revisionFolder(0, 1))  # line 1158
-        _.createFile(1)  # line 1159
-        try:  # should exit with error due to collision detection  # line 1160
-            sos.commit()  # should exit with error due to collision detection  # line 1160
-            _.fail()  # should exit with error due to collision detection  # line 1160
-        except SystemExit as E:  # TODO will capture exit(0) which is wrong, change to check code in all places  # line 1161
-            _.assertEqual(1, E.code)  # TODO will capture exit(0) which is wrong, change to check code in all places  # line 1161
+    def testHashCollision(_):  # line 1164
+        old = sos.Metadata.findChanges  # line 1165
+        @_coconut_tco  # line 1166
+        def patched(_, branch: '_coconut.typing.Optional[int]'=None, revision: '_coconut.typing.Optional[int]'=None, checkContent: 'bool'=False, inverse: 'bool'=False, considerOnly: '_coconut.typing.Optional[FrozenSet[str]]'=None, dontConsider: '_coconut.typing.Optional[FrozenSet[str]]'=None, progress: 'bool'=False) -> 'Tuple[ChangeSet, _coconut.typing.Optional[str]]':  # line 1166
+            import collections  # used only in this method  # line 1167
+            write = branch is not None and revision is not None  # line 1168
+            if write:  # line 1169
+                try:  # line 1170
+                    os.makedirs(sos.encode(sos.revisionFolder(branch, revision, base=_.root)))  # line 1170
+                except FileExistsError:  # HINT "try" only necessary for hash collision *test code* (!)  # line 1171
+                    pass  # HINT "try" only necessary for hash collision *test code* (!)  # line 1171
+            return _coconut_tail_call(old, _, branch, revision, checkContent, inverse, considerOnly, dontConsider, progress)  # line 1172
+        sos.Metadata.findChanges = patched  # monkey-patch  # line 1173
+        sos.offline()  # line 1174
+        _.createFile(1)  # line 1175
+        os.mkdir(sos.revisionFolder(0, 1))  # line 1176
+        _.createFile("b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa", prefix=sos.revisionFolder(0, 1))  # hashed file name for not-yet-committed file1  # line 1177
+        _.createFile(1)  # line 1178
+        try:  # line 1179
+            sos.commit()  # line 1179
+            _.fail("Expected system exit due to hash collision detection")  # line 1179
+        except SystemExit as E:  # HINT exit is implemented in utility.hashFile  # line 1180
+            _.assertEqual(1, E.code)  # HINT exit is implemented in utility.hashFile  # line 1180
+        sos.Metadata.findChanges = old  # revert monkey patch  # line 1181
 
-    def testFindBase(_):  # line 1163
-        old = os.getcwd()  # line 1164
-        try:  # line 1165
-            os.mkdir("." + os.sep + ".git")  # line 1166
-            os.makedirs("." + os.sep + "a" + os.sep + sos.metaFolder)  # line 1167
-            os.makedirs("." + os.sep + "a" + os.sep + "b")  # line 1168
-            os.chdir("a" + os.sep + "b")  # line 1169
-            s, vcs, cmd = sos.findSosVcsBase()  # line 1170
-            _.assertIsNotNone(s)  # line 1171
-            _.assertIsNotNone(vcs)  # line 1172
-            _.assertEqual("git", cmd)  # line 1173
-        finally:  # line 1174
-            os.chdir(old)  # line 1174
+    def testFindBase(_):  # line 1183
+        old = os.getcwd()  # line 1184
+        try:  # line 1185
+            os.mkdir("." + os.sep + ".git")  # line 1186
+            os.makedirs("." + os.sep + "a" + os.sep + sos.metaFolder)  # line 1187
+            os.makedirs("." + os.sep + "a" + os.sep + "b")  # line 1188
+            os.chdir("a" + os.sep + "b")  # line 1189
+            s, vcs, cmd = sos.findSosVcsBase()  # line 1190
+            _.assertIsNotNone(s)  # line 1191
+            _.assertIsNotNone(vcs)  # line 1192
+            _.assertEqual("git", cmd)  # line 1193
+        finally:  # line 1194
+            os.chdir(old)  # line 1194
 
 # TODO test command line operation --sos vs. --vcs
 # check exact output instead of only expected exception/fail
@@ -1392,6 +1406,6 @@ class Tests(unittest.TestCase):  # line 98
 # TODO test wrong branch/revision after fast branching, would raise exception for -1 otherwise
 
 
-if __name__ == '__main__':  # line 1185
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr, format="%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")  # line 1186
-    unittest.main(testRunner=debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")  # line 1187
+if __name__ == '__main__':  # line 1205
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr, format="%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")  # line 1206
+    unittest.main(testRunner=debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")  # line 1207

@@ -3,8 +3,8 @@
 
 # Standard modules
 import codecs, fnmatch, json, logging, mimetypes, os, sys  # only essential modules
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # TODO this looks just wrong, but is currently required (check again, why)
-try:  # try needed as paths differ when installed via pip TODO investigate further
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # TODO #243 this looks just wrong, but is currently required (check again, why)
+try:  # try needed as paths differ when installed via pip TODO #243 investigate further
   import sos.usage as usage
   import sos.version as version
   from sos.utility import *
@@ -186,7 +186,7 @@ class Metadata:
     if full:  # not fast branching via reference - copy all current files to new branch
       _.computeSequentialPathSet(_.branch, revision)  # full set of files in latest revision in _.paths
       for path, pinfo in _.paths.items(): _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)  # copy into initial branch revision
-      _.commits[0] = CommitInfo(number = 0, ctime = now, message = initialMessage ?? "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))  # store initial commit TODO also contain message from latest revision of originating branch
+      _.commits[0] = CommitInfo(number = 0, ctime = now, message = initialMessage ?? "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))  # store initial commit TODO #244 also contain message from latest revision of originating branch
       _.saveCommit(branch, 0)  # save commit meta data to revision folder
     _.saveBranch(branch)  # save branch meta data to branch folder - for fast branching, only empty dict
     _.branches[branch] = newBranch  # save branches meta data, needs to be saved in caller code
@@ -213,7 +213,7 @@ class Metadata:
       os.makedirs(encode(revisionFolder(branch, 0, base = _.root)))
       if _.branch is not None:  # not immediately after "offline" - copy files from current branch
         _.loadBranch(_.branch)
-        revision:int = max(_.commits) if _.commits else 0  # TODO what if last switch was to an earlier revision? no persisting of last checkout
+        revision:int = max(_.commits) if _.commits else 0  # TODO #245 what if last switch was to an earlier revision? no persisting of last checkout
         _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
         for path, pinfo in _.paths.items(): _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
     _.commits = {0: CommitInfo(number = 0, ctime = now, message = initialMessage ?? "Branched on %s" % strftime(now))}  # store initial commit for new branch
@@ -234,9 +234,9 @@ class Metadata:
       progress:ProgressIndicator = ProgressIndicator(PROGRESS_MARKER[1 if _.c.useUnicodeFont else 0])
       for rev in range(0, minrev + 1):  # rely on caching by copying revision-wise as long as needed into all depending branches
         for dep, _rev in deps:
-          printo("\rIntegrating revision %02d into dependant branch %02d %s" % (rev, dep, progress.getIndicator()))  # TODO align placement of indicator with other uses of progress
+          printo("\rIntegrating revision %02d into dependant branch %02d %s" % (rev, dep, progress.getIndicator()))  # TODO #246 align placement of indicator with other uses of progress
           _.loadBranch(_.getParentBranch(branch, rev))  # load commits and set _.branch (in case branch to remove was also fast-branched)
-#          if rev in _.commits:  # TODO uncomment? - if not, it was an empty commit? because on non-commit branches there's no revision 0?
+#          if rev in _.commits:  # TODO #247 uncomment? - if not, it was an empty commit? because on non-commit branches there's no revision 0?
           newcommits[dep][rev] = _.commits[rev]
           shutil.copytree(encode(revisionFolder(_.branch, rev, base = _.root)), encode(revisionFolder(dep, rev, base = _.root)))
       for dep, _rev in deps:  # copy remaining revisions by branch instead by revision
@@ -286,18 +286,27 @@ class Metadata:
     '''
     import collections  # used only in this method
     write = branch is not None and revision is not None
-    if write:
-      try: os.makedirs(encode(revisionFolder(branch, revision, base = _.root)))
-      except FileExistsError: pass  # HINT "try" only necessary for *testing* hash collision code (!) TODO probably raise exception otherwise in any case?
-    changed:ChangeSet = ChangeSet({}, {}, {}, {})  # TODO Needs explicity initialization due to mypy problems with default arguments :-(
+    if write: tryOrIgnore(() -> os.makedirs(encode(revisionFolder(branch, revision, base = _.root))))
+    changed:ChangeSet = ChangeSet({}, {}, {}, {})  # WARN this code needs explicity argument passing for initialization due to mypy problems with default arguments
     indicator:ProgressIndicator? = ProgressIndicator(PROGRESS_MARKER[1 if _.c.useUnicodeFont else 0]) if progress else None  # optional file list progress indicator
     hashed:str?; written:int; compressed:int = 0; original:int = 0; start_time:float = time.time()
-    knownPaths:Dict[str,List[str]] = collections.defaultdict(list)
+    knownPaths:Dict[str,List[str]] = {}
+
+    # Find relevant folders/files that match specified folder/glob patterns for exclusive inclusion or exclusion
+    byFolder:Dict[str,List[str]] =     collections.defaultdict(list)
+    onlyByFolder:Dict[str,List[str]] = collections.defaultdict(list)
+    dontByFolder:Dict[str,List[str]] = collections.defaultdict(list)
     for path, pinfo in _.paths.items():
-      if pinfo.size is not None\
-      and (considerOnly is None or     any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH)] and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern[pattern.rindex(SLASH) + 1:]) for pattern in considerOnly))\
-      and (dontConsider is None or not any(path[:path.rindex(SLASH)] == pattern[:pattern.rindex(SLASH)] and fnmatch.fnmatch(path[path.rindex(SLASH) + 1:], pattern[pattern.rindex(SLASH) + 1:]) for pattern in dontConsider)):
-        knownPaths[os.path.dirname(path)].append(os.path.basename(path))  # TODO reimplement using fnmatch.filter and set operations for all files per path for speed
+      if pinfo is None: continue  # quicker than generator expression above
+      slash:int = path.rindex(SLASH)
+      byFolder[path[:slash]].append(path[slash + 1:])
+    for pattern in considerOnly ?? []: slash = pattern.rindex(SLASH); onlyByFolder[pattern[:slash]].append(pattern[slash + 1:])
+    for pattern in dontConsider ?? []: slash = pattern.rindex(SLASH); dontByFolder[pattern[:slash]].append(pattern[slash + 1:])
+    for folder, paths in byFolder.items():
+      pos:Set[str] = set.union(set(), *[fnmatch.filter(paths, pattern) for pattern in onlyByFolder.get(folder, [])]) if considerOnly is not None else set(paths)
+      neg:Set[str] = set.union(set(), *[fnmatch.filter(paths, pattern) for pattern in dontByFolder.get(folder, [])]) if dontConsider is not None else set()
+      knownPaths[folder] = list(pos - neg)
+
     for path, dirnames, filenames in os.walk(_.root):
       path = decode(path)
       dirnames[:] =  [decode(d) for d in dirnames]
@@ -327,7 +336,7 @@ class Metadata:
             changed.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
             compressed += written; original += size
           except PermissionError as E: error("File permission error for %s" % filepath)
-          except Exception as F: exception(F)
+          except Exception as F: exception(F)  # HINT e.g. FileNotFoundError will not add to additions
           continue  # with next file
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
@@ -335,14 +344,14 @@ class Metadata:
             hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = revisionFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")) if size > 0 else (None, 0)
             changed.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
           except Exception as E: exception(E)
-        elif size != last.size or (not checkContent and mtime != last.mtime) or (checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress, symbols = progressSymbols)[0] != last.hash), default = False)):  # detected a modification TODO wrap hashFile exception
+        elif size != last.size or (not checkContent and mtime != last.mtime) or (checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress, symbols = progressSymbols)[0] != last.hash), default = False)):  # detected a modification
           try:
             hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = revisionFolder(branch, revision, base = _.root, file = last.nameHash) if write else None, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
             changed.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
           except Exception as E: exception(E)
         else: continue  # with next file
         compressed += written; original += last.size if inverse else size
-      if relPath in knownPaths: knownPaths[relPath][:] = list(set(knownPaths[relPath]) - set(walk))  # at least one file is tracked TODO may leave empty lists in dict
+      if relPath in knownPaths: knownPaths[relPath][:] = list(set(knownPaths[relPath]) - set(walk))  # at least one file is tracked HINT may leave empty lists in dict, but removing them costs more than traversing them silently
     for path, names in knownPaths.items():  # all paths that weren't walked by
       for file in names:
         if len([n for n in _.c.ignores if fnmatch.fnmatch(file, n)]) > 0 and len([p for p in _.c.ignoresWhitelist if fnmatch.fnmatch(file, p)]) == 0: continue  # don't mark ignored files as deleted
@@ -365,7 +374,7 @@ class Metadata:
     try: _.loadCommit(branch, startwith)  # load initial paths
     except: yield {}; return None  # no revisions
     if incrementally: yield _.paths
-    m:Metadata = Metadata(_.root); rev:int  # next changes TODO avoid loading all metadata and config
+    m:Metadata = Metadata(_.root); rev:int  # next changes TODO #250 avoid loading all metadata and config
     for rev in range(startwith + 1, revision + 1):
       m.loadCommit(branch, rev)
       for p, info in m.paths.items():
@@ -477,7 +486,7 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = []):
   if os.path.exists(encode(metaFolder)):
     if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over.\nUse 'sos online' to check for out-of-sync branches, or\nWipe existing offline branches with 'sos offline --force'")
     try:  # throw away all previous metadata before going offline
-      for entry in os.listdir(metaFolder):  # TODO why not rmtree the metadata alltogether as in "online"?
+      for entry in os.listdir(metaFolder):  # TODO #251 why not rmtree the metadata alltogether as in "online"? I think removing .sos/ made problems on CI. test again
         resource = metaFolder + os.sep + entry
         if os.path.isdir(resource): shutil.rmtree(encode(resource))
         else: os.unlink(encode(resource))
@@ -493,7 +502,7 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = []):
   m.createBranch(0, name ?? defaults["defaultbranch"], initialMessage ?? "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
   m.saveBranches(also = {"version": version.__version__})  # stores version info only once. no change immediately after going offline, going back online won't issue a warning
-  debug("%d file%s added to initial branch %r" % (len(m.paths), "s" if len(m.paths) > 1 else "", m.branches[m.branch].name))
+  if verbose or '--verbose' in options: info("%d file%s added to initial branch %r" % (len(m.paths), "s" if len(m.paths) > 1 else "", m.branches[m.branch].name))
   info(usage.MARKER + "Offline repository prepared. Use 'sos online' to finish offline work")
 
 def online(options:str[] = []):
@@ -524,7 +533,7 @@ def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
   '''
   last:bool = '--last' in options  # use last revision for branching, not current file tree
   stay:bool = '--stay' in options  # continue on current branch after branching (don't switch)
-  fast:bool = '--fast' in options  # branch by referencing TODO move to default and use --full instead for old behavior
+  fast:bool = '--fast' in options  # branch by referencing TODO #252 move to default and use --full instead for old behavior
   m:Metadata = Metadata()
   m.loadBranch(m.branch)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision
@@ -534,7 +543,7 @@ def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
   if last: m.duplicateBranch(branch, name, (initialMessage + " " if initialMessage else "") + "(Branched from b%d/r%02d)" % (m.branch, maxi), not fast)  # branch from last revision
   else: m.createBranch(branch, name, initialMessage ?? "Branched from file tree after b%d/r%02d" % (m.branch, maxi))  # branch from current file tree state
   if not stay: m.branch = branch
-  m.saveBranches()  # TODO or indent again?
+  m.saveBranches()  # TODO #253 or indent again?
   info(usage.MARKER + "%s new %sbranch b%d%s" % ("Continue work after branching" if stay else "Switched to", "unnamed " if name is None else "", branch, " '%s'" % name if name else ""))
 
 def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None, cwd:str? = None) -> ChangeSet =
@@ -553,9 +562,9 @@ def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = No
     dontConsider = excps if not (m.track or m.picky) else excps ?? (m.getTrackingPatterns(negative = True) | m.getTrackingPatterns(branch, negative = True)),
     progress = '--progress' in options)
   m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if m.commits else time.time(), root = os.path.abspath(cwd) if '--relative' in options else None)
-  changed  # returning for unit tests only TODO remove?
+  changed  # returning for unit tests only TODO #254 remove?
 
-def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitespace:bool, textWrap:bool = False):  # TODO introduce option to diff against committed revision
+def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitespace:bool, textWrap:bool = False):  # TODO #255 introduce option to diff against committed revision
   ''' The diff display code. '''
   wrap:(str) -> str = ((s) -> s) if textWrap else ((s) -> s[:termWidth])  # HINT since we don't know the actual width of unicode strings, we cannot be sure this is really maximizing horizontal space (like ljust), but probably not worth iteratively finding the right size
   onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changed, modifications = {k: v for k, v in changed.modifications.items() if not m.isTextType(os.path.basename(k))})
@@ -571,14 +580,14 @@ def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitesp
     for block in blocks:
 #      if block.tipe in [MergeBlockType.INSERT, MergeBlockType.REMOVE]:
 #        pass  # TODO print some previous and following lines - which aren't accessible here anymore
-      if block.tipe == MergeBlockType.INSERT:  # TODO show color via (n)curses or other library?
-        for no, line in enumerate(block.lines):          printo(wrap("--- %%0%dd |%%s|" % linemax % (no + block.line, line)))
+      if block.tipe == MergeBlockType.INSERT:  # TODO #256 show color via (n)curses or other library?
+        for no, line in enumerate(block.lines):          printo(wrap("--- %%0%dd |%%s|" % linemax % (no + block.line, line)))  # SVN diff uses --,++-+- only
       elif block.tipe == MergeBlockType.REMOVE:
         for no, line in enumerate(block.lines):          printo(wrap("+++ %%0%dd |%%s|" % linemax % (no + block.line, line)))
       elif block.tipe == MergeBlockType.REPLACE:
         for no, line in enumerate(block.replaces.lines): printo(wrap("-~- %%0%dd |%%s|" % linemax % (no + block.replaces.line, line)))
         for no, line in enumerate(block.lines):          printo(wrap("+~+ %%0%dd |%%s|" % linemax % (no + block.line, line)))
-#      elif block.tipe == MergeBlockType.KEEP: pass  # TODO allow to show kept stuff, or a part of pre-post lines
+#      elif block.tipe == MergeBlockType.KEEP: pass  # TODO #257 allow to show kept stuff, or a part of pre-post lines
 #      elif block.tipe == MergeBlockType.MOVE:  # intra-line modifications
       if block.tipe != MergeBlockType.KEEP: printo()
 
@@ -617,7 +626,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   m.saveCommit(m.branch, revision)  # revision has already been incremented
   m.commits[revision] = CommitInfo(number = revision, ctime = int(time.time() * 1000), message = argument)  # comment can be None
   m.saveBranch(m.branch)
-  m.loadBranches()  # TODO is it necessary to load again?
+  m.loadBranches()  # TODO #258 is it necessary to load again?
   if m.picky: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
   else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch modified
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
@@ -660,12 +669,12 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     considerOnly = onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingPatterns),
     dontConsider = excps if not (m.track or m.picky) else excps ?? untrackingPatterns,  # HINT different logic
     progress = True)
-  printo("%s File tree %s" % ((CROSS_SYMBOL if m.c.useUnicodeFont else "!") if modified(changed) else (CHECKMARK_SYMBOL if m.c.useUnicodeFont else " "), "has changes" if modified(changed) else "is unchanged"))  # TODO use other marks if no unicode console detected TODO bad choice of symbols for changed vs. unchanged
+  printo("%s File tree %s" % ((CROSS_SYMBOL if m.c.useUnicodeFont else "!") if modified(changed) else (CHECKMARK_SYMBOL if m.c.useUnicodeFont else " "), "has changes" if modified(changed) else "is unchanged"))  # TODO #259 bad choice of symbols for changed vs. unchanged
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
     payload:int = 0; overhead:int = 0; original:int = 0  # count used storage per branch
     for dn, ds, fs in os.walk(branchFolder(branch.number)):
-      for f in fs:  # TODO count all backup folders as overhead instead? check "onlydeveloped" code for that logic
+      for f in fs:  # TODO #260 count all backup folders as overhead instead? check "onlydeveloped" code for that logic
         if f == metaFile or f.endswith(BACKUP_SUFFIX): overhead += tryOrDefault(-> os.stat(encode(os.path.join(dn, f))).st_size, 0)
         else: payload += tryOrDefault(-> os.stat(encode(os.path.join(dn, f))).st_size, 0)
     pl_amount:float = float(payload) / MEBI; oh_amount:float = float(overhead) / MEBI
@@ -677,7 +686,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     maxi = max(m.commits) if m.commits else m.branches[branch.number].revision
     printo("  %s b%d%s @%s (%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % (("'%s'" % branch.name) if branch.name else "")), strftime(branch.ctime), "in sync" if branch.inSync else "modified", len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "", (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
   if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):
-    info("\nTracked file patterns:")  # TODO print matching untracking patterns side-by-side
+    info("\nTracked file patterns:")  # TODO #261 print matching untracking patterns side-by-side
     printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))
     info("\nUntracked file patterns:")
     printo(ajoin("  | ", m.branches[m.branch].untracked, "\n"))
@@ -851,6 +860,7 @@ def destroy(argument:str, options:str[] = []):
 def add(relPath:str, pattern:str, options:str[] = [], negative:bool = False):
   ''' Add a tracked files pattern to current branch's tracked files. negative means tracking blacklisting. '''
   force:bool = '--force' in options
+  relative:bool = '--relative' in options
   m:Metadata = Metadata()
   if not (m.track or m.picky): Exit("Repository is in simple mode. Create offline repositories via 'sos offline --track' or 'sos offline --picky' or configure a user-wide default via 'sos config track on'")
   patterns:List[str] = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked
@@ -860,10 +870,11 @@ def add(relPath:str, pattern:str, options:str[] = [], negative:bool = False):
     Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")
   patterns.append(pattern)
   m.saveBranches()
-  info(usage.MARKER + "Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), os.path.abspath(relPath)))
+  info(usage.MARKER + "Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), relPath if relative else os.path.abspath(relPath)))  # TODO #262 display relative path by default?
 
-def remove(relPath:str, pattern:str, negative:bool = False):
+def remove(relPath:str, pattern:str, options:str[] = [], negative:bool = False):
   ''' Remove a tracked files pattern from current branch's tracked files. '''
+  relative:bool = '--relative' in options
   m:Metadata = Metadata()
   if not (m.track or m.picky): Exit("Repository is in simple mode. Needs 'offline --track' or 'offline --picky' instead")
   patterns:List[str] = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked
@@ -874,7 +885,7 @@ def remove(relPath:str, pattern:str, negative:bool = False):
     Exit("Tracked pattern '%s' not found" % pattern)
   patterns.remove(pattern)
   m.saveBranches()
-  info(usage.MARKER + "Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), os.path.abspath(relPath.replace(SLASH, os.sep))))
+  info(usage.MARKER + "Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), relPath if relative else os.path.abspath(relPath.replace(SLASH, os.sep))))
 
 def ls(folder:str? = None, options:str[] = []):
   ''' List specified directory, augmenting with repository metadata. '''
@@ -920,9 +931,9 @@ def log(options:str[] = [], cwd:str? = None):
   ''' List previous commits on current branch. '''
   changes_:bool = "--changes" in options
   diff_:bool = "--diff" in options
-  number_:int? = tryOrDefault(-> int(sys.argv[sys.argv.index("-n") + 1]), None)
   m:Metadata = Metadata()
   m.loadBranch(m.branch)  # knows commit history
+  number_:int? = tryOrDefault(-> max(1, int(sys.argv[sys.argv.index("-n") + 1])), m.c.logLines)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
   info(usage.MARKER + "Offline commit history of branch '%s'" % m.branches[m.branch].name ?? "r%02d" % m.branch)  # TODO also retain info of "from branch/revision" on branching?
   nl:int = len("%d" % maxi)  # determine space needed for revision
@@ -931,9 +942,9 @@ def log(options:str[] = [], cwd:str? = None):
   last:Dict[str,PathInfo] = {}  # path infos from previous revision
   commit:CommitInfo
   n:Metadata = Metadata()  # used for reading parent branch information
-  indicator:ProgressIndicator? = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if '--all' not in options and maxi > number_ ?? m.c.logLines else None
+  indicator:ProgressIndicator? = ProgressIndicator(PROGRESS_MARKER[1 if m.c.useUnicodeFont else 0]) if '--all' not in options and maxi > number_ else None
   digits:int? = pure.requiredDecimalDigits(maxi) if indicator else None
-  lastno:int = max(0, maxi + 1 - (number_ ?? m.c.logLines))
+  lastno:int = max(0, maxi + 1 - number_)
   for no in range(maxi + 1):
     if indicator: printo("  %%s %%0%dd" % digits % (indicator.getIndicator(), no), nl = "\r")
     if no in m.commits: commit = m.commits[no]
@@ -1093,22 +1104,23 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   if not os.path.exists(encode(relPath.replace(SLASH, os.sep))) and not force: Exit("Source folder doesn't exist. Use --force to proceed anyway")
   m:Metadata = Metadata()
   patterns:List[str] = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked
-  matching:List[str] = fnmatch.filter(os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(encode(relPath.replace(SLASH, os.sep))) else [], os.path.basename(pattern))  # find matching files in source
+  files:List[str] = os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(encode(relPath.replace(SLASH, os.sep))) else []
+  matching:List[str] = fnmatch.filter(files, os.path.basename(pattern))  # find matching files in source
   matching[:] = [f for f in matching if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]
   if not matching and not force: Exit("No files match the specified file pattern. Use --force to proceed anyway")
   if not (m.track or m.picky): Exit("Repository is in simple mode. Simply use basic file operations to modify files, then execute 'sos commit' to version the changes")
   if pattern not in patterns:  # list potential alternatives and exit
-    for tracked in (t for t in patterns if os.path.dirname(t) == relPath):  # for all patterns of the same source folder
-      alternative:str[] = fnmatch.filter(matching, os.path.basename(tracked))  # find if it matches any of the files in the source folder, too
-      if alternative: info("  '%s' matches %d files" % (tracked, len(alternative)))
-    if not (force or soft): Exit("File pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)
+    for tracked in (t for t in patterns if os.path.dirname(t) == relPath):  # for all patterns of the same source folder TODO use SLASH rindex
+      alternative:str[] = fnmatch.filter(files, os.path.basename(tracked))  # find if it matches any of the files in the source folder, too
+      if alternative: info("  '%s' matches %d file%s" % (tracked, len(alternative), "s" if len(alternative) > 1 else ""))
+    Exit("File pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)  # HINT removed: if not (force or soft):
   basePattern:str = os.path.basename(pattern)  # pure glob without folder
   newBasePattern:str = os.path.basename(newPattern)
   if basePattern.count("*") < newBasePattern.count("*")\
       or (basePattern.count("?") - basePattern.count("[?]")) < (newBasePattern.count("?") - newBasePattern.count("[?]"))\
       or (basePattern.count("[") - basePattern.count("\\[")) < (newBasePattern.count("[") - newBasePattern.count("\\["))\
       or (basePattern.count("]") - basePattern.count("\\]")) < (newBasePattern.count("]") - newBasePattern.count("\\]")):
-    Exit("Glob markers from '%s' to '%s' don't match, cannot move/rename tracked matching files" % (basePattern, newBasePattern))
+    Exit("Glob markers from '%s' to '%s' don't match, cannot move/rename tracked matching file(s)" % (basePattern, newBasePattern))
   oldTokens:GlobBlock[]; newToken:GlobBlock[]
   oldTokens, newTokens = tokenizeGlobPatterns(os.path.basename(pattern), os.path.basename(newPattern))
   matches:Tuple[str,str][] = convertGlobFiles(matching, oldTokens, newTokens)  # computes list of source - target filename pairs
@@ -1157,7 +1169,7 @@ def parse(vcs:str, cwd:str, cmd:str):
     elif command[:2] == "of":  offline(arguments[0], arguments[1], options)
     elif command[:2] == "on":  online(options)
     elif command[:1] == "p":   publish(arguments[0], cmd, options, onlys, excps)
-    elif command[:1] == "r":   remove(relPath, pattern, negative = "n" in command)  # e.g. rmnot
+    elif command[:1] == "r":   remove(relPath, pattern, optoions, negative = "n" in command)  # e.g. rmnot
     elif command[:2] == "st":  status(arguments[0], vcs, cmd, options, onlys, excps)
     elif command[:2] == "sw":  switch(arguments[0], options, onlys, excps, cwd)
     elif command[:1] == "u":   update(arguments[0], options, onlys, excps)

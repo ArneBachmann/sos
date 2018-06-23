@@ -403,7 +403,7 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
     "diff": "Wrap text around terminal instead of cropping into terminal width"
   },
   "soft": {
-    "mv": "Don't move or rename files, only affect the tracking pattern"
+    "mv": "Do not move or rename files, only affect the tracking pattern"
   },
   "local": {
     "config set": "Persist configuration setting in local repository, not in user-global settings store"
@@ -432,7 +432,9 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
   "relative": {
     "changes": """Display paths relative to current working directory. Default: paths relative to SOS repository root""",
     "log":     """Display paths relative to current working directory. Default: paths relative to SOS repository root""",
-    "switch":  """Display paths relative to current working directory. Default: paths relative to SOS repository root"""
+    "switch":  """Display paths relative to current working directory. Default: paths relative to SOS repository root""",
+    "add":     """Display pattern path relative to SOS repository root. Default: absolute file system path""",
+    "remove":  """Display pattern path relative to SOS repository root. Default: absolute file system path"""
   }
 }
 
