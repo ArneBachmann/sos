@@ -7,7 +7,7 @@ build_script:
 #      $ErrorActionPreference = "SilentlyContinue"
   - ps: |
       try {
-        if ($isLinux) { ./run.sh } else { cmd /c .\run.bat | % { "$_" } }
+        if ($isLinux) { ./run.sh } else { cmd /c ".\run.bat 2>&1" | % { "$_" } }
       } catch {
         if ($LastExitCode -ne 0) { "Last exit code: $LastExitCode"; $error.Clear(); exit $LastExitCode } else { $error.Clear(); exit 0 }
       }
