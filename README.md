@@ -62,6 +62,8 @@ SOS supports three different file handling models that you may use to your likin
 
 
 ## Latest Changes ##
+- **Version 1.7**, not yet released:
+    - tbd
 - **Version 1.6**, released on 2018-05-14:
     - [Feature 77](https://github.com/ArneBachmann/sos/issues/77) Feature to commit branches to underlying VCS
     - [Feature 127, 218](https://github.com/ArneBachmann/sos/issues/127) Implement much better help system
