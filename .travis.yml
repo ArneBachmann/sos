@@ -71,6 +71,16 @@ matrix:
       python: "3.7-dev"
       env:
         - UBUNTU=precise
+    - os: linux
+      dist: trusty
+      python: 3.6
+      env:
+        - UBUNTU=trusty
+    - os: linux
+      dist: precise
+      python: 3.6
+      env:
+        - UBUNTU=precise
 
 install: bash ./install.sh
 # pip collective.checkdocs && setup.py checkdocs
