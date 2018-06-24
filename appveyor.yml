@@ -6,7 +6,11 @@ build_script:
   # https://mnaoumov.wordpress.com/2015/01/11/execution-of-external-commands-in-powershell-done-right/
 #      $ErrorActionPreference = "SilentlyContinue"
   - ps: |
-      if ($isLinux) { ./run.sh     } else { try { cmd /c ".\run.bat"     2>&1 | % { "$_" } } catch { if ($LastExitCode -ne 0) { exit $LastExitCode} else { $error.Clear() } } }
+      try {
+        if ($isLinux) { ./run.sh     } else { cmd /c ".\run.bat"     2>&1 | % { "$_" } }
+      } catch {
+        if ($LastExitCode -ne 0) { $error.Clear(); exit $LastExitCode } else { $error.Clear() }
+      }
 clone_script:
   - cmd: "git clone https://github.com/ArneBachmann/sos .\\"
 deploy: false
