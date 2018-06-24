@@ -17,12 +17,6 @@ deploy: false
 environment:
   PYTHONDONTWRITEBYTECODE: true
   matrix:
-    - PYTHON_VERSION: 3.6
-      platform: x64
-      image: Visual Studio 2013
-    - PYTHON_VERSION: 3.6
-      platform: x64
-      image: ubuntu
     - PYTHON_VERSION: 3.4
       platform: x86
       image: Visual Studio 2013
@@ -52,6 +46,12 @@ environment:
       image: Visual Studio 2013
     - PYTHON_VERSION: 3.6
       platform: x86
+      image: ubuntu
+    - PYTHON_VERSION: 3.6
+      platform: x64
+      image: Visual Studio 2013
+    - PYTHON_VERSION: 3.6
+      platform: x64
       image: ubuntu
 #    - PYTHON_VERSION: 2.7
 #      platform: x86

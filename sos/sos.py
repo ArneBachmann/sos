@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x36005d7f
+# __coconut_hash__ = 0xc586467a
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -1367,8 +1367,8 @@ def move(relPath: 'str', pattern: 'str', newRelPath: 'str', newPattern: 'str', o
     m = Metadata()  # type: Metadata  # line 1105
     patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 1106
     files = os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(encode(relPath.replace(SLASH, os.sep))) else []  # type: List[str]  # line 1107
-    matching = fnmatch.filter(files, os.path.basename(pattern))  # type: List[str]  # find matching files in source  # line 1108
-    matching[:] = [f for f in matching if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]  # line 1109
+    files[:] = [f for f in files if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]  # line 1108
+    matching = fnmatch.filter(files, os.path.basename(pattern))  # type: List[str]  # find matching files in source  # line 1109
     if not matching and not force:  # line 1110
         Exit("No files match the specified file pattern. Use --force to proceed anyway")  # line 1110
     if not (m.track or m.picky):  # line 1111

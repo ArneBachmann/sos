@@ -1105,8 +1105,8 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
   m:Metadata = Metadata()
   patterns:List[str] = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked
   files:List[str] = os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(encode(relPath.replace(SLASH, os.sep))) else []
+  files[:] = [f for f in files if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]
   matching:List[str] = fnmatch.filter(files, os.path.basename(pattern))  # find matching files in source
-  matching[:] = [f for f in matching if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]
   if not matching and not force: Exit("No files match the specified file pattern. Use --force to proceed anyway")
   if not (m.track or m.picky): Exit("Repository is in simple mode. Simply use basic file operations to modify files, then execute 'sos commit' to version the changes")
   if pattern not in patterns:  # list potential alternatives and exit
