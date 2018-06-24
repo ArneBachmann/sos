@@ -60,17 +60,49 @@ environment:
     - PYTHON_VERSION: 3.3
       platform: x86
       NOMYPY: true
-    - PYTHON_VERSION: 3.3
-      platform: x64
-      NOMYPY: true
-matrix:
-  allow_failures:
+      image: Visual Studio 2013
     - PYTHON_VERSION: 3.3
       platform: x86
       NOMYPY: true
+      image: ubuntu
     - PYTHON_VERSION: 3.3
-      platform: x64  # PyYAML dependency doesn't run on x64 for some reason
+      platform: x64
       NOMYPY: true
+      image: Visual Studio 2013
+    - PYTHON_VERSION: 3.3
+      platform: x64
+      NOMYPY: true
+      image: ubuntu
+matrix:
+  allow_failures:
+    - PYTHON_VERSION: 3.6
+      platform: x64
+      image: Visual Studio 2013
+    - PYTHON_VERSION: 3.6
+      platform: x64
+      image: ubuntu
+    - PYTHON_VERSION: 3.6
+      platform: x86
+      image: Visual Studio 2013
+    - PYTHON_VERSION: 3.6
+      platform: x86
+      image: ubuntu
+    - PYTHON_VERSION: 3.3
+      platform: x86
+      NOMYPY: true
+      image: Visual Studio 2013
+    - PYTHON_VERSION: 3.3
+      platform: x86
+      NOMYPY: true
+      image: ubuntu
+    - PYTHON_VERSION: 3.3
+      platform: x64
+      NOMYPY: true
+      image: Visual Studio 2013
+    - PYTHON_VERSION: 3.3
+      platform: x64
+      NOMYPY: true
+      image: ubuntu
 init:
   - "set PY_VER=%PYTHON_VERSION:.=%"
   - "set PYTHON=C:\\PYTHON%PY_VER%"
