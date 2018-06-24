@@ -660,6 +660,7 @@ class Tests(unittest.TestCase):
     _.assertEqual(b"aabaacaaa", sos.merge(b"aabaacaaa", b"xaaaadaaac")[0])
 
   def testMergeEol(_):
+    _.fail("Provoked test failure")  # for testing only
     _.assertEqual(b"\r\n", sos.merge(b"a\nb", b"a\r\nb")[1])
     _.assertIn("Differing EOL-styles", wrapChannels(-> sos.merge(b"a\nb", b"a\r\nb")))  # expects a warning
     _.assertIn(b"a\r\nb", sos.merge(b"a\nb", b"a\r\nb")[0])  # when in doubt, use "mine" CR-LF
