@@ -4,10 +4,13 @@
 import os, shutil, subprocess, sys, time, unittest
 from setuptools import setup, find_packages
 
-RELEASE = "1.6.1"
 COMPATIBILITY_LEVEL = "3.4"
 
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
+with open("RELEASE", "r") as fd: RELEASE = fd.read()
+if 'sdist' in sys.argv:  # increase version for release
+  with open("RELEASE", "w") as fd: fd.write(".".join(RELEASE.split(".")[:2] + [str(int(RELEASE.split(".")[2]) + 1)]))
+
 if 'build' in sys.argv:
   if os.environ.get("CI", "False").lower() != "true":  # code only run locally, not on CI
     print("Transpiling Coconut files to Python...")
@@ -39,7 +42,7 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
   README = "\n".join(["# SOS v%s #" % RELEASE] + open(readmeFile, "r").read().split("\n")[1:])  # replace title in original README.md file
   with open(readmeFile, "wb") as fd: fd.write(README.encode("UTF-8").replace(b"\r", b""))
   print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")
-  if 0 != os.system("pandoc --from=markdown --to=rst --output=README.rst README.md"): print("Warning: Cannot run pandoc")
+  if 0 != subprocess.Popen("pandoc --from=markdown --to=rst --output=README.rst README.md", shell = True, bufsize = 1).wait(): print("Warning: Cannot run pandoc")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to continue
 
   import sos.sos as sos
@@ -80,7 +83,10 @@ print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["chardet >= 3.0.4", "configr >= 2018.1202.3244", "termwidth >= 2017.2204.2811", "PyFiglet >= 0.7.5"],  # most of them are optional dependencies
+  install_requires = ["chardet >= 3.0.4", "configr >= 2018.1202.3244", "termwidth >= 2017.2204.2811", "PyFiglet >= 0.7.5", 'colorama >= 0.3.9;sys_platform=="win32"', 'enum34;python_version<"3.4"'],  # most of them are optional dependencies
+  python_requires = '>=%s' % COMPATIBILITY_LEVEL,  # https://www.python.org/dev/peps/pep-0508/#environment-markers
+  setup_requires = "setuptools >= 39",
+#  requires = ["coconut-develop[jobs,mypy]"],  # doesn't work
   test_suite = "sos.tests",
   description = "Subversion Offline Solution (SOS)",
   long_description = README,

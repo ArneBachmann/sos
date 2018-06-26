@@ -11,7 +11,7 @@ try: import sos.pure as pure; from sos.values import *
 except: import pure; from values import *
 
 
-# Lazy imports for quicker initialization TODO make mypy pass
+# Lazy imports for quicker initialization TODO make mypy accept this
 bz2:Any; codecs:Any; difflib:Any
 class bz2: def __getattribute__(_, key):
   global bz2
@@ -46,6 +46,14 @@ class Accessor(dict):
   def __setattribute__(_, name:str, value: Any) -> None:
     try: _[name] = value
     except: dict.__setattribute__(_, name, value)
+
+try:
+  from colorama import init, AnsiToWin32, Fore
+  init(wrap = False)
+  sys.stdout = AnsiToWin32(sys.stdout).stream  # wrap the color conversion manually
+  sys.stderr = AnsiToWin32(sys.stderr).stream
+except:
+  Fore:Dict[str,str] = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]})
 
 if TYPE_CHECKING:  # available since coconut 1.3.1.21 (?)
   Number = TypeVar("Number", int, float)
@@ -119,14 +127,14 @@ defaults:Accessor = Accessor({
     "bintype": [],
     "ignoreDirs": [".*", "__pycache__", ".mypy_cache"],  # already includes metaFolder
     "ignoreDirsWhitelist": [],
-    "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*%s" % DUMP_FILE],
+    "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*%s" % DUMP_FILE] + ["~*"] if sys.platform == "win32" else [],
     "ignoresWhitelist": [],
   })
 
 
 # Functions
-def printo(s:str = "", nl:str = "\n"): tryOrDefault(-> sys.stdout.buffer ?? sys.stdout, sys.stdout).write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')); sys.stdout.flush()  # PEP528 compatibility
-def printe(s:str = "", nl:str = "\n"): tryOrDefault(-> sys.stderr.buffer ?? sys.stderr, sys.stderr).write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')); sys.stderr.flush()
+def printo(s:str = "", nl:str = "\n", color:str? = None): tryOrIgnore(-> sys.stdout.write((color ?? "") + s + (Fore.RESET if color else "") + nl), -> sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace'))); sys.stdout.flush()  # PEP528 compatibility
+def printe(s:str = "", nl:str = "\n", color:str? = None): tryOrIgnore(-> sys.stderr.write((color ?? "") + s + (Fore.RESET if color else "") + nl), -> sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace'))); sys.stderr.flush()
 def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writing filenames  # PEP 529 compatibility
 def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of reading filenames
 try:

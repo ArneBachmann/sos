@@ -66,7 +66,7 @@ def debugTestRunner(post_mortem = None) =
 
 def wrapChannels(func: -> Any) -> str =
   ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
-  oldv = sys.argv
+  oldv, oldso, oldse = sys.argv, sys.stdout, sys.stderr
   buf = TextIOWrapper(BufferedRandom(BytesIO(b"")), encoding = sos.UTF8)
   handler = logging.StreamHandler(buf)  # TODO doesn't seem to be captured
   sys.stdout = sys.stderr = buf
@@ -75,7 +75,7 @@ def wrapChannels(func: -> Any) -> str =
   except Exception as E:  buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
   except SystemExit as F: buf.write("EXIT CODE %s" % F.code + "\n"); traceback.print_exc(file = buf)
   logging.getLogger().removeHandler(handler)
-  sys.argv, sys.stdout, sys.stderr = oldv, sys.__stdout__, sys.__stderr__  # TODO when run using pythonw.exe and/or no console, these could be None
+  sys.argv, sys.stdout, sys.stderr = oldv, oldso, oldse  # TODO when run using pythonw.exe and/or no console, these could be None
   buf.seek(0)
   buf.read()
 
@@ -225,8 +225,8 @@ class Tests(unittest.TestCase):
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
     out = wrapChannels(-> sos.changes(options = ["--relative"], cwd = "sub"))
-    _.assertIn("MOV ../file2  <-  ./file2", out)
-    _.assertIn("MOV ./file1  <-  ../file1", out)
+    _.assertIn("MOV ../file2  <-  file2", out)  # no ./ for relative OS-specific paths
+    _.assertIn("MOV file1  <-  ../file1", out)
     out = wrapChannels(-> sos.commit())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
@@ -486,7 +486,7 @@ class Tests(unittest.TestCase):
     _.createFile(111)
     sos.commit("tag", ["--tag"])
     out:str = wrapChannels(-> sos.log()).replace("\r", "").split("\n")
-    _.assertTrue(any("|tag" in line and line.endswith("|TAG") for line in out))
+    _.assertTrue(any("|tag" in line and line.endswith("|%sTAG%s" % (sos.Fore.MAGENTA, sos.Fore.RESET)) for line in out))
     _.createFile(2)
     try: sos.commit("tag"); _.fail()
     except: pass
@@ -792,7 +792,7 @@ class Tests(unittest.TestCase):
     _.createFile("a", prefix = "sub")
     sos.add("sub", "sub/a")
     sos.ls("sub")
-    _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(-> sos.ls("sub")).replace("\r", ""), "\n"))
+    _.assertInAny("TRK a  (a)", sos.safeSplit(wrapChannels(-> sos.ls("sub")).replace("\r", ""), "\n"))
 
   def testLineMerge(_):
     _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))

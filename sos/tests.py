@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x28de1fb3
+# __coconut_hash__ = 0xa6eda000
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -115,7 +115,7 @@ def debugTestRunner(post_mortem=None):  # line 52
 @_coconut_tco  # line 67
 def wrapChannels(func: '_coconut.typing.Callable[..., Any]') -> 'str':  # line 67
     ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''  # line 68
-    oldv = sys.argv  # line 69
+    oldv, oldso, oldse = sys.argv, sys.stdout, sys.stderr  # line 69
     buf = TextIOWrapper(BufferedRandom(BytesIO(b"")), encoding=sos.UTF8)  # line 70
     handler = logging.StreamHandler(buf)  # TODO doesn't seem to be captured  # line 71
     sys.stdout = sys.stderr = buf  # line 72
@@ -129,7 +129,7 @@ def wrapChannels(func: '_coconut.typing.Callable[..., Any]') -> 'str':  # line 6
         buf.write("EXIT CODE %s" % F.code + "\n")  # line 76
         traceback.print_exc(file=buf)  # line 76
     logging.getLogger().removeHandler(handler)  # line 77
-    sys.argv, sys.stdout, sys.stderr = oldv, sys.__stdout__, sys.__stderr__  # TODO when run using pythonw.exe and/or no console, these could be None  # line 78
+    sys.argv, sys.stdout, sys.stderr = oldv, oldso, oldse  # TODO when run using pythonw.exe and/or no console, these could be None  # line 78
     buf.seek(0)  # line 79
     return _coconut_tail_call(buf.read)  # line 80
 
@@ -306,8 +306,8 @@ class Tests(unittest.TestCase):  # line 98
         _.assertIn("MOV ./file2  <-  sub/file2", out)  # line 225
         _.assertIn("MOV sub/file1  <-  ./file1", out)  # line 226
         out = wrapChannels(lambda _=None: sos.changes(options=["--relative"], cwd="sub"))  # line 227
-        _.assertIn("MOV ../file2  <-  ./file2", out)  # line 228
-        _.assertIn("MOV ./file1  <-  ../file1", out)  # line 229
+        _.assertIn("MOV ../file2  <-  file2", out)  # no ./ for relative OS-specific paths  # line 228
+        _.assertIn("MOV file1  <-  ../file1", out)  # line 229
         out = wrapChannels(lambda _=None: sos.commit())  # line 230
         _.assertIn("MOV ./file2  <-  sub/file2", out)  # line 231
         _.assertIn("MOV sub/file1  <-  ./file1", out)  # line 232
@@ -586,7 +586,7 @@ class Tests(unittest.TestCase):  # line 98
         _.createFile(111)  # line 486
         sos.commit("tag", ["--tag"])  # line 487
         out = wrapChannels(lambda _=None: sos.log()).replace("\r", "").split("\n")  # type: str  # line 488
-        _.assertTrue(any(("|tag" in line and line.endswith("|TAG") for line in out)))  # line 489
+        _.assertTrue(any(("|tag" in line and line.endswith("|%sTAG%s" % (sos.Fore.MAGENTA, sos.Fore.RESET)) for line in out)))  # line 489
         _.createFile(2)  # line 490
         try:  # line 491
             sos.commit("tag")  # line 491
@@ -907,7 +907,7 @@ class Tests(unittest.TestCase):  # line 98
         _.createFile("a", prefix="sub")  # line 792
         sos.add("sub", "sub/a")  # line 793
         sos.ls("sub")  # line 794
-        _.assertIn("TRK a  (a)", sos.safeSplit(wrapChannels(lambda _=None: sos.ls("sub")).replace("\r", ""), "\n"))  # line 795
+        _.assertInAny("TRK a  (a)", sos.safeSplit(wrapChannels(lambda _=None: sos.ls("sub")).replace("\r", ""), "\n"))  # line 795
 
     def testLineMerge(_):  # line 797
         _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))  # line 798

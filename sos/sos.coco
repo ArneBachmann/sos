@@ -80,17 +80,16 @@ class Metadata:
   def listChanges(_, changed:ChangeSet, commitTime:float? = None, root:str? = None):
     ''' List changes. If commitTime (in ms) is defined, also check timestamps of modified files for plausibility (if mtime of new file is <= / older than in last commit, note so).
         commitTimne == None in switch and log
-        root: current user's working dir to compute relative paths (cwd is usually repository root)
+        root: current user's working dir to compute relative paths (cwd is usually repository root), otherwise None (repo-relative)
     '''
-    adapt = path -> path.replace(os.sep, SLASH) if os.sep in path else "./" + path
-    relp = (path, root) -> adapt(os.path.relpath(path, root)) if root else path
+    relp:(str, str) -> str = (path, root) -> os.path.relpath(path, root).replace(SLASH, os.sep) if root else path  # using relative paths if root is not None, otherwise SOS repo normalized paths
     moves:Dict[str,PathInfo] = dict(changed.moves.values())  # of origin-pathinfo
     realadditions:Dict[str,PathInfo] = {k: v for k, v in changed.additions.items() if k not in changed.moves}
     realdeletions:Dict[str,PathInfo] = {k: v for k, v in changed.deletions.items() if k not in moves}
-    if len(changed.moves)         > 0: printo(ajoin("MOV ", ["%s  <-  %s" % (relp(path, root), relp(dpath, root)) for path, (dpath, dinfo) in sorted(changed.moves.items())], "\n"))
-    if len(        realadditions) > 0: printo(ajoin("ADD ", sorted(         [relp(p, root) for p in realadditions.keys()]), "\n"))
-    if len(        realdeletions) > 0: printo(ajoin("DEL ", sorted(         [relp(p, root) for p in realdeletions.keys()]), "\n"))
-    if len(changed.modifications) > 0: printo(ajoin("MOD ", [relp(m, root) if commitTime is None else (relp(m, root) + (" <older than previously committed>" if pi.mtime < _.paths[m].mtime else "")) for (m, pi) in sorted(changed.modifications.items())], "\n"))
+    if len(changed.moves)         > 0: printo(ajoin("MOV ", ["%s  <-  %s" % (relp(path, root), relp(dpath, root)) for path, (dpath, dinfo) in sorted(changed.moves.items())], "\n"), color = Fore.BLUE)
+    if len(        realadditions) > 0: printo(ajoin("ADD ", sorted(         [relp(p, root) for p in realadditions.keys()]), "\n"), color = Fore.GREEN)
+    if len(        realdeletions) > 0: printo(ajoin("DEL ", sorted(         [relp(p, root) for p in realdeletions.keys()]), "\n"), color = Fore.RED)
+    if len(changed.modifications) > 0: printo(ajoin("MOD ", [relp(m, root) if commitTime is None else (relp(m, root) + (" <older than previously committed>" if pi.mtime < _.paths[m].mtime else "")) for (m, pi) in sorted(changed.modifications.items())], "\n"), color = Fore.YELLOW)
 
   def loadBranches(_, offline:bool = False):
     ''' Load list of branches and current branch info from metadata file. offline = offline command avoids message. '''
@@ -581,12 +580,12 @@ def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitesp
 #      if block.tipe in [MergeBlockType.INSERT, MergeBlockType.REMOVE]:
 #        pass  # TODO print some previous and following lines - which aren't accessible here anymore
       if block.tipe == MergeBlockType.INSERT:  # TODO #256 show color via (n)curses or other library?
-        for no, line in enumerate(block.lines):          printo(wrap("--- %%0%dd |%%s|" % linemax % (no + block.line, line)))  # SVN diff uses --,++-+- only
+        for no, line in enumerate(block.lines):          printo(wrap("--- %%0%dd |%%s|" % linemax % (no + block.line, line)), color = Fore.RED)  # SVN diff uses --,++-+- only
       elif block.tipe == MergeBlockType.REMOVE:
-        for no, line in enumerate(block.lines):          printo(wrap("+++ %%0%dd |%%s|" % linemax % (no + block.line, line)))
+        for no, line in enumerate(block.lines):          printo(wrap("+++ %%0%dd |%%s|" % linemax % (no + block.line, line)), color = Fore.GREEN)
       elif block.tipe == MergeBlockType.REPLACE:
-        for no, line in enumerate(block.replaces.lines): printo(wrap("-~- %%0%dd |%%s|" % linemax % (no + block.replaces.line, line)))
-        for no, line in enumerate(block.lines):          printo(wrap("+~+ %%0%dd |%%s|" % linemax % (no + block.line, line)))
+        for no, line in enumerate(block.replaces.lines): printo(wrap("-~- %%0%dd |%%s|" % linemax % (no + block.replaces.line, line)), color = Fore.MAGENTA)
+        for no, line in enumerate(block.lines):          printo(wrap("+~+ %%0%dd |%%s|" % linemax % (no + block.line, line)), color = Fore.CYAN)
 #      elif block.tipe == MergeBlockType.KEEP: pass  # TODO #257 allow to show kept stuff, or a part of pre-post lines
 #      elif block.tipe == MergeBlockType.MOVE:  # intra-line modifications
       if block.tipe != MergeBlockType.KEEP: printo()
@@ -860,7 +859,6 @@ def destroy(argument:str, options:str[] = []):
 def add(relPath:str, pattern:str, options:str[] = [], negative:bool = False):
   ''' Add a tracked files pattern to current branch's tracked files. negative means tracking blacklisting. '''
   force:bool = '--force' in options
-  relative:bool = '--relative' in options
   m:Metadata = Metadata()
   if not (m.track or m.picky): Exit("Repository is in simple mode. Create offline repositories via 'sos offline --track' or 'sos offline --picky' or configure a user-wide default via 'sos config track on'")
   patterns:List[str] = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked
@@ -870,11 +868,10 @@ def add(relPath:str, pattern:str, options:str[] = [], negative:bool = False):
     Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")
   patterns.append(pattern)
   m.saveBranches()
-  info(usage.MARKER + "Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), relPath if relative else os.path.abspath(relPath)))  # TODO #262 display relative path by default?
+  info(usage.MARKER + "Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), relPath if '--relative' in options else os.path.abspath(relPath)))  # TODO #262 display relative path by default?
 
 def remove(relPath:str, pattern:str, options:str[] = [], negative:bool = False):
   ''' Remove a tracked files pattern from current branch's tracked files. '''
-  relative:bool = '--relative' in options
   m:Metadata = Metadata()
   if not (m.track or m.picky): Exit("Repository is in simple mode. Needs 'offline --track' or 'offline --picky' instead")
   patterns:List[str] = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked
@@ -885,7 +882,7 @@ def remove(relPath:str, pattern:str, options:str[] = [], negative:bool = False):
     Exit("Tracked pattern '%s' not found" % pattern)
   patterns.remove(pattern)
   m.saveBranches()
-  info(usage.MARKER + "Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), relPath if relative else os.path.abspath(relPath.replace(SLASH, os.sep))))
+  info(usage.MARKER + "Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), relPath if '--relative' in options else os.path.abspath(relPath.replace(SLASH, os.sep))))
 
 def ls(folder:str? = None, options:str[] = []):
   ''' List specified directory, augmenting with repository metadata. '''
@@ -961,7 +958,18 @@ def log(options:str[] = [], cwd:str? = None):
       _mod:FrozenSet[str] = frozenset([_ for _, info in {k: nxts[k] for k in news - _add - _del}.items() if last[_].size != info.size or (last[_].hash != info.hash if m.strict else last[_].mtime != info.mtime)])
   #    _mov:FrozenSet[str] = detectMoves(ChangeSet(nxts, {o: None for o in olds}, m.strict)  # TODO determine moves - can we reuse detectMoves(changes)?
       _txt:int = len([m_ for m_ in _mod if m.isTextType(m_)])
-      printo("  %s r%s @%s (+%02d/-%02d/%s%02d/T%02d) |%s|%s" % ((ARROW_SYMBOL if m.c.useUnicodeFont else "*") if commit.number == maxi else " ", ("%%%ds" % nl) % commit.number, strftime(commit.ctime), len(_add), len(_del), PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), _txt, (commit.message ?? ""), "TAG" if (commit.message ?? "") in m.tags else ""))
+      printo("  %s r%s @%s (%s+%02d%s/%s-%02d%s/%s%s%02d%s/%sT%02d%s) |%s|%s%s%s" % (
+          (ARROW_SYMBOL if m.c.useUnicodeFont else "*") if commit.number == maxi else " ",
+          ("%%%ds" % nl) % commit.number,
+          strftime(commit.ctime),
+          Fore.GREEN, len(_add), Fore.RESET,
+          Fore.RED,   len(_del), Fore.RESET,
+          Fore.YELLOW, PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", len(_mod), Fore.RESET,
+          Fore.BLUE, _txt, Fore.RESET,
+          commit.message ?? "",
+          Fore.MAGENTA, "TAG" if (commit.message ?? "") in m.tags else "", Fore.RESET
+        )
+      )
       if changes_: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}), root = cwd if '--relative' in options else None)  # TODO moves detection?
       if diff_: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news  # replaces olds for next revision compare
@@ -1091,7 +1099,7 @@ def config(arguments:List[str], options:List[str] = []):
   if local: m.repoConf = c.__map; m.saveBranches(); Exit("OK", code = 0)  # saves changes of repoConfig
   else:  # global config
     f, h = saveConfig(c)  # only saves c.__defaults (nested Configr)
-    if f is None: error("Error saving user configuration: %r" % h)
+    if f is None: error("Error saving user configuration: %r" % h)  # TODO why no exit here?
     else: Exit("OK", code = 0)
 
 def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[str] = [], negative:bool = False):

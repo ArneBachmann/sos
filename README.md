@@ -1,4 +1,4 @@
-# SOS v1.6.1 #
+# SOS v1.6.3 #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -216,7 +216,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - `useChangesCommand`: Flag for making `sos status` into `sos status --repo` and using `sos changes` instead of `sos status` to more closely copy Fossil's behaviour
 - `useUnicodeFont`: Flag to use more fancy symbols, granted the console font supports them
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN, no name for Fossil)
-- `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/…` mime. Example: `*.bak` could be a text file on your system, so add it to the `texttype` configuration, either globally (default) or locally (using `--local`). *Default*: Empty list
+- `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. Example: `*.bak` could be a text file on your system, so add it to the `texttype` configuration, either globally (default) or locally (using `--local`). *Default*: Empty list
 - `bintype`: List of file patterns that should be recognized as binary files which cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list
 - `ignores`: List of filename patterns (without folder path) to ignore during repository operations. Any match from the corresponding white list will negate any hit for `ignores`. Default: See source code, e.g. `["*.bak", "*.py[cdo]]"`
 - `ignoresWhitelist`: List of filename patterns to be consider even if matched by an entry in the `ignores` list. Default: Empty list
@@ -254,7 +254,7 @@ Ideas for future developments:
 
 ## Release Management ##
 - Increase version number in `setup.py`
-- Run `python3 setup.py clean build test` to update the PyPI version number, compile and test the code, and package it into an archive. If you need elevated rights to do so, use `sudo -E python…`.
+- Run `python3 setup.py clean build test` to update the PyPI version number, compile and test the code, and package it into an archive. If you need elevated rights to do so, use `sudo -E python...`.
 - Run `git add`, `git commit` and `git push` and let Travis CI and AppVeyor run the tests against different target platforms. If there were no problems, continue:
 - Don't forget to tag releases
 - Run `python3 setup.py sdist`
