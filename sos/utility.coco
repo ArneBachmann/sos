@@ -195,7 +195,11 @@ def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.pat
 
 def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None) -> str = os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")
 
-def Exit(message:str = "", code = 1): printe("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else "")); sys.exit(code)
+def Exit(message:str = "", code = 1): printe("[%sEXIT%s%s%s]" % (
+    Fore.RED if code else Fore.GREEN,
+    Fore.RESET,
+    " %.1fs" % (time.time() - START_TIME) if verbose else "",
+    (" " + message + "." if message != "" else ""))); sys.exit(code)
 
 def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator:str = " ", process: -> str = -> '"%s"' % _) -> str =
   ''' Returns a packed string, destructively consuming entries from the provided list. Does similar as xargs. getconf ARG_MAX or xargs --show-limits. '''

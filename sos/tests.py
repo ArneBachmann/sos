@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x13738a82
+# __coconut_hash__ = 0xd3fce505
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -620,8 +620,8 @@ class Tests(unittest.TestCase):  # line 98
         _.assertNotIn("File tree is unchanged", out)  # line 514
         _.assertIn("  * b0   'test'", out)  # line 515
         _.assertIn("    b1 'second'", out)  # line 516
-        _.assertIn("modified)", out)  # one branch has commits  # line 517
-        _.assertIn("in sync)", out)  # the other doesn't  # line 518
+        _.assertIn("modified", out)  # one branch has commits  # line 517
+        _.assertIn("in sync", out)  # the other doesn't  # line 518
         sos.defaults["useChangesCommand"] = False  # because sos.main() is never called  # line 519
         out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # trigger repo info  # line 520
         _.assertAllIn(["Metadata format", "Content checking:    %sdeactivated" % sos.Fore.BLUE, "Data compression:    %sdeactivated" % sos.Fore.BLUE, "Repository mode:     %ssimple" % sos.Fore.GREEN, "Number of branches:  2"], out)  # line 521

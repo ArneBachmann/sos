@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x632a9f67
+# __coconut_hash__ = 0x7bece705
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -312,480 +312,480 @@ def revisionFolder(branch: 'int', revision: 'int', base: '_coconut.typing.Option
     return os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")  # line 196
 
 def Exit(message: 'str'="", code=1):  # line 198
-    printe("[EXIT%s]" % (" %.1fs" % (time.time() - START_TIME) if verbose else "") + (" " + message + "." if message != "" else ""))  # line 198
+    printe("[%sEXIT%s%s%s]" % (Fore.RED if code else Fore.GREEN, Fore.RESET, " %.1fs" % (time.time() - START_TIME) if verbose else "", (" " + message + "." if message != "" else "")))  # line 198
     sys.exit(code)  # line 198
 
-def fitStrings(strings: '_coconut.typing.Sequence[str]', prefix: 'str', length: 'int'=MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator: 'str'=" ", process: '_coconut.typing.Callable[..., str]'=lambda _=None: '"%s"' % _) -> 'str':  # line 200
-    ''' Returns a packed string, destructively consuming entries from the provided list. Does similar as xargs. getconf ARG_MAX or xargs --show-limits. '''  # line 201
-    if len(prefix + separator + ((process)(strings[0]))) > length:  # line 202
-        raise Exception("Cannot possibly strings pack into specified length")  # line 202
-    while len(strings) > 0 and len(prefix + separator + ((process)(strings[0]))) <= length:  # line 203
-        prefix += separator + ((process)(strings.pop(0)))  # line 203
-    return prefix  # line 204
+def fitStrings(strings: '_coconut.typing.Sequence[str]', prefix: 'str', length: 'int'=MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator: 'str'=" ", process: '_coconut.typing.Callable[..., str]'=lambda _=None: '"%s"' % _) -> 'str':  # line 204
+    ''' Returns a packed string, destructively consuming entries from the provided list. Does similar as xargs. getconf ARG_MAX or xargs --show-limits. '''  # line 205
+    if len(prefix + separator + ((process)(strings[0]))) > length:  # line 206
+        raise Exception("Cannot possibly strings pack into specified length")  # line 206
+    while len(strings) > 0 and len(prefix + separator + ((process)(strings[0]))) <= length:  # line 207
+        prefix += separator + ((process)(strings.pop(0)))  # line 207
+    return prefix  # line 208
 
-def exception(E):  # line 206
-    ''' Report an exception to the user to enable useful bug reporting. '''  # line 207
-    printo(str(E))  # line 208
-    import traceback  # line 209
-    traceback.print_exc()  # line 210
-    traceback.print_stack()  # line 211
+def exception(E):  # line 210
+    ''' Report an exception to the user to enable useful bug reporting. '''  # line 211
+    printo(str(E))  # line 212
+    import traceback  # line 213
+    traceback.print_exc()  # line 214
+    traceback.print_stack()  # line 215
 
-def hashFile(path: 'str', compress: 'bool', saveTo: '_coconut.typing.Optional[str]'=None, callback: 'Optional[_coconut.typing.Callable[[str], None]]'=None, symbols: 'str'=PROGRESS_MARKER[0]) -> 'Tuple[str, int]':  # line 213
-    ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''  # line 214
-    indicator = ProgressIndicator(symbols, callback) if callback else None  # type: _coconut.typing.Optional[ProgressIndicator]  # line 215
-    _hash = hashlib.sha256()  # line 216
-    wsize = 0  # type: int  # line 217
-    if saveTo and os.path.exists(encode(saveTo)):  # line 218
-        Exit("Hash collision detected. Leaving repository in inconsistent state.", 1)  # HINT this exits immediately  # line 219
-    to = openIt(saveTo, "w", compress) if saveTo else None  # line 220
-    with open(encode(path), "rb") as fd:  # line 221
-        while True:  # line 222
-            buffer = fd.read(bufSize)  # type: bytes  # line 223
-            _hash.update(buffer)  # line 224
-            if to:  # line 225
-                to.write(buffer)  # line 225
-            if len(buffer) < bufSize:  # line 226
-                break  # line 226
-            if indicator:  # line 227
-                indicator.getIndicator()  # line 227
-        if to:  # line 228
-            to.close()  # line 229
-            wsize = os.stat(encode(saveTo)).st_size  # line 230
-    return (_hash.hexdigest(), wsize)  # line 231
+def hashFile(path: 'str', compress: 'bool', saveTo: '_coconut.typing.Optional[str]'=None, callback: 'Optional[_coconut.typing.Callable[[str], None]]'=None, symbols: 'str'=PROGRESS_MARKER[0]) -> 'Tuple[str, int]':  # line 217
+    ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''  # line 218
+    indicator = ProgressIndicator(symbols, callback) if callback else None  # type: _coconut.typing.Optional[ProgressIndicator]  # line 219
+    _hash = hashlib.sha256()  # line 220
+    wsize = 0  # type: int  # line 221
+    if saveTo and os.path.exists(encode(saveTo)):  # line 222
+        Exit("Hash collision detected. Leaving repository in inconsistent state.", 1)  # HINT this exits immediately  # line 223
+    to = openIt(saveTo, "w", compress) if saveTo else None  # line 224
+    with open(encode(path), "rb") as fd:  # line 225
+        while True:  # line 226
+            buffer = fd.read(bufSize)  # type: bytes  # line 227
+            _hash.update(buffer)  # line 228
+            if to:  # line 229
+                to.write(buffer)  # line 229
+            if len(buffer) < bufSize:  # line 230
+                break  # line 230
+            if indicator:  # line 231
+                indicator.getIndicator()  # line 231
+        if to:  # line 232
+            to.close()  # line 233
+            wsize = os.stat(encode(saveTo)).st_size  # line 234
+    return (_hash.hexdigest(), wsize)  # line 235
 
-def getAnyOfMap(map: 'Dict[str, Any]', params: '_coconut.typing.Sequence[str]', default: 'Any'=None) -> 'Any':  # line 233
-    ''' Utility to find any entries of a dictionary in a list to return the dictionaries value. '''  # line 234
-    for k, v in map.items():  # line 235
-        if k in params:  # line 235
-            return v  # line 235
-    return default  # line 236
+def getAnyOfMap(map: 'Dict[str, Any]', params: '_coconut.typing.Sequence[str]', default: 'Any'=None) -> 'Any':  # line 237
+    ''' Utility to find any entries of a dictionary in a list to return the dictionaries value. '''  # line 238
+    for k, v in map.items():  # line 239
+        if k in params:  # line 239
+            return v  # line 239
+    return default  # line 240
 
-@_coconut_tco  # line 238
-def strftime(timestamp: '_coconut.typing.Optional[int]'=None) -> 'str':  # line 238
-    return _coconut_tail_call(time.strftime, "%Y-%m-%d %H:%M:%S", time.localtime(timestamp / 1000. if timestamp is not None else None))  # line 238
+@_coconut_tco  # line 242
+def strftime(timestamp: '_coconut.typing.Optional[int]'=None) -> 'str':  # line 242
+    return _coconut_tail_call(time.strftime, "%Y-%m-%d %H:%M:%S", time.localtime(timestamp / 1000. if timestamp is not None else None))  # line 242
 
-def detectAndLoad(filename: '_coconut.typing.Optional[str]'=None, content: '_coconut.typing.Optional[bytes]'=None, ignoreWhitespace: 'bool'=False) -> 'Tuple[str, bytes, _coconut.typing.Sequence[str]]':  # line 240
-    lines = []  # type: _coconut.typing.Sequence[str]  # line 241
-    if filename is not None:  # line 242
-        with open(encode(filename), "rb") as fd:  # line 242
-            content = fd.read()  # line 242
-    encoding = (lambda _coconut_none_coalesce_item: sys.getdefaultencoding() if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(detectEncoding(content))  # type: str  # line 243
-    eol = eoldet(content)  # type: _coconut.typing.Optional[bytes]  # line 244
-    if filename is not None:  # line 245
-        with codecs.open(encode(filename), encoding=encoding) as fd2:  # line 245
-            lines = safeSplit(fd2.read(), ((b"\n" if eol is None else eol)).decode(encoding))  # line 245
-    elif content is not None:  # line 246
-        lines = safeSplit(content.decode(encoding), ((b"\n" if eol is None else eol)).decode(encoding))  # line 246
-    else:  # line 247
-        return (sys.getdefaultencoding(), b"\n", [])  # line 247
-    if ignoreWhitespace:  # line 248
-        lines[:] = [line.replace("\t", "  ").strip() for line in lines]  # line 248
-    return (encoding, eol, lines)  # line 249
+def detectAndLoad(filename: '_coconut.typing.Optional[str]'=None, content: '_coconut.typing.Optional[bytes]'=None, ignoreWhitespace: 'bool'=False) -> 'Tuple[str, bytes, _coconut.typing.Sequence[str]]':  # line 244
+    lines = []  # type: _coconut.typing.Sequence[str]  # line 245
+    if filename is not None:  # line 246
+        with open(encode(filename), "rb") as fd:  # line 246
+            content = fd.read()  # line 246
+    encoding = (lambda _coconut_none_coalesce_item: sys.getdefaultencoding() if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(detectEncoding(content))  # type: str  # line 247
+    eol = eoldet(content)  # type: _coconut.typing.Optional[bytes]  # line 248
+    if filename is not None:  # line 249
+        with codecs.open(encode(filename), encoding=encoding) as fd2:  # line 249
+            lines = safeSplit(fd2.read(), ((b"\n" if eol is None else eol)).decode(encoding))  # line 249
+    elif content is not None:  # line 250
+        lines = safeSplit(content.decode(encoding), ((b"\n" if eol is None else eol)).decode(encoding))  # line 250
+    else:  # line 251
+        return (sys.getdefaultencoding(), b"\n", [])  # line 251
+    if ignoreWhitespace:  # line 252
+        lines[:] = [line.replace("\t", "  ").strip() for line in lines]  # line 252
+    return (encoding, eol, lines)  # line 253
 
-if TYPE_CHECKING:  # line 251
-    DataType = TypeVar("DataType", BranchInfo, ChangeSet, MergeBlock, PathInfo)  # line 252
-    @_coconut_tco  # line 253
-    def dataCopy(_tipe: 'Type[DataType]', _old: 'DataType', *_args, byValue: 'bool'=False, **_kwargs) -> 'DataType':  # line 253
-        ''' A better makedata() version. '''  # line 254
-        r = _old._asdict()  # type: Dict[str, Any]  # line 255
-        r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required  # line 256
-        return _coconut_tail_call(makedata, _tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here  # line 257
-else:  # line 258
-    @_coconut_tco  # line 259
-    def dataCopy(_tipe, _old, *_args, byValue=False, **_kwargs) -> 'DataType':  # line 259
-        ''' A better makedata() version. '''  # line 260
-        r = _old._asdict()  # line 261
-        r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required  # line 262
-        return _coconut_tail_call(makedata, _tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here  # line 263
+if TYPE_CHECKING:  # line 255
+    DataType = TypeVar("DataType", BranchInfo, ChangeSet, MergeBlock, PathInfo)  # line 256
+    @_coconut_tco  # line 257
+    def dataCopy(_tipe: 'Type[DataType]', _old: 'DataType', *_args, byValue: 'bool'=False, **_kwargs) -> 'DataType':  # line 257
+        ''' A better makedata() version. '''  # line 258
+        r = _old._asdict()  # type: Dict[str, Any]  # line 259
+        r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required  # line 260
+        return _coconut_tail_call(makedata, _tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here  # line 261
+else:  # line 262
+    @_coconut_tco  # line 263
+    def dataCopy(_tipe, _old, *_args, byValue=False, **_kwargs) -> 'DataType':  # line 263
+        ''' A better makedata() version. '''  # line 264
+        r = _old._asdict()  # line 265
+        r.update({k: ([e for e in v] if byValue and isinstance(v, (list, tuple, set)) else v) for k, v in _kwargs.items()})  # copy by value if required  # line 266
+        return _coconut_tail_call(makedata, _tipe, *(list(_args) + [r[field] for field in _old._fields]))  # TODO also offer copy-by-value here  # line 267
 
-def detectMoves(changes: 'ChangeSet', strict: 'bool') -> 'Dict[str, Tuple[str, PathInfo]]':  # line 265
-    ''' Compute renames/removes for a changeset, returning new targetpath -> (old source path, new info). '''  # line 266
-    moves = {}  # type: Dict[str, Tuple[str, PathInfo]]  # line 267
-    for path, info in changes.additions.items():  # line 268
-        for dpath, dinfo in changes.deletions.items():  # line 268
-            if info.size == dinfo.size and ((info.hash == dinfo.hash) if strict else (info.mtime == dinfo.mtime)):  # was moved  # line 269
-                if dpath not in moves or path.split(SLASH)[-1] == dpath.split(SLASH)[-1]:  # only override previously stored arbitrary move, when name match perfectly this time TODO compare even more parent folders when matching  # line 270
-                    moves[dpath] = (path, info)  # store new data and original name, but don't remove add/del  # line 271
-                break  # deletions loop, continue with next addition  # line 272
-    return {path: (dpath, info) for dpath, (path, info) in moves.items()}  # sort by target (by moved-to)  # line 273
+def detectMoves(changes: 'ChangeSet', strict: 'bool') -> 'Dict[str, Tuple[str, PathInfo]]':  # line 269
+    ''' Compute renames/removes for a changeset, returning new targetpath -> (old source path, new info). '''  # line 270
+    moves = {}  # type: Dict[str, Tuple[str, PathInfo]]  # line 271
+    for path, info in changes.additions.items():  # line 272
+        for dpath, dinfo in changes.deletions.items():  # line 272
+            if info.size == dinfo.size and ((info.hash == dinfo.hash) if strict else (info.mtime == dinfo.mtime)):  # was moved  # line 273
+                if dpath not in moves or path.split(SLASH)[-1] == dpath.split(SLASH)[-1]:  # only override previously stored arbitrary move, when name match perfectly this time TODO compare even more parent folders when matching  # line 274
+                    moves[dpath] = (path, info)  # store new data and original name, but don't remove add/del  # line 275
+                break  # deletions loop, continue with next addition  # line 276
+    return {path: (dpath, info) for dpath, (path, info) in moves.items()}  # sort by target (by moved-to)  # line 277
 
-def user_input(text: 'str', choices: 'Iterable[str]', default: 'str'=None, selection: 'str'="") -> 'str':  # line 275
-    ''' Default can be a selection from choice and allows empty input. '''  # line 276
-    while True:  # line 277
-        selection = input(text).strip().lower()  # line 278
-        if selection != "" and selection in choices:  # line 279
-            break  # line 279
-        if selection == "" and default is not None:  # line 280
-            selection = default  # line 280
-            break  # line 280
-    return selection  # line 281
+def user_input(text: 'str', choices: 'Iterable[str]', default: 'str'=None, selection: 'str'="") -> 'str':  # line 279
+    ''' Default can be a selection from choice and allows empty input. '''  # line 280
+    while True:  # line 281
+        selection = input(text).strip().lower()  # line 282
+        if selection != "" and selection in choices:  # line 283
+            break  # line 283
+        if selection == "" and default is not None:  # line 284
+            selection = default  # line 284
+            break  # line 284
+    return selection  # line 285
 
-def user_block_input(output: 'List[str]'):  # line 283
-    ''' Side-effect appending to input list. '''  # line 284
-    sep = input("Enter end-of-text marker (default: <empty line>: ")  # type: str  # line 285
-    line = sep  # type: str  # line 285
-    while True:  # line 286
-        line = input("> ")  # line 287
-        if line == sep:  # line 288
-            break  # line 288
-        output.append(line)  # writes to caller-provided list reference  # line 289
+def user_block_input(output: 'List[str]'):  # line 287
+    ''' Side-effect appending to input list. '''  # line 288
+    sep = input("Enter end-of-text marker (default: <empty line>: ")  # type: str  # line 289
+    line = sep  # type: str  # line 289
+    while True:  # line 290
+        line = input("> ")  # line 291
+        if line == sep:  # line 292
+            break  # line 292
+        output.append(line)  # writes to caller-provided list reference  # line 293
 
-def merge(file: '_coconut.typing.Optional[bytes]'=None, into: '_coconut.typing.Optional[bytes]'=None, filename: '_coconut.typing.Optional[str]'=None, intoname: '_coconut.typing.Optional[str]'=None, mergeOperation: 'MergeOperation'=MergeOperation.BOTH, charMergeOperation: 'MergeOperation'=MergeOperation.BOTH, diffOnly: 'bool'=False, eol: 'bool'=False, ignoreWhitespace: 'bool'=False) -> 'Tuple[Union[bytes, List[MergeBlock]], _coconut.typing.Optional[bytes]]':  # line 291
+def merge(file: '_coconut.typing.Optional[bytes]'=None, into: '_coconut.typing.Optional[bytes]'=None, filename: '_coconut.typing.Optional[str]'=None, intoname: '_coconut.typing.Optional[str]'=None, mergeOperation: 'MergeOperation'=MergeOperation.BOTH, charMergeOperation: 'MergeOperation'=MergeOperation.BOTH, diffOnly: 'bool'=False, eol: 'bool'=False, ignoreWhitespace: 'bool'=False) -> 'Tuple[Union[bytes, List[MergeBlock]], _coconut.typing.Optional[bytes]]':  # line 295
     ''' Merges other binary text contents 'file' (or reads file 'filename') into current text contents 'into' (or reads file 'intoname'), returning merged result.
       For 'sos update', the other version is assumed to be the "new/added" one, while for diff, the 'file' with changes is the one shown as "added".
       However, change direction markers are insert ("+") for elements only in into, and remove ("-") for elements only in other file (just like the diff marks +/-)
       diffOnly: if True, return detected change blocks only, no actual text merging
       eol: if True, will use the other file's EOL marks
       in case of replace block and INSERT strategy, the change will be added **behind** the original. HINT could be configurable
-  '''  # line 306
-    encoding = None  # type: str  # line 307
-    othr = None  # type: _coconut.typing.Sequence[str]  # line 307
-    othreol = None  # type: _coconut.typing.Optional[bytes]  # line 307
-    curr = None  # type: _coconut.typing.Sequence[str]  # line 307
-    curreol = None  # type: _coconut.typing.Optional[bytes]  # line 307
-    try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document  # line 308
-        encoding, othreol, othr = detectAndLoad(filename=filename, content=file, ignoreWhitespace=ignoreWhitespace)  # line 309
-        encoding, curreol, curr = detectAndLoad(filename=intoname, content=into, ignoreWhitespace=ignoreWhitespace)  # line 310
-    except Exception as E:  # line 311
-        Exit("Cannot merge '%s' into '%s': %r" % (filename, intoname, E))  # line 311
-    if None not in [othreol, curreol] and othreol != curreol:  # line 312
-        warn("Differing EOL-styles detected during merge. Using current file's style for merged output")  # line 312
-    output = list(difflib.Differ().compare(othr, curr))  # type: List[str]  # from generator expression  # line 313
-    blocks = []  # type: List[MergeBlock]  # merged result in blocks  # line 314
-    tmp = []  # type: List[str]  # block lines  # line 315
-    last = " "  # type: str  # "into"-file offset for remark lines  # line 316
-    no = None  # type: int  # "into"-file offset for remark lines  # line 316
-    line = None  # type: str  # "into"-file offset for remark lines  # line 316
-    offset = 0  # type: int  # "into"-file offset for remark lines  # line 316
-    for no, line in enumerate(output + ["X"]):  # EOF marker (difflib's output will never be "X" alone)  # line 317
-        if line[0] == last:  # continue filling current block, no matter what type of block it is  # line 318
-            tmp.append(line[2:])  # continue filling current block, no matter what type of block it is  # line 318
-            continue  # continue filling current block, no matter what type of block it is  # line 318
-        if line == "X" and len(tmp) == 0:  # break if nothing left to do, otherwise perform operation for stored block  # line 319
-            break  # break if nothing left to do, otherwise perform operation for stored block  # line 319
-        if last == " ":  # block is same in both files  # line 320
-            if len(tmp) > 0:  # avoid adding empty keep block  # line 321
-                blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line=no - offset - len(tmp)))  # avoid adding empty keep block  # line 321
-        elif last == "-":  # may be a pure deletion or part of a replacement (with next block being "+")  # line 322
-            blocks.append(MergeBlock(MergeBlockType.REMOVE, [line for line in tmp], line=no - offset - len(tmp)))  # line 323
-            if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.INSERT:  # line 324
-                offset += len(blocks[-2].lines)  # line 325
-                blocks[-2] = dataCopy(MergeBlock, blocks[-1], tipe=MergeBlockType.REPLACE, replaces=dataCopy(MergeBlock, blocks[-2], line=blocks[-1].line))  # remember replaced stuff with reference to other merge block TODO why -1 necessary?  # line 326
-                blocks.pop()  # line 327
-        elif last == "+":  # may be insertion or replacement (with previous - block)  # line 328
-            blocks.append(MergeBlock(MergeBlockType.INSERT, [line for line in tmp], line=no - offset - len(tmp)))  # first, assume simple insertion, then check for replacement  # line 329
-            if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.REMOVE:  #  and len(blocks[-1].lines) == len(blocks[-2].lines):  # requires previous block and same number of lines TODO allow multiple intra-line merge for same-length blocks  # line 330
-                offset += len(blocks[-1].lines)  # line 331
-                blocks[-2] = dataCopy(MergeBlock, blocks[-2], tipe=MergeBlockType.REPLACE, replaces=dataCopy(MergeBlock, blocks[-1], line=blocks[-2].line))  # remember replaced stuff with reference to other merge block TODO why -1 necessary?  # line 332
-                blocks.pop()  # remove TOS due to merging two blocks into replace or modify  # line 333
-        elif last == "?":  # marker for intra-line change comment HINT was earlier part of the MergeBlock  # line 334
-            offset += 1  # marker for intra-line change comment HINT was earlier part of the MergeBlock  # line 334
-        last = line[0]  # line 335
-        tmp[:] = [line[2:]]  # only keep current line for next block  # line 336
+  '''  # line 310
+    encoding = None  # type: str  # line 311
+    othr = None  # type: _coconut.typing.Sequence[str]  # line 311
+    othreol = None  # type: _coconut.typing.Optional[bytes]  # line 311
+    curr = None  # type: _coconut.typing.Sequence[str]  # line 311
+    curreol = None  # type: _coconut.typing.Optional[bytes]  # line 311
+    try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document  # line 312
+        encoding, othreol, othr = detectAndLoad(filename=filename, content=file, ignoreWhitespace=ignoreWhitespace)  # line 313
+        encoding, curreol, curr = detectAndLoad(filename=intoname, content=into, ignoreWhitespace=ignoreWhitespace)  # line 314
+    except Exception as E:  # line 315
+        Exit("Cannot merge '%s' into '%s': %r" % (filename, intoname, E))  # line 315
+    if None not in [othreol, curreol] and othreol != curreol:  # line 316
+        warn("Differing EOL-styles detected during merge. Using current file's style for merged output")  # line 316
+    output = list(difflib.Differ().compare(othr, curr))  # type: List[str]  # from generator expression  # line 317
+    blocks = []  # type: List[MergeBlock]  # merged result in blocks  # line 318
+    tmp = []  # type: List[str]  # block lines  # line 319
+    last = " "  # type: str  # "into"-file offset for remark lines  # line 320
+    no = None  # type: int  # "into"-file offset for remark lines  # line 320
+    line = None  # type: str  # "into"-file offset for remark lines  # line 320
+    offset = 0  # type: int  # "into"-file offset for remark lines  # line 320
+    for no, line in enumerate(output + ["X"]):  # EOF marker (difflib's output will never be "X" alone)  # line 321
+        if line[0] == last:  # continue filling current block, no matter what type of block it is  # line 322
+            tmp.append(line[2:])  # continue filling current block, no matter what type of block it is  # line 322
+            continue  # continue filling current block, no matter what type of block it is  # line 322
+        if line == "X" and len(tmp) == 0:  # break if nothing left to do, otherwise perform operation for stored block  # line 323
+            break  # break if nothing left to do, otherwise perform operation for stored block  # line 323
+        if last == " ":  # block is same in both files  # line 324
+            if len(tmp) > 0:  # avoid adding empty keep block  # line 325
+                blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line=no - offset - len(tmp)))  # avoid adding empty keep block  # line 325
+        elif last == "-":  # may be a pure deletion or part of a replacement (with next block being "+")  # line 326
+            blocks.append(MergeBlock(MergeBlockType.REMOVE, [line for line in tmp], line=no - offset - len(tmp)))  # line 327
+            if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.INSERT:  # line 328
+                offset += len(blocks[-2].lines)  # line 329
+                blocks[-2] = dataCopy(MergeBlock, blocks[-1], tipe=MergeBlockType.REPLACE, replaces=dataCopy(MergeBlock, blocks[-2], line=blocks[-1].line))  # remember replaced stuff with reference to other merge block TODO why -1 necessary?  # line 330
+                blocks.pop()  # line 331
+        elif last == "+":  # may be insertion or replacement (with previous - block)  # line 332
+            blocks.append(MergeBlock(MergeBlockType.INSERT, [line for line in tmp], line=no - offset - len(tmp)))  # first, assume simple insertion, then check for replacement  # line 333
+            if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.REMOVE:  #  and len(blocks[-1].lines) == len(blocks[-2].lines):  # requires previous block and same number of lines TODO allow multiple intra-line merge for same-length blocks  # line 334
+                offset += len(blocks[-1].lines)  # line 335
+                blocks[-2] = dataCopy(MergeBlock, blocks[-2], tipe=MergeBlockType.REPLACE, replaces=dataCopy(MergeBlock, blocks[-1], line=blocks[-2].line))  # remember replaced stuff with reference to other merge block TODO why -1 necessary?  # line 336
+                blocks.pop()  # remove TOS due to merging two blocks into replace or modify  # line 337
+        elif last == "?":  # marker for intra-line change comment HINT was earlier part of the MergeBlock  # line 338
+            offset += 1  # marker for intra-line change comment HINT was earlier part of the MergeBlock  # line 338
+        last = line[0]  # line 339
+        tmp[:] = [line[2:]]  # only keep current line for next block  # line 340
 # TODO add code to detect moved blocks here
-    nl = othreol if eol else ((othreol if curreol is None else curreol))  # type: bytes  # no default newline, to mark "no newline"  # line 338
-    debug("Diff blocks: " + repr(blocks))  # line 339
-    if diffOnly:  # line 340
-        return (blocks, nl)  # line 340
+    nl = othreol if eol else ((othreol if curreol is None else curreol))  # type: bytes  # no default newline, to mark "no newline"  # line 342
+    debug("Diff blocks: " + repr(blocks))  # line 343
+    if diffOnly:  # line 344
+        return (blocks, nl)  # line 344
 
 # now perform merge operations depending on detected blocks
-    output[:] = []  # clean list of strings  # line 343
-    add_all = None  # type: _coconut.typing.Optional[str]  # clean list of strings  # line 343
-    del_all = None  # type: _coconut.typing.Optional[str]  # clean list of strings  # line 343
-    selection = None  # type: str  # clean list of strings  # line 343
-    for block in blocks:  # line 344
-        if block.tipe == MergeBlockType.KEEP:  # line 345
-            output.extend(block.lines)  # line 345
-        elif (block.tipe == MergeBlockType.INSERT and not (mergeOperation.value & MergeOperation.REMOVE.value)) or (block.tipe == MergeBlockType.REMOVE and (mergeOperation.value & MergeOperation.INSERT.value)):  # will add line despite remove if --add-line was selected  # line 346
-            output.extend(block.lines)  # line 348
-        elif block.tipe == MergeBlockType.REPLACE:  # complete block replacement  # line 349
-            if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner  # line 350
-                output.append(lineMerge(block.lines[0], block.replaces.lines[0], mergeOperation=charMergeOperation))  # line 351
-            elif mergeOperation == MergeOperation.ASK:  # more than one line: needs user input  # line 352
-                printo(pure.ajoin("- ", block.lines, nl="\n"))  # TODO check +/- in update mode, could be swapped  # line 353
-                printo(pure.ajoin("+ ", block.replaces.lines, nl="\n"))  # line 354
-                while True:  # line 355
-                    op = input(" Line replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()[:1]  # type: str  # line 356
-                    if op in "tb":  # line 357
-                        output.extend(block.lines)  # line 357
-                    if op in "ib":  # line 358
-                        output.extend(block.replaces.lines)  # line 358
-                    if op == "u":  # line 359
-                        user_block_input(output)  # line 359
-                    if op in "tbiu":  # line 360
-                        break  # line 360
-            else:  # more than one line and not ask  # line 361
-                if mergeOperation == MergeOperation.REMOVE:  # line 362
-                    pass  # line 362
-                elif mergeOperation == MergeOperation.BOTH:  # line 363
-                    output.extend(block.lines)  # line 363
-                elif mergeOperation == MergeOperation.INSERT:  # TODO optionally allow insertion BEFORE or AFTER original (order of these both lines)  # line 364
-                    output.extend(list(block.replaces.lines) + list(block.lines))  # TODO optionally allow insertion BEFORE or AFTER original (order of these both lines)  # line 364
-        elif block.tipe in (MergeBlockType.INSERT, MergeBlockType.REMOVE) and mergeOperation == MergeOperation.ASK:  # user - interactive insert/remove section  # line 365
-            if (block.tipe == MergeBlockType.INSERT and add_all is None) or (block.tipe == MergeOperation.REMOVE and del_all is None):  # condition for asking  # line 366
-                selection = user_input(pure.ajoin("+ " if block.tipe == MergeBlockType.INSERT else "- ", block.lines) + "\n  Accept? *[Y]es, [N]o, yes to [A]ll %s, n[O] to all: " % "insertions" if block.tipe == MergeBlockType.INSERT else "deletions", "ynao", "y")  # line 368
-                if selection in "ao":  # line 369
-                    if block.tipe == MergeBlockType.INSERT:  # line 370
-                        add_all = "y" if selection == "a" else "n"  # line 370
-                        selection = add_all  # line 370
-                    else:  # REMOVE case  # line 371
-                        del_all = "y" if selection == "a" else "n"  # REMOVE case  # line 371
-                        selection = del_all  # REMOVE case  # line 371
-            if (block.tipe == MergeBlockType.INSERT and "y" in (add_all, selection)) or ("n" in (del_all, selection)):  # REMOVE case  # line 372
-                output.extend(block.lines)  # line 374
-    debug("Merge output: " + "; ".join(output))  # line 375
-    return (((b"\n" if nl is None else nl)).join([line.encode(encoding) for line in output]), nl)  # returning bytes  # line 376
+    output[:] = []  # clean list of strings  # line 347
+    add_all = None  # type: _coconut.typing.Optional[str]  # clean list of strings  # line 347
+    del_all = None  # type: _coconut.typing.Optional[str]  # clean list of strings  # line 347
+    selection = None  # type: str  # clean list of strings  # line 347
+    for block in blocks:  # line 348
+        if block.tipe == MergeBlockType.KEEP:  # line 349
+            output.extend(block.lines)  # line 349
+        elif (block.tipe == MergeBlockType.INSERT and not (mergeOperation.value & MergeOperation.REMOVE.value)) or (block.tipe == MergeBlockType.REMOVE and (mergeOperation.value & MergeOperation.INSERT.value)):  # will add line despite remove if --add-line was selected  # line 350
+            output.extend(block.lines)  # line 352
+        elif block.tipe == MergeBlockType.REPLACE:  # complete block replacement  # line 353
+            if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner  # line 354
+                output.append(lineMerge(block.lines[0], block.replaces.lines[0], mergeOperation=charMergeOperation))  # line 355
+            elif mergeOperation == MergeOperation.ASK:  # more than one line: needs user input  # line 356
+                printo(pure.ajoin("- ", block.lines, nl="\n"))  # TODO check +/- in update mode, could be swapped  # line 357
+                printo(pure.ajoin("+ ", block.replaces.lines, nl="\n"))  # line 358
+                while True:  # line 359
+                    op = input(" Line replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()[:1]  # type: str  # line 360
+                    if op in "tb":  # line 361
+                        output.extend(block.lines)  # line 361
+                    if op in "ib":  # line 362
+                        output.extend(block.replaces.lines)  # line 362
+                    if op == "u":  # line 363
+                        user_block_input(output)  # line 363
+                    if op in "tbiu":  # line 364
+                        break  # line 364
+            else:  # more than one line and not ask  # line 365
+                if mergeOperation == MergeOperation.REMOVE:  # line 366
+                    pass  # line 366
+                elif mergeOperation == MergeOperation.BOTH:  # line 367
+                    output.extend(block.lines)  # line 367
+                elif mergeOperation == MergeOperation.INSERT:  # TODO optionally allow insertion BEFORE or AFTER original (order of these both lines)  # line 368
+                    output.extend(list(block.replaces.lines) + list(block.lines))  # TODO optionally allow insertion BEFORE or AFTER original (order of these both lines)  # line 368
+        elif block.tipe in (MergeBlockType.INSERT, MergeBlockType.REMOVE) and mergeOperation == MergeOperation.ASK:  # user - interactive insert/remove section  # line 369
+            if (block.tipe == MergeBlockType.INSERT and add_all is None) or (block.tipe == MergeOperation.REMOVE and del_all is None):  # condition for asking  # line 370
+                selection = user_input(pure.ajoin("+ " if block.tipe == MergeBlockType.INSERT else "- ", block.lines) + "\n  Accept? *[Y]es, [N]o, yes to [A]ll %s, n[O] to all: " % "insertions" if block.tipe == MergeBlockType.INSERT else "deletions", "ynao", "y")  # line 372
+                if selection in "ao":  # line 373
+                    if block.tipe == MergeBlockType.INSERT:  # line 374
+                        add_all = "y" if selection == "a" else "n"  # line 374
+                        selection = add_all  # line 374
+                    else:  # REMOVE case  # line 375
+                        del_all = "y" if selection == "a" else "n"  # REMOVE case  # line 375
+                        selection = del_all  # REMOVE case  # line 375
+            if (block.tipe == MergeBlockType.INSERT and "y" in (add_all, selection)) or ("n" in (del_all, selection)):  # REMOVE case  # line 376
+                output.extend(block.lines)  # line 378
+    debug("Merge output: " + "; ".join(output))  # line 379
+    return (((b"\n" if nl is None else nl)).join([line.encode(encoding) for line in output]), nl)  # returning bytes  # line 380
 # TODO handle check for more/less lines in found -/+ blocks to find common section and splitting prefix/suffix out
 
-@_coconut_tco  # line 379
-def lineMerge(othr: 'str', into: 'str', mergeOperation: 'MergeOperation'=MergeOperation.BOTH, diffOnly: 'bool'=False) -> 'Union[str, List[MergeBlock]]':  # line 379
+@_coconut_tco  # line 383
+def lineMerge(othr: 'str', into: 'str', mergeOperation: 'MergeOperation'=MergeOperation.BOTH, diffOnly: 'bool'=False) -> 'Union[str, List[MergeBlock]]':  # line 383
     ''' Merges string 'othr' into current string 'into'.
       change direction mark is insert for elements only in into, and remove for elements only in file (according to diff marks +/-)
-  '''  # line 382
-    out = list(difflib.Differ().compare(othr, into))  # type: List[str]  # line 383
-    blocks = []  # type: List[MergeBlock]  # line 384
-    for i, line in enumerate(out):  # line 385
-        if line[0] == "+":  # line 386
-            if i + 1 < len(out) and out[i + 1][0] == "+":  # block will continue  # line 387
-                if i > 0 and blocks[-1].tipe == MergeBlockType.INSERT:  # middle of + block  # line 388
-                    blocks[-1].lines.append(line[2])  # add one more character to the accumulating list  # line 389
-                else:  # first + in block  # line 390
-                    blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))  # line 391
-            else:  # last line of + block  # line 392
-                if i > 0 and blocks[-1].tipe == MergeBlockType.INSERT:  # end of a block  # line 393
-                    blocks[-1].lines.append(line[2])  # line 394
-                else:  # single line  # line 395
-                    blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))  # line 396
-                if i >= 1 and blocks[-2].tipe == MergeBlockType.REMOVE:  # previous - and now last in + block creates a replacement block  # line 397
-                    blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-2].lines, i, replaces=blocks[-1])  # line 398
-                    blocks.pop()  # line 398
-        elif line[0] == "-":  # line 399
-            if i > 0 and blocks[-1].tipe == MergeBlockType.REMOVE:  # part of - block  # line 400
-                blocks[-1].lines.append(line[2])  # line 401
-            else:  # first in block  # line 402
-                blocks.append(MergeBlock(MergeBlockType.REMOVE, [line[2]], i))  # line 403
-        elif line[0] == " ":  # line 404
-            if i > 0 and blocks[-1].tipe == MergeBlockType.KEEP:  # part of block  # line 405
-                blocks[-1].lines.append(line[2])  # line 406
-            else:  # first in block  # line 407
-                blocks.append(MergeBlock(MergeBlockType.KEEP, [line[2]], i))  # line 408
-        else:  # line 409
-            raise Exception("Cannot parse diff line %r" % line)  # line 409
-    blocks[:] = [dataCopy(MergeBlock, block, lines=["".join(block.lines)], replaces=dataCopy(MergeBlock, block.replaces, lines=["".join(block.replaces.lines)]) if block.replaces else None) for block in blocks]  # line 410
-    if diffOnly:  # line 411
-        return blocks  # line 411
-    out[:] = []  # line 412
-    for i, block in enumerate(blocks):  # line 413
-        if block.tipe == MergeBlockType.KEEP:  # line 414
-            out.extend(block.lines)  # line 414
-        elif block.tipe == MergeBlockType.REPLACE:  # line 415
-            if mergeOperation == MergeOperation.ASK:  # line 416
-                printo(pure.ajoin("- ", othr))  # line 417
-                printo("- " + (" " * i) + block.replaces.lines[0])  # line 418
-                printo("+ " + (" " * i) + block.lines[0])  # line 419
-                printo(pure.ajoin("+ ", into))  # line 420
-                op = user_input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ", "tbim")  # type: str  # line 421
-                if op in "tb":  # line 422
-                    out.extend(block.lines)  # line 422
-                    break  # line 422
-                if op in "ib":  # line 423
-                    out.extend(block.replaces.lines)  # line 423
-                    break  # line 423
-                if op == "m":  # line 424
-                    user_block_input(out)  # line 424
-                    break  # line 424
-            else:  # non-interactive  # line 425
-                if mergeOperation == MergeOperation.REMOVE:  # line 426
-                    pass  # line 426
-                elif mergeOperation == MergeOperation.BOTH:  # line 427
-                    out.extend(block.lines)  # line 427
-                elif mergeOperation == MergeOperation.INSERT:  # line 428
-                    out.extend(list(block.replaces.lines) + list(block.lines))  # line 428
-        elif block.tipe == MergeBlockType.INSERT and not (mergeOperation.value & MergeOperation.REMOVE.value):  # line 429
-            out.extend(block.lines)  # line 429
-        elif block.tipe == MergeBlockType.REMOVE and mergeOperation.value & MergeOperation.INSERT.value:  # line 430
-            out.extend(block.lines)  # line 430
+  '''  # line 386
+    out = list(difflib.Differ().compare(othr, into))  # type: List[str]  # line 387
+    blocks = []  # type: List[MergeBlock]  # line 388
+    for i, line in enumerate(out):  # line 389
+        if line[0] == "+":  # line 390
+            if i + 1 < len(out) and out[i + 1][0] == "+":  # block will continue  # line 391
+                if i > 0 and blocks[-1].tipe == MergeBlockType.INSERT:  # middle of + block  # line 392
+                    blocks[-1].lines.append(line[2])  # add one more character to the accumulating list  # line 393
+                else:  # first + in block  # line 394
+                    blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))  # line 395
+            else:  # last line of + block  # line 396
+                if i > 0 and blocks[-1].tipe == MergeBlockType.INSERT:  # end of a block  # line 397
+                    blocks[-1].lines.append(line[2])  # line 398
+                else:  # single line  # line 399
+                    blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))  # line 400
+                if i >= 1 and blocks[-2].tipe == MergeBlockType.REMOVE:  # previous - and now last in + block creates a replacement block  # line 401
+                    blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-2].lines, i, replaces=blocks[-1])  # line 402
+                    blocks.pop()  # line 402
+        elif line[0] == "-":  # line 403
+            if i > 0 and blocks[-1].tipe == MergeBlockType.REMOVE:  # part of - block  # line 404
+                blocks[-1].lines.append(line[2])  # line 405
+            else:  # first in block  # line 406
+                blocks.append(MergeBlock(MergeBlockType.REMOVE, [line[2]], i))  # line 407
+        elif line[0] == " ":  # line 408
+            if i > 0 and blocks[-1].tipe == MergeBlockType.KEEP:  # part of block  # line 409
+                blocks[-1].lines.append(line[2])  # line 410
+            else:  # first in block  # line 411
+                blocks.append(MergeBlock(MergeBlockType.KEEP, [line[2]], i))  # line 412
+        else:  # line 413
+            raise Exception("Cannot parse diff line %r" % line)  # line 413
+    blocks[:] = [dataCopy(MergeBlock, block, lines=["".join(block.lines)], replaces=dataCopy(MergeBlock, block.replaces, lines=["".join(block.replaces.lines)]) if block.replaces else None) for block in blocks]  # line 414
+    if diffOnly:  # line 415
+        return blocks  # line 415
+    out[:] = []  # line 416
+    for i, block in enumerate(blocks):  # line 417
+        if block.tipe == MergeBlockType.KEEP:  # line 418
+            out.extend(block.lines)  # line 418
+        elif block.tipe == MergeBlockType.REPLACE:  # line 419
+            if mergeOperation == MergeOperation.ASK:  # line 420
+                printo(pure.ajoin("- ", othr))  # line 421
+                printo("- " + (" " * i) + block.replaces.lines[0])  # line 422
+                printo("+ " + (" " * i) + block.lines[0])  # line 423
+                printo(pure.ajoin("+ ", into))  # line 424
+                op = user_input(" Character replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ", "tbim")  # type: str  # line 425
+                if op in "tb":  # line 426
+                    out.extend(block.lines)  # line 426
+                    break  # line 426
+                if op in "ib":  # line 427
+                    out.extend(block.replaces.lines)  # line 427
+                    break  # line 427
+                if op == "m":  # line 428
+                    user_block_input(out)  # line 428
+                    break  # line 428
+            else:  # non-interactive  # line 429
+                if mergeOperation == MergeOperation.REMOVE:  # line 430
+                    pass  # line 430
+                elif mergeOperation == MergeOperation.BOTH:  # line 431
+                    out.extend(block.lines)  # line 431
+                elif mergeOperation == MergeOperation.INSERT:  # line 432
+                    out.extend(list(block.replaces.lines) + list(block.lines))  # line 432
+        elif block.tipe == MergeBlockType.INSERT and not (mergeOperation.value & MergeOperation.REMOVE.value):  # line 433
+            out.extend(block.lines)  # line 433
+        elif block.tipe == MergeBlockType.REMOVE and mergeOperation.value & MergeOperation.INSERT.value:  # line 434
+            out.extend(block.lines)  # line 434
 # TODO ask for insert or remove as well
-    return _coconut_tail_call("".join, out)  # line 432
+    return _coconut_tail_call("".join, out)  # line 436
 
-def findSosVcsBase() -> 'Tuple[_coconut.typing.Optional[str], _coconut.typing.Optional[str], _coconut.typing.Optional[str]]':  # line 434
+def findSosVcsBase() -> 'Tuple[_coconut.typing.Optional[str], _coconut.typing.Optional[str], _coconut.typing.Optional[str]]':  # line 438
     ''' Attempts to find sos and legacy VCS base folders.
       Returns (SOS-repo root, VCS-repo root, VCS command)
-  '''  # line 437
-    debug("Detecting root folders...")  # line 438
-    path = os.getcwd()  # type: str  # start in current folder, check parent until found or stopped  # line 439
-    vcs = (None, None)  # type: Tuple[_coconut.typing.Optional[str], _coconut.typing.Optional[str]]  # line 440
-    while not os.path.exists(encode(os.path.join(path, metaFolder))):  # line 441
-        contents = set(os.listdir(path))  # type: Set[str]  # line 442
-        vcss = [executable for folder, executable in vcsFolders.items() if folder in contents or (SLASH in folder and os.path.exists(os.path.join(os.getcwd(), folder.replace(SLASH, os.sep))))]  # type: _coconut.typing.Sequence[str]  # determine VCS type from existence of dot folder TODO use encode?  # line 443
-        choice = None  # type: _coconut.typing.Optional[str]  # line 444
-        if len(vcss) > 1:  # line 445
-            choice = SVN if SVN in vcss else vcss[0]  # SVN is preferred  # line 446
-            warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))  # line 447
-        elif len(vcss) > 0:  # line 448
-            choice = vcss[0]  # line 448
-        if not vcs[0] and choice:  # memorize current repo root  # line 449
-            vcs = (path, choice)  # memorize current repo root  # line 449
-        new = os.path.dirname(path)  # get parent path  # line 450
-        if new == path:  # avoid infinite loop  # line 451
-            break  # avoid infinite loop  # line 451
-        path = new  # line 452
-    if os.path.exists(encode(os.path.join(path, metaFolder))):  # found something  # line 453
-        if vcs[0]:  # already detected vcs base and command  # line 454
-            return (path, vcs[0], vcs[1])  # already detected vcs base and command  # line 454
-        sos = path  # line 455
-        while True:  # continue search for VCS base  # line 456
-            contents = set(os.listdir(path))  # line 457
-            vcss = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type  # line 458
-            choice = None  # line 459
-            if len(vcss) > 1:  # line 460
-                choice = SVN if SVN in vcss else vcss[0]  # line 461
-                warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))  # line 462
-            elif len(vcss) > 0:  # line 463
-                choice = vcss[0]  # line 463
-            if choice:  # line 464
-                return (sos, path, choice)  # line 464
-            new = os.path.dirname(path)  # get parent path  # line 465
-            if new == path:  # no VCS folder found  # line 466
-                return (sos, None, None)  # no VCS folder found  # line 466
-            path = new  # line 467
-    return (None, vcs[0], vcs[1])  # line 468
+  '''  # line 441
+    debug("Detecting root folders...")  # line 442
+    path = os.getcwd()  # type: str  # start in current folder, check parent until found or stopped  # line 443
+    vcs = (None, None)  # type: Tuple[_coconut.typing.Optional[str], _coconut.typing.Optional[str]]  # line 444
+    while not os.path.exists(encode(os.path.join(path, metaFolder))):  # line 445
+        contents = set(os.listdir(path))  # type: Set[str]  # line 446
+        vcss = [executable for folder, executable in vcsFolders.items() if folder in contents or (SLASH in folder and os.path.exists(os.path.join(os.getcwd(), folder.replace(SLASH, os.sep))))]  # type: _coconut.typing.Sequence[str]  # determine VCS type from existence of dot folder TODO use encode?  # line 447
+        choice = None  # type: _coconut.typing.Optional[str]  # line 448
+        if len(vcss) > 1:  # line 449
+            choice = SVN if SVN in vcss else vcss[0]  # SVN is preferred  # line 450
+            warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))  # line 451
+        elif len(vcss) > 0:  # line 452
+            choice = vcss[0]  # line 452
+        if not vcs[0] and choice:  # memorize current repo root  # line 453
+            vcs = (path, choice)  # memorize current repo root  # line 453
+        new = os.path.dirname(path)  # get parent path  # line 454
+        if new == path:  # avoid infinite loop  # line 455
+            break  # avoid infinite loop  # line 455
+        path = new  # line 456
+    if os.path.exists(encode(os.path.join(path, metaFolder))):  # found something  # line 457
+        if vcs[0]:  # already detected vcs base and command  # line 458
+            return (path, vcs[0], vcs[1])  # already detected vcs base and command  # line 458
+        sos = path  # line 459
+        while True:  # continue search for VCS base  # line 460
+            contents = set(os.listdir(path))  # line 461
+            vcss = [executable for folder, executable in vcsFolders.items() if folder in contents]  # determine VCS type  # line 462
+            choice = None  # line 463
+            if len(vcss) > 1:  # line 464
+                choice = SVN if SVN in vcss else vcss[0]  # line 465
+                warn("Detected more than one parallel VCS checkouts %r. Falling back to '%s'" % (vcss, choice))  # line 466
+            elif len(vcss) > 0:  # line 467
+                choice = vcss[0]  # line 467
+            if choice:  # line 468
+                return (sos, path, choice)  # line 468
+            new = os.path.dirname(path)  # get parent path  # line 469
+            if new == path:  # no VCS folder found  # line 470
+                return (sos, None, None)  # no VCS folder found  # line 470
+            path = new  # line 471
+    return (None, vcs[0], vcs[1])  # line 472
 
-def tokenizeGlobPattern(pattern: 'str') -> 'List[GlobBlock]':  # line 470
-    index = 0  # type: int  # line 471
-    out = []  # type: List[GlobBlock]  # literal = True, first index  # line 472
-    while index < len(pattern):  # line 473
-        if pattern[index:index + 3] in ("[?]", "[*]", "[[]", "[]]"):  # line 474
-            out.append(GlobBlock(False, pattern[index:index + 3], index))  # line 474
-            continue  # line 474
-        if pattern[index] in "*?":  # line 475
-            count = 1  # type: int  # line 476
-            while index + count < len(pattern) and pattern[index] == "?" and pattern[index + count] == "?":  # line 477
-                count += 1  # line 477
-            out.append(GlobBlock(False, pattern[index:index + count], index))  # line 478
-            index += count  # line 478
+def tokenizeGlobPattern(pattern: 'str') -> 'List[GlobBlock]':  # line 474
+    index = 0  # type: int  # line 475
+    out = []  # type: List[GlobBlock]  # literal = True, first index  # line 476
+    while index < len(pattern):  # line 477
+        if pattern[index:index + 3] in ("[?]", "[*]", "[[]", "[]]"):  # line 478
+            out.append(GlobBlock(False, pattern[index:index + 3], index))  # line 478
             continue  # line 478
-        if pattern[index:index + 2] == "[!":  # line 479
-            out.append(GlobBlock(False, pattern[index:pattern.index("]", index + 2) + 1], index))  # line 479
-            index += len(out[-1][1])  # line 479
-            continue  # line 479
-        count = 1  # line 480
-        while index + count < len(pattern) and pattern[index + count] not in "*?[":  # line 481
-            count += 1  # line 481
-        out.append(GlobBlock(True, pattern[index:index + count], index))  # line 482
-        index += count  # line 482
-    return out  # line 483
+        if pattern[index] in "*?":  # line 479
+            count = 1  # type: int  # line 480
+            while index + count < len(pattern) and pattern[index] == "?" and pattern[index + count] == "?":  # line 481
+                count += 1  # line 481
+            out.append(GlobBlock(False, pattern[index:index + count], index))  # line 482
+            index += count  # line 482
+            continue  # line 482
+        if pattern[index:index + 2] == "[!":  # line 483
+            out.append(GlobBlock(False, pattern[index:pattern.index("]", index + 2) + 1], index))  # line 483
+            index += len(out[-1][1])  # line 483
+            continue  # line 483
+        count = 1  # line 484
+        while index + count < len(pattern) and pattern[index + count] not in "*?[":  # line 485
+            count += 1  # line 485
+        out.append(GlobBlock(True, pattern[index:index + count], index))  # line 486
+        index += count  # line 486
+    return out  # line 487
 
-def tokenizeGlobPatterns(oldPattern: 'str', newPattern: 'str') -> 'Tuple[_coconut.typing.Sequence[GlobBlock], _coconut.typing.Sequence[GlobBlock]]':  # line 485
-    ot = tokenizeGlobPattern(oldPattern)  # type: List[GlobBlock]  # line 486
-    nt = tokenizeGlobPattern(newPattern)  # type: List[GlobBlock]  # line 487
+def tokenizeGlobPatterns(oldPattern: 'str', newPattern: 'str') -> 'Tuple[_coconut.typing.Sequence[GlobBlock], _coconut.typing.Sequence[GlobBlock]]':  # line 489
+    ot = tokenizeGlobPattern(oldPattern)  # type: List[GlobBlock]  # line 490
+    nt = tokenizeGlobPattern(newPattern)  # type: List[GlobBlock]  # line 491
 #  if len(ot) != len(nt): Exit("Source and target patterns can't be translated due to differing number of parsed glob markers and literal strings")
-    if len([o for o in ot if not o.isLiteral]) < len([n for n in nt if not n.isLiteral]):  # line 489
-        Exit("Source and target file patterns contain differing number of glob markers and can't be translated")  # line 489
-    if any((O.content != N.content for O, N in zip([o for o in ot if not o.isLiteral], [n for n in nt if not n.isLiteral]))):  # line 490
-        Exit("Source and target file patterns differ in semantics")  # line 490
-    return (ot, nt)  # line 491
+    if len([o for o in ot if not o.isLiteral]) < len([n for n in nt if not n.isLiteral]):  # line 493
+        Exit("Source and target file patterns contain differing number of glob markers and can't be translated")  # line 493
+    if any((O.content != N.content for O, N in zip([o for o in ot if not o.isLiteral], [n for n in nt if not n.isLiteral]))):  # line 494
+        Exit("Source and target file patterns differ in semantics")  # line 494
+    return (ot, nt)  # line 495
 
-def convertGlobFiles(filenames: '_coconut.typing.Sequence[str]', oldPattern: '_coconut.typing.Sequence[GlobBlock]', newPattern: '_coconut.typing.Sequence[GlobBlock]') -> '_coconut.typing.Sequence[Tuple[str, str]]':  # line 493
-    ''' Converts given filename according to specified file patterns. No support for adjacent glob markers currently. '''  # line 494
-    pairs = []  # type: List[Tuple[str, str]]  # line 495
-    for filename in filenames:  # line 496
-        literals = [l for l in oldPattern if l.isLiteral]  # type: List[GlobBlock]  # source literals  # line 497
-        nextliteral = 0  # type: int  # line 498
-        index = 0  # type: int  # line 498
-        parsedOld = []  # type: List[GlobBlock2]  # line 499
-        for part in oldPattern:  # match everything in the old filename  # line 500
-            if part.isLiteral:  # line 501
-                parsedOld.append(GlobBlock2(True, part.content, part.content))  # line 501
-                index += len(part.content)  # line 501
-                nextliteral += 1  # line 501
-            elif part.content.startswith("?"):  # line 502
-                parsedOld.append(GlobBlock2(False, part.content, filename[index:index + len(part.content)]))  # line 502
-                index += len(part.content)  # line 502
-            elif part.content.startswith("["):  # line 503
-                parsedOld.append(GlobBlock2(False, part.content, filename[index]))  # line 503
-                index += 1  # line 503
-            elif part.content == "*":  # line 504
-                if nextliteral >= len(literals):  # line 505
-                    parsedOld.append(GlobBlock2(False, part.content, filename[index:]))  # line 505
-                    break  # line 505
-                nxt = filename.index(literals[nextliteral].content, index)  # type: int  # also matches empty string  # line 506
-                parsedOld.append(GlobBlock2(False, part.content, filename[index:nxt]))  # line 507
-                index = nxt  # line 507
-            else:  # line 508
-                Exit("Invalid file pattern specified for move/rename")  # line 508
-        globs = [g for g in parsedOld if not g.isLiteral]  # type: List[GlobBlock2]  # line 509
-        literals = [l for l in newPattern if l.isLiteral]  # target literals  # line 510
-        nextliteral = 0  # line 511
-        nextglob = 0  # type: int  # line 511
-        outname = []  # type: List[str]  # line 512
-        for part in newPattern:  # generate new filename  # line 513
-            if part.isLiteral:  # line 514
-                outname.append(literals[nextliteral].content)  # line 514
-                nextliteral += 1  # line 514
-            else:  # line 515
-                outname.append(globs[nextglob].matches)  # line 515
-                nextglob += 1  # line 515
-        pairs.append((filename, "".join(outname)))  # line 516
-    return pairs  # line 517
+def convertGlobFiles(filenames: '_coconut.typing.Sequence[str]', oldPattern: '_coconut.typing.Sequence[GlobBlock]', newPattern: '_coconut.typing.Sequence[GlobBlock]') -> '_coconut.typing.Sequence[Tuple[str, str]]':  # line 497
+    ''' Converts given filename according to specified file patterns. No support for adjacent glob markers currently. '''  # line 498
+    pairs = []  # type: List[Tuple[str, str]]  # line 499
+    for filename in filenames:  # line 500
+        literals = [l for l in oldPattern if l.isLiteral]  # type: List[GlobBlock]  # source literals  # line 501
+        nextliteral = 0  # type: int  # line 502
+        index = 0  # type: int  # line 502
+        parsedOld = []  # type: List[GlobBlock2]  # line 503
+        for part in oldPattern:  # match everything in the old filename  # line 504
+            if part.isLiteral:  # line 505
+                parsedOld.append(GlobBlock2(True, part.content, part.content))  # line 505
+                index += len(part.content)  # line 505
+                nextliteral += 1  # line 505
+            elif part.content.startswith("?"):  # line 506
+                parsedOld.append(GlobBlock2(False, part.content, filename[index:index + len(part.content)]))  # line 506
+                index += len(part.content)  # line 506
+            elif part.content.startswith("["):  # line 507
+                parsedOld.append(GlobBlock2(False, part.content, filename[index]))  # line 507
+                index += 1  # line 507
+            elif part.content == "*":  # line 508
+                if nextliteral >= len(literals):  # line 509
+                    parsedOld.append(GlobBlock2(False, part.content, filename[index:]))  # line 509
+                    break  # line 509
+                nxt = filename.index(literals[nextliteral].content, index)  # type: int  # also matches empty string  # line 510
+                parsedOld.append(GlobBlock2(False, part.content, filename[index:nxt]))  # line 511
+                index = nxt  # line 511
+            else:  # line 512
+                Exit("Invalid file pattern specified for move/rename")  # line 512
+        globs = [g for g in parsedOld if not g.isLiteral]  # type: List[GlobBlock2]  # line 513
+        literals = [l for l in newPattern if l.isLiteral]  # target literals  # line 514
+        nextliteral = 0  # line 515
+        nextglob = 0  # type: int  # line 515
+        outname = []  # type: List[str]  # line 516
+        for part in newPattern:  # generate new filename  # line 517
+            if part.isLiteral:  # line 518
+                outname.append(literals[nextliteral].content)  # line 518
+                nextliteral += 1  # line 518
+            else:  # line 519
+                outname.append(globs[nextglob].matches)  # line 519
+                nextglob += 1  # line 519
+        pairs.append((filename, "".join(outname)))  # line 520
+    return pairs  # line 521
 
-@_coconut_tco  # line 519
-def reorderRenameActions(actions: '_coconut.typing.Sequence[Tuple[str, str]]', exitOnConflict: 'bool'=True) -> '_coconut.typing.Sequence[Tuple[str, str]]':  # line 519
+@_coconut_tco  # line 523
+def reorderRenameActions(actions: '_coconut.typing.Sequence[Tuple[str, str]]', exitOnConflict: 'bool'=True) -> '_coconut.typing.Sequence[Tuple[str, str]]':  # line 523
     ''' Attempt to put all rename actions into an order that avoids target == source names.
       Note, that it's currently not really possible to specify patterns that make this work (swapping "*" elements with a reference).
       An alternative would be to always have one (or all) files renamed to a temporary name before renaming to target filename.
-  '''  # line 523
-    if not actions:  # line 524
-        return []  # line 524
-    sources = None  # type: List[str]  # line 525
-    targets = None  # type: List[str]  # line 525
-    sources, targets = [list(l) for l in zip(*actions)]  # line 526
-    last = len(actions)  # type: int  # line 527
-    while last > 1:  # line 528
-        clean = True  # type: bool  # line 529
-        for i in range(1, last):  # line 530
-            try:  # line 531
-                index = targets[:i].index(sources[i])  # type: int  # line 532
-                sources.insert(index, sources.pop(i))  # bubble up the action right before conflict  # line 533
-                targets.insert(index, targets.pop(i))  # line 534
-                clean = False  # line 535
-            except:  # target not found in sources: good!  # line 536
-                continue  # target not found in sources: good!  # line 536
-        if clean:  # line 537
-            break  # line 537
-        last -= 1  # we know that the last entry in the list has the least conflicts, so we can disregard it in the next iteration  # line 538
-    if exitOnConflict:  # line 539
-        for i in range(1, len(actions)):  # line 539
-            if sources[i] in targets[:i]:  # line 539
-                Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))  # line 539
-    return _coconut_tail_call(list, zip(sources, targets))  # convert to list to avoid generators  # line 540
+  '''  # line 527
+    if not actions:  # line 528
+        return []  # line 528
+    sources = None  # type: List[str]  # line 529
+    targets = None  # type: List[str]  # line 529
+    sources, targets = [list(l) for l in zip(*actions)]  # line 530
+    last = len(actions)  # type: int  # line 531
+    while last > 1:  # line 532
+        clean = True  # type: bool  # line 533
+        for i in range(1, last):  # line 534
+            try:  # line 535
+                index = targets[:i].index(sources[i])  # type: int  # line 536
+                sources.insert(index, sources.pop(i))  # bubble up the action right before conflict  # line 537
+                targets.insert(index, targets.pop(i))  # line 538
+                clean = False  # line 539
+            except:  # target not found in sources: good!  # line 540
+                continue  # target not found in sources: good!  # line 540
+        if clean:  # line 541
+            break  # line 541
+        last -= 1  # we know that the last entry in the list has the least conflicts, so we can disregard it in the next iteration  # line 542
+    if exitOnConflict:  # line 543
+        for i in range(1, len(actions)):  # line 543
+            if sources[i] in targets[:i]:  # line 543
+                Exit("There is no order of renaming actions that avoids copying over not-yet renamed files: '%s' is contained in matching source filenames" % (targets[i]))  # line 543
+    return _coconut_tail_call(list, zip(sources, targets))  # convert to list to avoid generators  # line 544
 
-def relativize(root: 'str', filepath: 'str') -> 'Tuple[str, str]':  # line 542
-    ''' Determine OS-independent relative folder path, and relative pattern path. Always expects a file and determines its folder's relative path. '''  # line 543
-    relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)  # line 544
-    return relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)  # line 545
+def relativize(root: 'str', filepath: 'str') -> 'Tuple[str, str]':  # line 546
+    ''' Determine OS-independent relative folder path, and relative pattern path. Always expects a file and determines its folder's relative path. '''  # line 547
+    relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)  # line 548
+    return relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)  # line 549
 
-def parseOnlyOptions(cwd: 'str', options: 'List[str]') -> 'Tuple[_coconut.typing.Optional[FrozenSet[str]], _coconut.typing.Optional[FrozenSet[str]]]':  # line 547
-    ''' Returns (root-normalized) set of --only arguments, and set or --except arguments. '''  # line 548
-    root = os.getcwd()  # type: str  # line 549
-    onlys = []  # type: List[str]  # zero necessary as last start position  # line 550
-    excps = []  # type: List[str]  # zero necessary as last start position  # line 550
-    index = 0  # type: int  # zero necessary as last start position  # line 550
-    while True:  # line 551
-        try:  # line 552
-            index = 1 + listindex(options, "--only", index)  # line 553
-            onlys.append(options[index])  # line 554
-            del options[index]  # line 555
-            del options[index - 1]  # line 556
-        except:  # line 557
-            break  # line 557
-    index = 0  # line 558
-    while True:  # line 559
-        try:  # line 560
-            index = 1 + listindex(options, "--except", index)  # line 561
-            excps.append(options[index])  # line 562
-            del options[index]  # line 563
-            del options[index - 1]  # line 564
-        except:  # line 565
-            break  # line 565
-    return (frozenset((oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(".." + SLASH))) if onlys else None, frozenset((ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(".." + SLASH))) if excps else None)  # avoids out-of-repo paths  # line 566
+def parseOnlyOptions(cwd: 'str', options: 'List[str]') -> 'Tuple[_coconut.typing.Optional[FrozenSet[str]], _coconut.typing.Optional[FrozenSet[str]]]':  # line 551
+    ''' Returns (root-normalized) set of --only arguments, and set or --except arguments. '''  # line 552
+    root = os.getcwd()  # type: str  # line 553
+    onlys = []  # type: List[str]  # zero necessary as last start position  # line 554
+    excps = []  # type: List[str]  # zero necessary as last start position  # line 554
+    index = 0  # type: int  # zero necessary as last start position  # line 554
+    while True:  # line 555
+        try:  # line 556
+            index = 1 + listindex(options, "--only", index)  # line 557
+            onlys.append(options[index])  # line 558
+            del options[index]  # line 559
+            del options[index - 1]  # line 560
+        except:  # line 561
+            break  # line 561
+    index = 0  # line 562
+    while True:  # line 563
+        try:  # line 564
+            index = 1 + listindex(options, "--except", index)  # line 565
+            excps.append(options[index])  # line 566
+            del options[index]  # line 567
+            del options[index - 1]  # line 568
+        except:  # line 569
+            break  # line 569
+    return (frozenset((oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(".." + SLASH))) if onlys else None, frozenset((ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(".." + SLASH))) if excps else None)  # avoids out-of-repo paths  # line 570
