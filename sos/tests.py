@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xa6eda000
+# __coconut_hash__ = 0x809ec525
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -306,8 +306,8 @@ class Tests(unittest.TestCase):  # line 98
         _.assertIn("MOV ./file2  <-  sub/file2", out)  # line 225
         _.assertIn("MOV sub/file1  <-  ./file1", out)  # line 226
         out = wrapChannels(lambda _=None: sos.changes(options=["--relative"], cwd="sub"))  # line 227
-        _.assertIn("MOV ../file2  <-  file2", out)  # no ./ for relative OS-specific paths  # line 228
-        _.assertIn("MOV file1  <-  ../file1", out)  # line 229
+        _.assertIn("MOV ..%sfile2  <-  file2" % os.sep, out)  # no ./ for relative OS-specific paths  # line 228
+        _.assertIn("MOV file1  <-  ..%sfile1" % os.sep, out)  # line 229
         out = wrapChannels(lambda _=None: sos.commit())  # line 230
         _.assertIn("MOV ./file2  <-  sub/file2", out)  # line 231
         _.assertIn("MOV sub/file1  <-  ./file1", out)  # line 232

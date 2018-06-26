@@ -225,8 +225,8 @@ class Tests(unittest.TestCase):
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
     out = wrapChannels(-> sos.changes(options = ["--relative"], cwd = "sub"))
-    _.assertIn("MOV ../file2  <-  file2", out)  # no ./ for relative OS-specific paths
-    _.assertIn("MOV file1  <-  ../file1", out)
+    _.assertIn("MOV ..%sfile2  <-  file2" % os.sep, out)  # no ./ for relative OS-specific paths
+    _.assertIn("MOV file1  <-  ..%sfile1" % os.sep, out)
     out = wrapChannels(-> sos.commit())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
