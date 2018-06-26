@@ -514,11 +514,11 @@ class Tests(unittest.TestCase):
     _.assertNotIn("File tree is unchanged", out)
     _.assertIn("  * b0   'test'", out)
     _.assertIn("    b1 'second'", out)
-    _.assertIn("(modified)", out)  # one branch has commits
-    _.assertIn("(in sync)", out)  # the other doesn't
+    _.assertIn("modified)", out)  # one branch has commits
+    _.assertIn("in sync)", out)  # the other doesn't
     sos.defaults["useChangesCommand"] = False  # because sos.main() is never called
     out = wrapChannels(-> sos.status()).replace("\r", "")  # trigger repo info
-    _.assertAllIn(["Metadata format", "Content checking:    deactivated", "Data compression:    deactivated", "Repository mode:     simple", "Number of branches:  2"], out)
+    _.assertAllIn(["Metadata format", "Content checking:    %sdeactivated" % sos.Fore.BLUE, "Data compression:    %sdeactivated" % sos.Fore.BLUE, "Repository mode:     %ssimple" % sos.Fore.GREEN, "Number of branches:  2"], out)
     sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
     _.createFile(4, "xy")  # generate a file
     sos.switch("second", ["--force"])  # avoids warning on uncommited changes, but keeps file4

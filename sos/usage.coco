@@ -5,13 +5,17 @@ try: import sos.version as version
 except: import version
 try: from pyfiglet import Figlet
 except: Figlet = None  # optional dependency
+MARKER:str
+try:
+  from colorama import Fore
+  MARKER = "/%sS%sO%sS%s/ " % (Fore.GREEN, Fore.BLUE, Fore.RED, Fore.RESET)
+except: MARKER = r"/SOS/ "
 
 # Constants
 APP:str = "Subversion Offline Solution"
 APPNAME:str = APP + " V%s (C) Arne Bachmann" % version.__release_version__
 VERSION:str = version.__version__
 COMMAND:str = "sos"
-MARKER:str = r"/SOS/ "
 del version  # unload module
 
 

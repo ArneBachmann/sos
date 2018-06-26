@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x2ebc6185
+# __coconut_hash__ = 0x632a9f67
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -107,15 +107,18 @@ class Accessor(dict):  # line 40
         except:  # line 48
             dict.__setattribute__(_, name, value)  # line 48
 
-try:  # line 50
-    from colorama import init  # line 51
-    from colorama import AnsiToWin32  # line 51
-    from colorama import Fore  # line 51
-    init(wrap=False)  # line 52
-    sys.stdout = AnsiToWin32(sys.stdout).stream  # wrap the color conversion manually  # line 53
-    sys.stderr = AnsiToWin32(sys.stderr).stream  # line 54
-except:  # line 55
-    Fore = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]})  # type: Dict[str, str]  # line 56
+Fore = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]})  # type: Dict[str, str]  # line 50
+try:  # http://bluesock.org/~willkg/dev/ansi.html  # line 51
+    if hasattr(sys.stderr, "isatty") and sys.stderr.isatty():  # http://bluesock.org/~willkg/dev/ansi.html  # line 51
+        from colorama import init  # line 52
+        from colorama import AnsiToWin32  # line 52
+        from colorama import Back  # line 52
+        from colorama import Fore  # line 52
+        init(wrap=False)  # line 53
+        sys.stdout = AnsiToWin32(sys.stdout).stream  # wrap the color conversion manually  # line 54
+        sys.stderr = AnsiToWin32(sys.stderr).stream  # line 55
+except:  # line 56
+    pass  # line 56
 
 if TYPE_CHECKING:  # available since coconut 1.3.1.21 (?)  # line 58
     Number = TypeVar("Number", int, float)  # line 59
