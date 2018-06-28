@@ -9,8 +9,8 @@ MARKER:str = r"/SOS/ "
 try:
   from colorama import Fore
   MARKER_COLOR = Fore.WHITE + MARKER + Fore.RESET
-except: pass
-if sys.platform != "win32": MARKER = MARKER_COLOR
+  if sys.platform != "win32": MARKER = MARKER_COLOR  # override to use color even for log message on *n*x
+except: MARKER_COLOR = MARKER  # if library not installed, use fallback
 
 # Constants
 APP:str = "Subversion Offline Solution"

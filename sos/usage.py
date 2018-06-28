@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x64a3785b
+# __coconut_hash__ = 0x2b94a675
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -36,10 +36,10 @@ MARKER = r"/SOS/ "  # type: str  # line 8
 try:  # line 9
     from colorama import Fore  # line 10
     MARKER_COLOR = Fore.WHITE + MARKER + Fore.RESET  # line 11
-except:  # line 12
-    pass  # line 12
-if sys.platform != "win32":  # line 13
-    MARKER = MARKER_COLOR  # line 13
+    if sys.platform != "win32":  # override to use color even for log message on *n*x  # line 12
+        MARKER = MARKER_COLOR  # override to use color even for log message on *n*x  # line 12
+except:  # if library not installed, use fallback  # line 13
+    MARKER_COLOR = MARKER  # if library not installed, use fallback  # line 13
 
 # Constants
 APP = "Subversion Offline Solution"  # type: str  # line 16
