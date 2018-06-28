@@ -337,10 +337,13 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
     None: "Enable logging of internal details (intended for developers only)"
   },
   "only <tracked pattern>": {
-    None: """Restrict operation to specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update" """
+    None: """Restrict operation to specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update". Use --only several times to include more file patterns"""
   },
   "except <tracked pattern>": {
-    None: """Avoid operation for specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update" """
+    None: """Avoid operation for specified already tracked tracking pattern(s)  . Available for commands "changes", "commit", "diff", "switch", and "update". Use --except several times to exclude more file patterns"""
+  },
+  "remote <file system path>": {
+    "offline": """Add a secondary storage locations that replicates all repository metadata operations (use --remote several times for more remote locations)"""
   },
   "patterns": {
     "ls": "Only show tracking patterns"

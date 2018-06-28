@@ -28,9 +28,9 @@
 
 
 ## Introduction ##
-<img src="https://github.com/ArneBachmann/sos/raw/master/logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution:
+<img src="https://github.com/ArneBachmann/sos/raw/master/logo-small.png" alt="SOS logo" style="float:left; vertical-align:text-top; margin-right:1em; " /> If you (**love**, or simply **have to**) work with the SVN VCS, but **need** (or **lack**) the flexibility of committing and branching files offline (without a permanent network connection) similar to how *Git* is able to, SOS is your straight-forward and super simple command-line SCM solution.
 
-SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS commands, *b)* as an offline extension of those VCSs that either don't support offline branching and committing or are too complex, and *c)* as a standalone VCS.
+SOS allows performing offline operations *a)* as a drop-in replacement for `svn` and other VCS, *b)* as an offline extension of those VCSs that either don't support offline branching and committing or are too complex, and *c)* as a standalone VCS.
 You may run `sos offline` not only inside a SVN checkout, but in any (and also multiple, even nested) folders of your file system, even outside of VCS repository checkouts/clones.
 
 [SOS](https://arnebachmann.github.io/sos/) thus augments [SVN](http://subversion.apache.org) with offline operation and serves the same need as [SVK](https://www.perl.com/pub/2004/03/03/svk.html/), [RCS](http://www.gnu.org/software/rcs/), [CVS](https://savannah.nongnu.org/projects/cvs), [Git](https://git-scm.com), [gitless](http://gitless.com), [monotone](http://www.monotone.ca), [darcs](http://darcs.net), [Bazaar](http://bazaar.canonical.com/en/), [Mercurial](https://www.mercurial-scm.org), and [Fossil](http://www.fossil-scm.org).
@@ -63,7 +63,16 @@ SOS supports three different file handling models that you may use to your likin
 
 ## Latest Changes ##
 - **Version 1.7**, not yet released:
-    - [Feature]() Experimental support for remote (backup) storage. This feature allows replicating all commits in a secondary repository path. To enable this feature, put a copy of your repository metadata folder (`.sos`) somewhere else, and put the containing folder into the `remotes` list in `.sos/.meta`
+    Hint: The fast branching features is still experimental.
+
+    - [Feature 265](https://github.com/ArneBachmann/sos/issues/265) Experimental support for remote (secondary, backup) storage. This feature allows replicating all commits into (passive) secondary repository location. To enable this feature, either go offline with one or more additional `--remote <path>` arguments, or manually put a copy of your repository metadata folder (`.sos`) somewhere else, and put the containing folder into the `remotes` list in the `.sos/.meta` file of your primary repository
+    - [Feature 256](https://github.com/ArneBachmann/sos/issues/256) Added colorful console output, including `diff`, `changes`, `status` and `log` comands
+    - [Feature 238, 262, 264](https://github.com/ArneBachmann/sos/issues/262) Optional relative path output
+    - [Enhancement 249](https://github.com/ArneBachmann/sos/issues/249) Internal performance refactoring
+    - [Enhancement 193](https://github.com/ArneBachmann/sos/issues/193) Adding processed file numbers in status messages
+    - [Enhancement 225](https://github.com/ArneBachmann/sos/issues/225) Adding overall commit size in status messages
+    - [Enhancement 239](https://github.com/ArneBachmann/sos/issues/239) Showing progress bar during log traversal
+    - [Enhancement 234](https://github.com/ArneBachmann/sos/issues/234) Better move detection heuristic in case of multiple equal files
 - **Version 1.6**, released on 2018-05-14:
     - [Feature 77](https://github.com/ArneBachmann/sos/issues/77) Feature to commit branches to underlying VCS
     - [Feature 127, 218](https://github.com/ArneBachmann/sos/issues/127) Implement much better help system
