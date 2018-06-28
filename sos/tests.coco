@@ -13,7 +13,8 @@ except: pass
 try: from unittest import mock  # Python 3
 except: import mock  # installed via pip
 
-testFolder = os.path.abspath(os.path.join(os.getcwd(), "test"))  # this needs to be set before the configr and sos imports
+testFolder = os.path.abspath(os.path.join(os.getcwd(), "test", "repo"))  # this needs to be set before the configr and sos imports TODO explain why
+rmteFolder = os.path.abspath(os.path.join(os.getcwd(), "test", "remote"))
 os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
 
 import configr
@@ -85,7 +86,7 @@ def mockInput(datas:str[], func: -> Any) -> Any:
   except:  # via setup.py
     with mock.patch("sos.utility.input", side_effect = datas): return func()
 
-def setRepoFlag(name:str, value:bool):
+def setRepoFlag(name:str, value:Any):
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
   flags[name] = value
   with open(sos.metaFolder + os.sep + sos.metaFile, "w") as fd: fd.write(json.dumps((flags, branches, config)))
@@ -100,12 +101,12 @@ class Tests(unittest.TestCase):
 
   def setUp(_):
     sos.Metadata.singleton = None
-    for entry in os.listdir(testFolder):  # cannot remove testFolder on Windows when using TortoiseSVN as VCS
-      resource = os.path.join(testFolder, entry)
+    for entry in os.listdir(testFolder):  # cannot reliably remove testFolder on Windows when using TortoiseSVN as VCS
+      resource:str = os.path.join(testFolder, entry)
       shutil.rmtree(sos.encode(resource)) if os.path.isdir(sos.encode(resource)) else os.unlink(sos.encode(resource))
     os.chdir(testFolder)
 
-
+  # Assertion helpers
   def assertAllIn(_, what:str[], where:Union[str,List[str]], only:bool = False):
     for w in what: _.assertIn(w, where)
     if only: _.assertEqual(len(what), len(where))
@@ -121,6 +122,7 @@ class Tests(unittest.TestCase):
   def assertNotInAny(_, what:str, where:str[]): _.assertFalse(any(what in w for w in where))
 
 
+  # More helpers
   def createFile(_, number:Union[int,str], contents:str = "x" * 10, prefix:str? = None):
     if prefix and not os.path.exists(prefix): os.makedirs(prefix)
     with open(("." if prefix is None else prefix) + os.sep + (("file%d" % number) if isinstance(number, int) else number), "wb") as fd: fd.write(contents if isinstance(contents, bytes) else contents.encode("cp1252"))
@@ -132,6 +134,18 @@ class Tests(unittest.TestCase):
     if expectedContents is None: return True
     with open(("." + os.sep + "file%d" % number) if isinstance(number, int) else number, "rb") as fd: return fd.read() == expectedContents
 
+  def remoteIsSame(_):
+    sync()
+    for dirpath, dirnames, filenames in os.walk(os.path.join(testFolder, sos.metaFolder)):
+      rmtePath:str = os.path.normpath(os.path.join(rmteFolder, sos.metaFolder, os.path.relpath(dirpath, os.path.join(testFolder, sos.metaFolder))))
+      others:List[str] = os.listdir(rmtePath)
+      try: _.assertAllIn(dirnames, others);  _.assertAllIn(others, dirnames + filenames)
+      except AssertionError as E: raise AssertionError("Mismatch vs. remote: %r\n%r in %s" % (dirnames,  others, dirpath)) from None
+      try: _.assertAllIn(filenames, others); _.assertAllIn(others, dirnames + filenames)
+      except AssertionError as E: raise AssertionError("Mismatch vs. remote: %r\n% in %sr" % (filenames, others, dirpath)) from None
+
+
+  # Uni tests
   def testAccessor(_):
     a = sos.Accessor({"a": 1})
     _.assertEqual((1, 1), (a["a"], a.a))
@@ -230,7 +244,7 @@ class Tests(unittest.TestCase):
     out = wrapChannels(-> sos.commit())
     _.assertIn("MOV ./file2  <-  sub/file2", out)
     _.assertIn("MOV sub/file1  <-  ./file1", out)
-    _.assertIn("Created new revision r01 (+00/-00/~00/#02) summing 628 bytes in 2 files (88.22% SOS overhead)", out)  # TODO why is this not captured?
+    _.assertAllIn(["Created new revision r01", "summing 628 bytes in 2 files (88.22% SOS overhead)"], out)  # TODO why is this not captured?
 
   def testPatternPaths(_):
     sos.offline(options = ["--track"])
@@ -268,12 +282,12 @@ class Tests(unittest.TestCase):
     _.assertAllIn([sos.metaFile, sos.metaBack, "b0", "b1"], os.listdir(sos.metaFolder), only = True)
     _.createFile(3)
     sos.commit()  # b1/r2 = ./file2, ./file3
-    _.assertAllIn([sos.metaFile, "r2"], os.listdir(sos.branchFolder(1)), only = True)
+    _.assertAllIn([sos.metaFile, sos.metaBack, "r2"], os.listdir(sos.branchFolder(1)), only = True)
     sos.branch(options = ["--fast", "--last"])  # branch b2 from b1/2
     sos.destroy("0")  # remove parent of b1 and transitive parent of b2
     _.assertAllIn([sos.metaFile, sos.metaBack, "b0_last", "b1", "b2"], os.listdir(sos.metaFolder), only = True)  # branch 0 was removed
-    _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(1)), only = True)  # all revisions before branch point were copied to branch 1
-    _.assertAllIn([sos.metaFile, "r0", "r1", "r2"], os.listdir(sos.branchFolder(2)), only = True)
+    _.assertAllIn([sos.metaFile, sos.metaBack, "r0", "r1", "r2"], os.listdir(sos.branchFolder(1)), only = True)  # all revisions before branch point were copied to branch 1
+    _.assertAllIn([sos.metaFile, sos.metaBack, "r0", "r1", "r2"], os.listdir(sos.branchFolder(2)), only = True)
     # TODO test also other functions like status --repo, log
 
   def testModificationWithOldRevisionRecognition(_):
@@ -495,11 +509,13 @@ class Tests(unittest.TestCase):
     _.assertIn("TAG tag", out)
 
   def testSwitch(_):
+    try: shutil.rmtree(os.path.join(rmteFolder, sos.metaFolder))
+    except: pass
     _.createFile(1, "x" * 100)
     _.createFile(2, "y")
-    sos.offline("test")  # file1-2  in initial branch commit
+    sos.offline("test", remotes = [rmteFolder])  # file1-2  in initial branch commit
     sos.branch("second")  # file1-2  switch, having same files
-    sos.switch("0")  # no change  switch back, no problem
+    sos.switch("0")  # no change, switch back, no problem
     sos.switch("second")  # no change  # switch back, no problem
     _.createFile(3, "y")  # generate a file
     try: sos.switch("test"); _.fail()  # uncommited changes detected
@@ -539,6 +555,7 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["Creating backup"], out)
     _.assertIn("Dumping revisions", out)
     sos.verbose.pop()
+    _.remoteIsSame()
 
   def testAutoDetectVCS(_):
     os.mkdir(".git")
@@ -1010,7 +1027,7 @@ class Tests(unittest.TestCase):
     _.assertNotIn("ADD ./b.2", out)
 
   def testOnly(_):
-    _.assertEqual((f{"./A", "x/B"}, f{"./C"}), sos.parseOnlyOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--only"]))
+    _.assertEqual((f{"./A", "x/B"}, f{"./C"}, ["bla"]), sos.parseArgumentOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--remote", "bla", "--only"]))
     _.assertEqual(f{"B"}, sos.conditionalIntersection(f{"A", "B", "C"}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(f{}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(None, f{"B", "D"}))

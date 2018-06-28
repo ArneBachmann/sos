@@ -63,7 +63,7 @@ SOS supports three different file handling models that you may use to your likin
 
 ## Latest Changes ##
 - **Version 1.7**, not yet released:
-    - tbd
+    - [Feature]() Experimental support for remote (backup) storage. This feature allows replicating all commits in a secondary repository path. To enable this feature, put a copy of your repository metadata folder (`.sos`) somewhere else, and put the containing folder into the `remotes` list in `.sos/.meta`
 - **Version 1.6**, released on 2018-05-14:
     - [Feature 77](https://github.com/ArneBachmann/sos/issues/77) Feature to commit branches to underlying VCS
     - [Feature 127, 218](https://github.com/ArneBachmann/sos/issues/127) Implement much better help system

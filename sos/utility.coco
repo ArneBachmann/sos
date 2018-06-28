@@ -2,7 +2,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Utiliy functions
-import hashlib, logging, os, sys, time; START_TIME = time.time()  # early time tracking
+import hashlib, logging, os, shutil, sys, time; START_TIME = time.time()  # early time tracking
 
 try: from typing import Any, AnyStr, Dict, FrozenSet, Generic, IO, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass
@@ -47,12 +47,14 @@ class Accessor(dict):
     try: _[name] = value
     except: dict.__setattribute__(_, name, value)
 
-Fore:Dict[str,str] = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]})
+Fore:Dict[str,str] = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]}); Back:Dict[str,str] = Fore
+Style:Dict[str,str] = Accessor({k: "" for k in ["NORMAL", "BRIGHT", "RESET_ALL"]})
 try: if hasattr(sys.stderr, "isatty") and sys.stderr.isatty():  # http://bluesock.org/~willkg/dev/ansi.html
-  from colorama import init, AnsiToWin32, Back, Fore
+  from colorama import init, AnsiToWin32, Back, Fore, Style
   init(wrap = False)
   sys.stdout = AnsiToWin32(sys.stdout).stream  # wrap the color conversion manually
   sys.stderr = AnsiToWin32(sys.stderr).stream
+  if sys.platform == "win32": Style.BRIGHT = ""  # sadly this changes background color as well
 except: pass
 
 if TYPE_CHECKING:  # available since coconut 1.3.1.21 (?)
@@ -113,7 +115,7 @@ CHECKMARK_SYMBOL:str = "\u2714"
 PLUSMINUS_SYMBOL:str = "\u00b1"  # alternative for "~"
 ARROW_SYMBOL:str = "\u2799"  # alternative for "*" in "this revision"
 MOVE_SYMBOL:str = "\u21cc"  # alternative for "#". or use \U0001F5C0", which is very unlikely to be in any console font
-METADATA_FORMAT:int = 1  # counter for incompatible consecutive formats (was undefined, "1" is the first versioned version after that)
+METADATA_FORMAT:int = 2  # counter for (partially incompatible) consecutive formats (was undefined, "1" is the first numbered format version after that)
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs", "_darcs": "darcs", "_MTN": "monotone", ".git/GL_COMMIT_EDIT_MSG": "gl"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None, "darcs": None, "monotone": None}
 vcsCommits:Dict[str,Tuple[bool,str?]] = {SVN: (True, None), "git": (False, None), "bzr": (True, None), "hg": (True, None), "fossil": (True, "--no-warnings"), "cvs": (True, None), "darcs": (False, "--all"), "monotone": (False, None)}  # bool: tracked? (otherwise picky), str:arguments to "commit" TODO CVS, RCS have probably different per-file operation
@@ -196,7 +198,7 @@ def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.pat
 def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None) -> str = os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")
 
 def Exit(message:str = "", code = 1): printe("[%sEXIT%s%s%s]" % (
-    Fore.RED if code else Fore.GREEN,
+    Fore.YELLOW if code else Fore.GREEN,
     Fore.RESET,
     " %.1fs" % (time.time() - START_TIME) if verbose else "",
     (" " + message + "." if message != "" else ""))); sys.exit(code)
@@ -214,14 +216,14 @@ def exception(E):
   traceback.print_exc()
   traceback.print_stack()
 
-def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str) -> None] = None, symbols:str = PROGRESS_MARKER[0]) -> Tuple[str,int] =
-  ''' Calculate hash of file contents, and return compressed sized, if in write mode, or zero. '''
+def hashFile(path:str, compress:bool, saveTo:List[str] = [], callback:Optional[(str) -> None] = None, symbols:str = PROGRESS_MARKER[0]) -> Tuple[str,int] =
+  ''' Calculate and return (hash of file contents, compressed sized (if writing) else 0). '''
   indicator:ProgressIndicator? = ProgressIndicator(symbols, callback) if callback else None
   _hash = hashlib.sha256()
   wsize:int = 0
-  if saveTo and os.path.exists(encode(saveTo)):
+  if saveTo and os.path.exists(encode(saveTo[0])):
     Exit("Hash collision detected. Leaving repository in inconsistent state.", 1)  # HINT this exits immediately
-  to = openIt(saveTo, "w", compress) if saveTo else None
+  to = openIt(saveTo[0], "w", compress) if saveTo else None
   with open(encode(path), "rb") as fd:
     while True:
       buffer:bytes = fd.read(bufSize)
@@ -231,7 +233,8 @@ def hashFile(path:str, compress:bool, saveTo:str? = None, callback:Optional[(str
       if indicator: indicator.getIndicator()
     if to:
       to.close()
-      wsize = os.stat(encode(saveTo)).st_size
+      wsize = os.stat(encode(saveTo[0])).st_size
+      for remote in saveTo[1:]: shutil.copy2(encode(saveTo[0]), encode(remote))
   (_hash.hexdigest(), wsize)
 
 def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
@@ -548,24 +551,19 @@ def relativize(root:str, filepath:str) -> Tuple[str,str] =
   relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)
   relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)
 
-def parseOnlyOptions(cwd:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?] =
+def parseArgumentOptions(cwd:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?, List[str]] =
   ''' Returns (root-normalized) set of --only arguments, and set or --except arguments. '''
-  root:str = os.getcwd()
-  onlys:List[str] = []; excps:List[str] = []; index:int = 0  # zero necessary as last start position
-  while True:
-    try:
-      index = 1 + listindex(options, "--only", index)
-      onlys.append(options[index])
-      del options[index]
-      del options[index - 1]
-    except: break
-  index = 0
-  while True:
-    try:
-      index = 1 + listindex(options, "--except", index)
-      excps.append(options[index])
-      del options[index]
-      del options[index - 1]
-    except: break
+  root:str = os.getcwd(); index:int = 0  # zero necessary as marker for last start position
+  onlys:List[str] = []; excps:List[str] = []; remotes:List[str] = []
+  for key, container in [("--only", onlys), ("--except", excps), ("--remote", remotes)]:
+    while True:
+      try:
+        index = 1 + listindex(options, key, index)
+        container.append(options[index])
+        del options[index]
+        del options[index - 1]
+      except: break  # no more found
+    index = 0
   ( frozenset(oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(".." + SLASH)) if onlys else None,
-    frozenset(ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(".." + SLASH)) if excps else None )  # avoids out-of-repo paths
+    frozenset(ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(".." + SLASH)) if excps else None,  # avoids out-of-repo paths
+    remotes)

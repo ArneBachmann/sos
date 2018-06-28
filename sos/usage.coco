@@ -5,11 +5,12 @@ try: import sos.version as version
 except: import version
 try: from pyfiglet import Figlet
 except: Figlet = None  # optional dependency
-MARKER:str
+MARKER:str = r"/SOS/ "
 try:
   from colorama import Fore
-  MARKER = "/%sS%sO%sS%s/ " % (Fore.GREEN, Fore.BLUE, Fore.RED, Fore.RESET)
-except: MARKER = r"/SOS/ "
+  MARKER_COLOR = Fore.WHITE + MARKER + Fore.RESET
+except: pass
+if sys.platform != "win32": MARKER = MARKER_COLOR
 
 # Constants
 APP:str = "Subversion Offline Solution"
