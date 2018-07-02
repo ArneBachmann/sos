@@ -8,8 +8,11 @@ COMPATIBILITY_LEVEL = "3.4"
 
 readmeFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
 with open("RELEASE", "r") as fd: RELEASE = fd.read()
-if 'sdist' in sys.argv:  # increase version for release
+if 'release' in sys.argv:
   with open("RELEASE", "w") as fd: fd.write(".".join(RELEASE.split(".")[:2] + [str(int(RELEASE.split(".")[2]) + 1)]))
+  with open("RELEASE", "r") as fd: RELEASE = fd.read()
+  print("New revision is %s" % RELEASE)
+  sys.exit(0)
 
 if 'build' in sys.argv:
   if os.environ.get("CI", "False").lower() != "true":  # code only run locally, not on CI

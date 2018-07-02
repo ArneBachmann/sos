@@ -1,4 +1,4 @@
-# SOS v1.6.4 #
+# SOS v1.6.7 #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
@@ -211,7 +211,7 @@ Some of these options can be defined on a per-repository basis already during of
 - `sos config rm` removes a string entry from a list. Must be typed exactly as the entry to remove. To remove the list, use `sos unset <key>`
 - `sos config show` lists all defined configuration settings, including storage location/type (global, local, default)
 - `sos config show <parameter>` show only one configuration item
-- `sos config show flags|texts|lists` show supported settings per type
+- `sos config show flags|texts|lists` show supported configurations settings per type
 
 ### User Configuration and Defaults ###
 SOS uses the [`configr`](https://github.com/ArneBachmann/configr) library to manage per-user global defaults, e.g. for the `--strict` and `--track` flags that the `offline` command takes, but also for often-used file and folder exclusion patterns.
@@ -262,9 +262,9 @@ Ideas for future developments:
 
 
 ## Release Management ##
-- Increase version number in `setup.py`
-- Run `python3 setup.py clean build test` to update the PyPI version number, compile and test the code, and package it into an archive. If you need elevated rights to do so, use `sudo -E python...`.
+- Increase version number by running `python3 setup.py release`
+- Run `python3 setup.py clean build test` to update the PyPI version number, compile and test the code. If you need elevated rights to do so, use `sudo -E python...`.
 - Run `git add`, `git commit` and `git push` and let Travis CI and AppVeyor run the tests against different target platforms. If there were no problems, continue:
-- Don't forget to tag releases
 - Run `python3 setup.py sdist`
+- Don't forget to tag releases in the git history and on Github
 - Run `twine upload dist/*.tar.gz` to upload the previously created distribution archive to PyPI.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x87c8f593
+# __coconut_hash__ = 0x9d0a275f
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -44,6 +44,7 @@ try:  # line 7
         from typing import FrozenSet  # line 9
         from typing import List  # line 9
         from typing import Set  # line 9
+        from typing import Tuple  # line 9
         from typing import Union  # line 9
         mock = None  # type: Any  # to avoid mypy complaint  # line 10
 except:  # line 11
@@ -446,7 +447,7 @@ class Tests(unittest.TestCase):  # line 99
         _.createFile(2)  # line 342
         os.unlink("sub" + os.sep + "a")  # line 343
         os.rmdir("sub")  # line 344
-        changes = sos.changes()  # TODO replace by output check  # line 345
+        changes = sos.changes()  # TODO #254 replace by output check  # line 345
         _.assertEqual(1, len(changes.additions))  # line 346
         _.assertEqual(0, len(changes.modifications))  # line 347
         _.assertEqual(1, len(changes.deletions))  # line 348
@@ -504,7 +505,7 @@ class Tests(unittest.TestCase):  # line 99
         _.assertEqual((1, 3), m.parseRevisionString("3"))  # line 400
         _.assertEqual((2, 3), m.parseRevisionString("2/3"))  # line 401
         _.assertEqual((1, -1), m.parseRevisionString(None))  # line 402
-        _.assertEqual((1, -1), m.parseRevisionString(""))  # line 403
+        _.assertEqual((None, None), m.parseRevisionString(""))  # line 403
         _.assertEqual((2, -1), m.parseRevisionString("2/"))  # line 404
         _.assertEqual((1, -2), m.parseRevisionString("/-2"))  # line 405
         _.assertEqual((1, -1), m.parseRevisionString("/"))  # line 406
@@ -1243,10 +1244,10 @@ class Tests(unittest.TestCase):  # line 99
         changes = sos.changes(excps=_coconut.frozenset(("./file1",)))  # line 1047
         _.assertEqual(1, len(changes.modifications))  # only file2  # line 1048
         _.assertTrue("./file2" in changes.modifications)  # line 1049
-        _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(lambda _=None: sos.diff(onlys=_coconut.frozenset(("./file2",)))))  # line 1050
-        _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(lambda _=None: sos.diff(onlys=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 1051
-        _.assertIn("MOD ./file1", wrapChannels(lambda _=None: sos.diff(excps=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 1052
-        _.assertNotIn("MOD ./file2", wrapChannels(lambda _=None: sos.diff(excps=_coconut.frozenset(("./file2",)))))  # line 1053
+        _.assertAllIn(["DIF ./file2", "<No newline>"], wrapChannels(lambda _=None: sos.diff("/", onlys=_coconut.frozenset(("./file2",)))))  # line 1050
+        _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(lambda _=None: sos.diff("/", onlys=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 1051
+        _.assertIn("MOD ./file1", wrapChannels(lambda _=None: sos.diff("/", excps=_coconut.frozenset(("./file2",)))))  # MOD vs. DIF  # line 1052
+        _.assertNotIn("MOD ./file2", wrapChannels(lambda _=None: sos.diff("/", excps=_coconut.frozenset(("./file2",)))))  # line 1053
 
     def testDiff(_):  # line 1055
         try:  # manually mark this file as "textual"  # line 1056
@@ -1386,7 +1387,7 @@ class Tests(unittest.TestCase):  # line 99
     def testHashCollision(_):  # line 1181
         old = sos.Metadata.findChanges  # line 1182
         @_coconut_tco  # line 1183
-        def patched(_, branch: '_coconut.typing.Optional[int]'=None, revision: '_coconut.typing.Optional[int]'=None, checkContent: 'bool'=False, inverse: 'bool'=False, considerOnly: '_coconut.typing.Optional[FrozenSet[str]]'=None, dontConsider: '_coconut.typing.Optional[FrozenSet[str]]'=None, progress: 'bool'=False) -> 'Tuple[ChangeSet, _coconut.typing.Optional[str]]':  # line 1183
+        def patched(_, branch: '_coconut.typing.Optional[int]'=None, revision: '_coconut.typing.Optional[int]'=None, checkContent: 'bool'=False, inverse: 'bool'=False, considerOnly: '_coconut.typing.Optional[FrozenSet[str]]'=None, dontConsider: '_coconut.typing.Optional[FrozenSet[str]]'=None, progress: 'bool'=False) -> 'Tuple[sos.ChangeSet, _coconut.typing.Optional[str]]':  # line 1183
             import collections  # used only in this method  # line 1184
             write = branch is not None and revision is not None  # line 1185
             if write:  # line 1186

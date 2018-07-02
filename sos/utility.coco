@@ -4,7 +4,7 @@
 # Utiliy functions
 import hashlib, logging, os, shutil, sys, time; START_TIME = time.time()  # early time tracking
 
-try: from typing import Any, AnyStr, Dict, FrozenSet, Generic, IO, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
+try: from typing import Any, AnyStr, Dict, FrozenSet, Generic, IO, Iterable, Iterator, NoReturn, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass
 
 try: import sos.pure as pure; from sos.values import *
@@ -120,8 +120,8 @@ vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "h
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None, "darcs": None, "monotone": None}
 vcsCommits:Dict[str,Tuple[bool,str?]] = {SVN: (True, None), "git": (False, None), "bzr": (True, None), "hg": (True, None), "fossil": (True, "--no-warnings"), "cvs": (True, None), "darcs": (False, "--all"), "monotone": (False, None)}  # bool: tracked? (otherwise picky), str:arguments to "commit" TODO CVS, RCS have probably different per-file operation
 vcsNames:Dict[str,str] = {SVN: "Subversion", "git": "Git", "bzr": "Bazaar", "hg": "Mercurial", "fossil": "Fossil", "cvs": "CVS", "darcs": "darcs", "monotone": "monotone"}#  from cmd to long name
-NL_NAMES:Dict[bytes,str] = {None: "<No newline>", b"\r\n": "<CR+LF>", b"\n\r": "<LF+CR>", b"\n": "<LF>", b"\r": "<CR>"}
-MAX_COMMAND_LINE:Dict[str,int] = {"win32": 8191, "linux2": 4096, None: 1023}  # may be much longer on posix. https://stackoverflow.com/questions/3205027/maximum-length-of-command-line-string
+NL_NAMES:Dict[bytes?,str] = {None: "<No newline>", b"\r\n": "<CR+LF>", b"\n\r": "<LF+CR>", b"\n": "<LF>", b"\r": "<CR>"}
+MAX_COMMAND_LINE:Dict[str?,int] = {"win32": 8191, "linux2": 4096, None: 1023}  # may be much longer on posix. https://stackoverflow.com/questions/3205027/maximum-length-of-command-line-string
 defaults:Accessor = Accessor({
     "strict": False, "track": False, "picky": False, "compress": False, "useChangesCommand": False, "useUnicodeFont": sys.platform != "win32",
     "logLines": 20,
@@ -135,8 +135,8 @@ defaults:Accessor = Accessor({
 
 
 # Functions
-def printo(s:str = "", nl:str = "\n", color:str? = None): tryOrIgnore(-> sys.stdout.write((color ?? "") + s + (Fore.RESET if color else "") + nl), -> sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace'))); sys.stdout.flush()  # PEP528 compatibility
-def printe(s:str = "", nl:str = "\n", color:str? = None): tryOrIgnore(-> sys.stderr.write((color ?? "") + s + (Fore.RESET if color else "") + nl), -> sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace'))); sys.stderr.flush()
+def printo(s:str = "", nl:str = "\n", color:str? = None): tryOrIgnore(() -> sys.stdout.write((color ?? "") + s + (Fore.RESET if color else "") + nl) and False, (E) -> sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')) and False); sys.stdout.flush()  # PEP528 compatibility
+def printe(s:str = "", nl:str = "\n", color:str? = None): tryOrIgnore(() -> sys.stderr.write((color ?? "") + s + (Fore.RESET if color else "") + nl) and False, (E) -> sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')) and False); sys.stderr.flush()
 def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writing filenames  # PEP 529 compatibility
 def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of reading filenames
 try:
@@ -152,11 +152,11 @@ except: def detectEncoding(binary:bytes) -> str =  # Guess the encoding
   except UnicodeError: pass
   "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
 
-def tryOrDefault(func:-> Any, default:Any) -> Any:
+def tryOrDefault(func:Callable[[], Any], default:Any) -> Any:
   try: return func()
   except: return default
 
-def tryOrIgnore(func:-> Any, onError:(Exception) -> None = -> None) -> Any:
+def tryOrIgnore(func:Callable[[], Any], onError:Callable[[Exception], None] = (e) -> None) -> Any:
   try: return func()
   except Exception as E: onError(E)
 
@@ -182,8 +182,7 @@ def eoldet(file:bytes) -> bytes? =
   None  # no new line contained, cannot determine
 
 if TYPE_CHECKING:
-  Splittable = TypeVar("Splittable", AnyStr)
-  def safeSplit(s:Splittable, d:Splittable? = None) -> List[Splittable]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
+  def safeSplit(s:AnyStr, d:AnyStr? = None) -> List[AnyStr]: return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 else:
   def safeSplit(s, d = None): return s.split(d ?? ("\n" if isinstance(s, str) else b"\n")) if len(s) > 0 else []
 
@@ -234,7 +233,7 @@ def hashFile(path:str, compress:bool, saveTo:List[str] = [], callback:Optional[(
     if to:
       to.close()
       wsize = os.stat(encode(saveTo[0])).st_size
-      for remote in saveTo[1:]: shutil.copy2(encode(saveTo[0]), encode(remote))
+      for remote in saveTo[1:]: tryOrDefault(() -> shutil.copy2(encode(saveTo[0]), encode(remote)), (e) -> error("Error creating remote copy %r" % remote))
   (_hash.hexdigest(), wsize)
 
 def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
@@ -244,8 +243,8 @@ def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
 
 def strftime(timestamp:int? = None) -> str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp / 1000. if timestamp is not None else None))
 
-def detectAndLoad(filename:str? = None, content:bytes? = None, ignoreWhitespace:bool = False) -> Tuple[str,bytes,str[]] =
-  lines:str[] = []
+def detectAndLoad(filename:str? = None, content:bytes? = None, ignoreWhitespace:bool = False) -> Tuple[str,bytes?,str[]] =
+  lines:List[str] = []
   if filename is not None: with open(encode(filename), "rb") as fd: content = fd.read()
   encoding:str = detectEncoding(content) ?? sys.getdefaultencoding()
   eol:bytes? = eoldet(content)
@@ -347,7 +346,7 @@ def merge(
   if diffOnly: return (blocks, nl)
 
   # now perform merge operations depending on detected blocks
-  output[:] = []; add_all:str?; del_all:str?; selection:str  # clean list of strings
+  output[:] = []; add_all:str?; del_all:str?; selection:str = ""  # clean list of strings
   for block in blocks:
     if block.tipe == MergeBlockType.KEEP: output.extend(block.lines)
     elif (block.tipe == MergeBlockType.INSERT and not(mergeOperation.value & MergeOperation.REMOVE.value))\

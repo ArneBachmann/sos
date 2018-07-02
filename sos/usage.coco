@@ -94,7 +94,7 @@ COMMANDS:Dict[str,Command] = {
     ],
     "Display file tree changes or repository stats",
     """Display changed filepaths vs. last committed or specified revision on current or specified branch (if "useChangesCommand" flag is disabled).
-       Display repository stats and settings (is "useChangesCommand" flag is enabled)"""
+       Display repository stats and configuration settings (is "useChangesCommand" flag is enabled)"""
    ),
   "branch": Command(Category.Working_with_branches,
     [
@@ -212,7 +212,7 @@ COMMANDS:Dict[str,Command] = {
       Argument("[<param>]", "Parameter name"),
       Argument("[<value>]", "Parameter value")
     ],
-    "Define SOS setting",
+    "Define SOS configuration setting",
     """For strings, flags, and numbers, this directly sets the value.
        For lists, the given string is split by semicola and defines the list's contenst.
        Use "config add" and "config rm" to modify single entries in a list configuration setting.
@@ -223,17 +223,16 @@ COMMANDS:Dict[str,Command] = {
     [
       Argument("[<param>]", "Parameter name")
     ],
-    "Clear SOS setting",
-    """This completely removes the setting, letting SOS fall back to its default, if any.
-       Removing the last entry from a list setting *will not* remove the setting itself, as this would have a different semantic
-       (e.g. falling back to a default, or using the global setting instead of the local one)"""
+    "Clear SOS configuration setting",
+    """This completely removes the configuration setting, letting SOS fall back to its default, if any, or from local to global, if any.
+      See config rm for further details"""
    ),
   "config add": Command(Category.Configuration,
     [
       Argument("[<param>]", "Parameter name"),
       Argument("[<value>]", "Parameter value")
     ],
-    "Add an entry to a list configuration setting",  # TODO clean wording config/setting/param
+    "Add an entry to a list configuration setting",
     """Adds one or more semicolon-separated values to a list-type configuration setting"""
    ),
   "config rm": Command(Category.Configuration,
@@ -242,7 +241,9 @@ COMMANDS:Dict[str,Command] = {
       Argument("[<value>]", "Parameter value")
     ],
     "Remove an entry from a list configuration setting",
-    """Removes exactly one value from a list-type configuration setting"""
+    """Removes exactly one value from a list-type configuration setting.
+       Removing the last entry from a list *will not* remove the configuration setting itself, as this would have a different semantic
+       (e.g. falling back to a default, or using the global configuration setting instead of the local one)"""
    ),
   "config show": Command(Category.Configuration,
     [
@@ -264,65 +265,65 @@ COMMANDS:Dict[str,Command] = {
   ),
 }
 
-OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) -> description
+OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None = for all) -> description
   "sos": {
     None: """Pass command and options to SOS, even when not offline, e.g. 'sos --sos config add texttype "*.md"'"""
     },
   "vcs": {
     None: "Pass command and options to underlying VCS, even in offline mode, e.g. ""sos --vcs add test.md"" for Git"
   },
-  "compress": { "offline": """Compress all versioned files instead of simply copying them verbatim.
-                 May be significantly slower, but reduces storage overhead.
-                 Same as going offline after "sos config set compress on" """
+  "compress": { ("offline",): """Compress all versioned files instead of simply copying them verbatim.
+                  May be significantly slower, but reduces storage overhead.
+                  Same as going offline after "sos config set compress on" """
   },
-  "track": { "offline": """Defines repository mode to use SVN-like file handling per tracking patterns.
-             Tracking patterns are added to or removed from a branch via "sos add" and "sos rm"; files can be moved and renamed via "sos mv" """
+  "track": { ("offline",): """Defines repository mode to use SVN-like file handling per tracking patterns.
+               Tracking patterns are added to or removed from a branch via "sos add" and "sos rm"; files can be moved and renamed via "sos mv" """
   },
-  "picky": { "offline": """Defines repository mode to use Git-like file handling per staging patterns.
+  "picky": { ("offline",): """Defines repository mode to use Git-like file handling per file patterns.
                Staging patterns are added to or removed from a branch via "sos add" and "sos rm"; files can be moved and renamed via "sos mv" """
   },
   "strict": {
     None: """Perform the command using file contents instead of relying on modification timestamp.
              File sizes are always compared in both modes""",
-    "offline": """Defines repository property to always compare file contents instead of relying on modification timestamp.
-                  File sizes are always compared in both modes.
-                  Cannot be changed via user interface after repository creation.
-                  Most commands, however, support a "--strict" option nevertheless"""  # TODO change if a repository properties command exists
+    ("offline",): """Defines repository property to always compare file contents instead of relying on modification timestamp.
+                    File sizes are always compared in both modes.
+                    Cannot be changed via user interface after repository creation.
+                    Most commands, however, support a "--strict" option nevertheless"""  # TODO change if a repository properties command exists
   },
   "force": {
     None: """Executes potentially harmful operations, telling SOS that you really intend to perform that command.
              Most commands: Ignore uncommitted branches, continue to remove SOS repository metadata folders """,
-    "offline": """If already in offline mode, remove offline repository first before creating empty offline repository anew""",
-    "online": """Ignore uncommitted branches, continue to remove SOS repository metadata folder""",
-    "destroy": """Ignore dirty branches (those with changes not committed back to the underlying VCS) and continue with branch destruction""",
-    "switch": """Override safety check to break switching when file tree contains modifications""",
+    ("offline",): """If already in offline mode, remove offline repository first before creating empty offline repository anew""",
+    ("online",):  """Ignore uncommitted branches, continue to remove SOS repository metadata folder""",
+    ("destroy",): """Ignore dirty branches (those with changes not committed back to the underlying VCS,) and continue with branch destruction""",
+    ("switch",):  """Override safety check to break switching when file tree contains modifications"""
   },
   "full": {
-    "dump": """Force a full repository dump instead of a differential export""",
+    ("dump",): """Force a full repository dump instead of a differential export""",
   },
   "skip-backup": {
-    "dump": "Don't create a backup of a previous dump archive before dumping the repository"""
+    ("dump",): "Don't create a backup of a previous dump archive before dumping the repository"""
   },
   "changes": {
-    "log": "List differential changeset for each revision"
+    ("log",): "List differential changeset for each revision"
   },
   "diff": {
-    "log": "Display textual diff for each revision"
+    ("log",): "Display textual diff for each revision"
   },
   "repo": {
-    "status": """List branches and display repository status (regardless of "useChangesCommand" flag)"""
+    ("status",): """List branches and display repository status (regardless of "useChangesCommand" flag,)"""
   },
   "stay": {
-    "branch": "Perform branch operation, but don't switch to newly created branch"
+    ("branch",): "Perform branch operation, but don't switch to newly created branch"
   },
   "last": {
-    "branch": "Use last revision instead of current file tree as basis for new branch. Doesn't affect current file tree"  # TODO avoid term "branching"
+    ("branch",): "Use last revision instead of current file tree as basis for new branch. Doesn't affect current file tree"  # TODO avoid term "branching"
   },
   "fast": {
-    "branch": "Use the experimental fast branch method. Always implies --last"
+    ("branch",): "Use the experimental fast branch method. Always implies --last"
   },
   "meta": {
-    "switch": "Only switch the branch's file tracking patterns when switching the branch. Won't update any files"
+    ("switch",): "Only switch the branch's file tracking patterns when switching the branch. Won't update any files"
   },
   "progress": {
     None: """Display file names during file tree traversal, show processing speed, and show compression advantage, if the "compress" flag is enabled"""
@@ -334,121 +335,107 @@ OPTIONS:Dict[str,Dict[str?,str]] = {  # option -> command (or None = for all) ->
     None: "Enable more verbose user output"
   },
   "debug": {
-    None: "Enable logging of internal details (intended for developers only)"
+    None: "Enable logging of internal details (intended for developers only,)"
   },
   "only <tracked pattern>": {
-    None: """Restrict operation to specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update". Use --only several times to include more file patterns"""
+    None: """Restrict operation to specified already tracked tracking pattern(s,). Available for commands "changes", "commit", "diff", "switch", and "update". Use --only several times to include more file patterns"""
   },
   "except <tracked pattern>": {
-    None: """Avoid operation for specified already tracked tracking pattern(s)  . Available for commands "changes", "commit", "diff", "switch", and "update". Use --except several times to exclude more file patterns"""
+    None: """Avoid operation for specified already tracked tracking pattern(s,)  . Available for commands "changes", "commit", "diff", "switch", and "update". Use --except several times to exclude more file patterns"""
   },
   "remote <file system path>": {
-    "offline": """Add a secondary storage locations that replicates all repository metadata operations (use --remote several times for more remote locations)"""
+    ("offline",): """Add a secondary storage locations that replicates all repository metadata operations (use --remote several times for more remote locations,)"""
   },
   "patterns": {
-    "ls": "Only show tracking patterns"
+    ("ls",): "Only show tracking patterns"
   },
   "tags": {
-    "ls": "List all repository tags (has nothing to do with file or filepattern listing)"
+    ("ls",): "List all repository tags (has nothing to do with file or filepattern listing,)"
   },
   "recursive": {
-    "ls": "Recursively list also files in sub-folders"
+    ("ls",): "Recursively list also files in sub-folders"
   },
   "r": {
-    "ls": "Recursively list also files in sub-folders"
+    ("ls",): "Recursively list also files in sub-folders"
   },
   "all": {
-    "ls": "Recursively list all files, starting from repository root",
-    "log": """Show all commits since creation of the branch.
-              Default is only showing the last "logLines" entries""",
-    "publish": """Commit all files present at offline time, instead of only modifications thereafter.
-                  When going offline with SOS on an underlying VCS checkout with modifications, use this option.
-                  Otherwise - underlying VCS checkout was clean when going offline with SOS - avoid this option."""
+    ("ls",):  "Recursively list all files, starting from repository root",
+    ("log",): """Show all commits since creation of the branch.
+                Default is only showing the last "logLines" entries""",
+    ("publish",): """Commit all files present at offline time, instead of only modifications thereafter.
+                    When going offline with SOS on an underlying VCS checkout with modifications, use this option.
+                    Otherwise - underlying VCS checkout was clean when going offline with SOS - avoid this option."""
   },
   "a": {
-    "ls": "Recursively list all files, starting from repository root"
+    ("ls",): "Recursively list all files, starting from repository root"
   },
   "tag": {
-    "commit": "Store the commit message as a tag that can be used instead of numeric revisions"
+    ("commit",): "Store the commit message as a tag that can be used instead of numeric revisions"
   },
   "add": {
-    "switch": "Only add new files"
+    ("switch",): "Only add new files"
   },
   "add-lines": {
-    "switch": "Only add inserted lines"
+    ("switch",): "Only add inserted lines"
   },
   "add-chars": {
-    "switch": "Only add new characters"
+    ("switch",): "Only add new characters"
   },
   "rm": {
-    "switch": "Only remove vanished files"
+    ("switch",): "Only remove vanished files"
   },
   "rm-lines": {
-    "switch": "Only remove deleted lines"
+    ("switch",): "Only remove deleted lines"
   },
   "rm-chars": {
-    "switch": "Only remove vanished characters"
+    ("switch",): "Only remove vanished characters"
   },
   "ask": {
-    "switch": "Ask how to proceed with modified files"
+    ("switch",): "Ask how to proceed with modified files"
   },
   "ask-lines": {
-    "switch": "Ask how to proceed with modified lines"
+    ("switch",): "Ask how to proceed with modified lines"
   },
   "ask-chars": {
-    "switch": "Ask how to proceed with modified characters"
+    ("switch",): "Ask how to proceed with modified characters"
   },
   "eol": {
-    "switch": "Use EOL style from the integrated file instead. Default: EOL style of current file"
+    ("switch",): "Use EOL style from the integrated file instead. Default: EOL style of current file"
   },
 #  "to": {  # or --from?
-#    "diff": """Take "to" revision as target to compare against (instead of current file tree state)"""
+#    "diff": """Take "to" revision as target to compare against (instead of current file tree state,)"""
 #  },
   "ignore-whitespace": {
-    "diff": "Ignore white spaces during comparison"  # -iw
+    ("diff",): "Ignore white spaces during comparison"  # -iw
   },
   "wrap": {
-    "diff": "Wrap text around terminal instead of cropping into terminal width"
+    ("diff",): "Wrap text around terminal instead of cropping into terminal width"
   },
   "soft": {
-    "mv": "Do not move or rename files, only affect the tracking pattern"
+    ("mv",): "Do not move or rename files, only affect the tracking pattern"
   },
   "local": {
-    "config set": "Persist configuration setting in local repository, not in user-global settings store"
-  },
-  "local": {
-    "config unset": "Persist configuration setting in local repository, not in user-global settings store"
-  },
-  "local": {
-    "config add": "Persist configuration setting in local repository, not in user-global settings store"
-  },
-  "local": {
-    "config rm": "Persist configuration setting in local repository, not in user-global settings store"
-  },
-  "local": {
-    "config show": "Only show configuration settings persisted in local repository, not from user-global settings store"
+    ("config set", "config unset", "config add", "config rm",): "Persist configuration setting in local repository, not in user-global settings store",
+    ("config show",): "Only show configuration settings persisted in local repository, not from user-global settings store"
   },
   "prune": {
-    "config rm": "Remove a list-type parameter together with the last entry"
+    ("config rm",): "Remove a list-type parameter together with the last entry"
   },
   "sos": {
     None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""
   },
   "n": {
-    "log": """Maximum number of entries to show"""
+    ("log",): """Maximum number of entries to show"""
   },
   "relative": {
-    "changes": """Display paths relative to current working directory. Default: paths relative to SOS repository root""",
-    "log":     """Display paths relative to current working directory. Default: paths relative to SOS repository root""",
-    "switch":  """Display paths relative to current working directory. Default: paths relative to SOS repository root""",
-    "add":     """Display pattern path relative to SOS repository root. Default: absolute file system path""",
-    "remove":  """Display pattern path relative to SOS repository root. Default: absolute file system path"""
+    ("changes", "log", "switch",): """Display paths relative to current working directory. Default: paths relative to SOS repository root""",
+    ("add", "remove",):     """Display pattern path relative to SOS repository root. Default: absolute file system path"""
   }
 }
 
 
 def getTitleFont(text:str, width:int) -> Tuple[str,str] =
-  ''' Finds best fitting font for termimal window width, falling back to SOS marker if nothing fits current terminal width. Returns (actual text, selected Figlet font). '''
+  ''' Finds best fitting font for terminal's window width, falling back to SOS marker if nothing fits current terminal width. Returns (actual text, selected Figlet font). '''
   x:List[Tuple[int,str]] = sorted(t for t in [(max(len(_) for _ in Figlet(font = f, width = 999).renderText(text).split("\n")), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width)
   if len(x) == 0: text = MARKER  # replace by shortest text
   (text, sorted(t for t in [(max(len(_) for _ in Figlet(font = f, width = 999).renderText(text).split("\n")), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width)[-1][1])
@@ -480,7 +467,7 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
       if cmd.arguments: print("\n  Arguments:")
       maxlen:int = 4 + 2 + max(len(s.name) for s in cmd.arguments) if len(cmd.arguments) > 0 else 0  # argument name length max plus indentation
       for c in cmd.arguments: print(pure.ljust("    %s  " % c.name, maxlen) + ("\n" + pure.ljust(width = maxlen)).join(pure.splitStrip(c.long)))
-      matchingoptions:List[Tuple[str, str[]]] = [(optname, pure.splitStrip(description)) for optname, description in [(optname, dikt[name]) for optname, dikt in OPTIONS.items() if name in dikt]]
+      matchingoptions:List[Tuple[str, str[]]] = [(optname, pure.splitStrip(dikt[[_k for _k in dikt.keys() if name in _k ?? {}][0]])) for optname, dikt in OPTIONS.items() if any(name in k for k in dikt.keys() if k is not None)]
       if matchingoptions:
         print("\n  Options:")
         maxoptlen:int = max([len(optname) for optname, __ in matchingoptions])
