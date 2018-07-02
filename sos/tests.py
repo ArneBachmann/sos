@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x9d0a275f
+# __coconut_hash__ = 0xa069b8f5
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -877,7 +877,8 @@ class Tests(unittest.TestCase):  # line 99
         sos.commit("second")  # versions "file1"  # line 753
         _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file  # line 754
         out = wrapChannels(lambda _=None: sos.status()).replace("\r", "")  # type: str  # line 755
-        _.assertIn("  | ./file?", out)  # line 756
+        import pdb; pdb.set_trace()
+        _.assertTrue(any(("  | " in o and "./file?" in o for o in out.split("\n"))))  # line 756
 
         _.createFile(2)  # untracked file "file2"  # line 758
         sos.commit("third")  # versions "file2"  # line 759

@@ -753,7 +753,7 @@ class Tests(unittest.TestCase):
     sos.commit("second")  # versions "file1"
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file
     out:str = wrapChannels(-> sos.status()).replace("\r", "")
-    _.assertIn("  | ./file?", out)
+    _.assertTrue(any("|" in o and " ./file?" in o for o in out))
 
     _.createFile(2)  # untracked file "file2"
     sos.commit("third")  # versions "file2"

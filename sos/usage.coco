@@ -349,6 +349,9 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
   "patterns": {
     ("ls",): "Only show tracking patterns"
   },
+  "p": {
+    ("ls",): "Only show tracking patterns"
+  },
   "tags": {
     ("ls",): "List all repository tags (has nothing to do with file or filepattern listing,)"
   },

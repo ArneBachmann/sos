@@ -732,10 +732,10 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
       ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "",
       (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
   if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):
-    printo("\nTracked file patterns:")  # TODO #261 print matching untracking patterns side-by-side?
-    printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))
-    printo("\nUntracked file patterns:")
-    printo(ajoin("  | ", m.branches[m.branch].untracked, "\n"))
+    printo(Fore.GREEN + "Tracked" + Fore.RESET + " file patterns:")  # TODO #261 print matching untracking patterns side-by-side?
+    printo(ajoin(Fore.GREEN + "  | " + Fore.RESET, m.branches[m.branch].tracked, "\n"))
+    printo(Fore.RED + "Untracked" + Fore.RESET + " file patterns:")
+    printo(ajoin(Fore.RED   + "  | " + Fore.RESET, m.branches[m.branch].untracked, "\n"))
 
 def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, commit:bool = False, onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None) -> Tuple[Metadata,int?,int,ChangeSet,bool,bool,FrozenSet[str],FrozenSet[str]] =
   ''' Common behavior for switch, update, delete, commit.
@@ -935,7 +935,7 @@ def ls(folder:str? = None, options:str[] = []):
   ''' List specified directory, augmenting with repository metadata. '''
   m:Metadata = Metadata()
   folder = folder ?? os.getcwd()
-  if '--all' in options: folder = m.root  # always start at SOS repo root with --all
+  if '--all' in options or '-a' in options: folder = m.root  # always start at SOS repo root with --all
   recursive:bool = '--recursive' in options or '-r' in options or '--all' in options
   patterns:bool = '--patterns' in options or '-p' in options
   DOT:str = (DOT_SYMBOL if m.c.useUnicodeFont else " ") * 3  # TODO or "."?

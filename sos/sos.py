@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x77128f18
+# __coconut_hash__ = 0x4bbef21
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -872,10 +872,10 @@ def status(argument: '_coconut.typing.Optional[str]'=None, vcs: '_coconut.typing
         maxi = max(m.commits) if m.commits else m.branches[branch.number].revision  # line 722
         printo("  %s b%d%s @%s (%s%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % ("*" if current == branch.number else " ", branch.number, ((" %%%ds" % (sl + 2)) % (("'%s'" % branch.name) if branch.name else "")), strftime(branch.ctime), (Fore.GREEN + "in sync") if branch.inSync else (Fore.YELLOW + "modified"), Fore.RESET, len(m.commits), pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount), ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "", (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))  # line 723
     if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):  # line 734
-        printo("\nTracked file patterns:")  # TODO #261 print matching untracking patterns side-by-side?  # line 735
-        printo(ajoin("  | ", m.branches[m.branch].tracked, "\n"))  # line 736
-        printo("\nUntracked file patterns:")  # line 737
-        printo(ajoin("  | ", m.branches[m.branch].untracked, "\n"))  # line 738
+        printo(Fore.GREEN + "Tracked" + Fore.RESET + " file patterns:")  # TODO #261 print matching untracking patterns side-by-side?  # line 735
+        printo(ajoin(Fore.GREEN + "  | " + Fore.RESET, m.branches[m.branch].tracked, "\n"))  # line 736
+        printo(Fore.RED + "Untracked" + Fore.RESET + " file patterns:")  # line 737
+        printo(ajoin(Fore.RED + "  | " + Fore.RESET, m.branches[m.branch].untracked, "\n"))  # line 738
 
 def exitOnChanges(argument: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[], check: 'bool'=True, commit: 'bool'=False, onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None) -> 'Tuple[Metadata, _coconut.typing.Optional[int], int, ChangeSet, bool, bool, FrozenSet[str], FrozenSet[str]]':  # line 740
     ''' Common behavior for switch, update, delete, commit.
@@ -1100,7 +1100,7 @@ def ls(folder: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.S
     ''' List specified directory, augmenting with repository metadata. '''  # line 935
     m = Metadata()  # type: Metadata  # line 936
     folder = (os.getcwd() if folder is None else folder)  # line 937
-    if '--all' in options:  # always start at SOS repo root with --all  # line 938
+    if '--all' in options or '-a' in options:  # always start at SOS repo root with --all  # line 938
         folder = m.root  # always start at SOS repo root with --all  # line 938
     recursive = '--recursive' in options or '-r' in options or '--all' in options  # type: bool  # line 939
     patterns = '--patterns' in options or '-p' in options  # type: bool  # line 940
