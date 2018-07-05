@@ -65,7 +65,7 @@ SOS supports three different file handling models that you may use to your likin
 - **Version 1.7**, not yet released:
     Hint: The fast branching features is still experimental.
 
-    - [Feature 265](https://github.com/ArneBachmann/sos/issues/265) Experimental support for remote (secondary, backup) storage. This feature allows replicating all commits into (passive) secondary repository location. To enable this feature, either go offline with one or more additional `--remote <path>` arguments, or manually put a copy of your repository metadata folder (`.sos`) somewhere else, and put the containing folder into the `remotes` list in the `.sos/.meta` file of your primary repository
+    - [Feature 265](https://github.com/ArneBachmann/sos/issues/265) Experimental support for remote (secondary, backup, storage) repository locations. This feature allows replicating all operations (i.e. commits) into (passive, read-only) secondary repository locations. To enable this feature, either go offline with one or more additional `--remote <file system path>` arguments, or manually put a copy of your repository metadata folder (`.sos`) somewhere else, and put the containing folder into the `remotes` list in the `.sos/.meta` file of your primary repository. To restore a remote backup, make a copy of it and set the `remote` flag in `.sos/.meta` to `false`
     - [Feature 256](https://github.com/ArneBachmann/sos/issues/256) Added colorful console output, including `diff`, `changes`, `status` and `log` comands
     - [Feature 238, 262, 264](https://github.com/ArneBachmann/sos/issues/262) Optional relative path output
     - [Enhancement 249](https://github.com/ArneBachmann/sos/issues/249) Internal performance refactoring

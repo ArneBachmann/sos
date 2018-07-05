@@ -556,6 +556,9 @@ class Tests(unittest.TestCase):
     _.assertIn("Dumping revisions", out)
     sos.verbose.pop()
     _.remoteIsSame()
+    os.chdir(rmteFolder)
+    try: sos.status()
+    except SystemExit as E: _.assertEqual(1, E.code)
 
   def testAutoDetectVCS(_):
     os.mkdir(".git")

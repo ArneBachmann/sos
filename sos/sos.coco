@@ -1,4 +1,4 @@
-# Copyright Arne Bachmann
+# Copyright (c) 2017-2018  Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Standard modules
@@ -9,7 +9,7 @@ try:  # try needed as paths differ when installed via pip TODO #243 investigate 
   import sos.version as version
   from sos.utility import *
   from sos.pure import *
-  import sos.utility as _utility  # WARN necessary because "tests" can only mock "sos.utility.input", because "sos" does "import *"" from "utility" and "sos.input" cannot be mocked for some reason
+  import sos.utility as _utility  # WARN necessary because "tests" can only mock "sos.utility.input", because "sos" does "import *" from "utility" and "sos.input" cannot be mocked for some reason
 except:
   import usage
   import version
@@ -21,8 +21,7 @@ except:
 import configr
 
 
-# Lazy module auto-import for quick initialization
-shutil:Any?
+# Lazy module auto-import for quick tool startup
 class shutil: def __getattribute__(_, key):
   global shutil
   import shutil  # overrides global reference
@@ -100,7 +99,8 @@ class Metadata:
         repo, branches, config = json.load(fd)
       _.tags = repo["tags"]  # list of commit messages to treat as globally unique tags
       _.branch = repo["branch"]  # current branch integer
-      _.track, _.picky, _.strict, _.compress, _.version, _.format, _.remotes = [repo.get(r, None) for r in ["track", "picky", "strict", "compress", "version", "format", "remotes"]]
+      _.track, _.picky, _.strict, _.compress, _.version, _.format, _.remotes, remote = [repo.get(r, None) for r in ["track", "picky", "strict", "compress", "version", "format", "remotes", "remote"]]
+      if remote: Exit("Cannot access remote SOS repository for local operation. You're attempting to access a backup copy. Consult manual to restore this backup for normal operation")
       upgraded:List[str] = []
       if _.version is None:
         _.version = "0 - pre-1.2"
@@ -127,19 +127,23 @@ class Metadata:
       _.track, _.picky, _.strict, _.compress, _.version, _.remotes, _.format = [defaults[k] for k in ["track", "picky", "strict", "compress"]] + [version.__version__, remotes, METADATA_FORMAT]
       (debug if offline else warn)("Couldn't read branches metadata: %r" % E)  # hide warning only when going offline
 
+  def _saveBranches(_, remote:str?, data:Dikt[str,Any]):
+    tryOrIgnore(() -> shutil.copy2(encode(os.path.join(remote ?? _.root, metaFolder, metaFile)), encode(os.path.join(remote ?? _.root, metaFolder, metaBack))))  # backup
+    try: with codecs.open(encode(os.path.join(remote ?? _.root, metaFolder, metaFile)), "w", encoding = UTF8) as fd:
+      json.dump((data, list(_.branches.values()), _.repoConf), fd, ensure_ascii = False)  # stores using unicode codepoints (instead of ascii encoding), the file descriptor knows how to encode them
+    except Exception as E: error("Error saving branches%s" % ((" to remote path " + remote) if remote else ""))
+
   def saveBranches(_, also:Dict[str,Any] = {}):
     ''' Save list of branches and current branch info to metadata file. '''
     store:Dict[str,Any] = {
         "tags": _.tags, "branch": _.branch,
         "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress, "version": _.version, "format": METADATA_FORMAT,  # HINT uses _.version instead of constant to allow the upgrade procedure to write a specific version
-        "remotes": _.remotes
+        "remotes": _.remotes,
+        "remote": False
       }  # dictionary of repository settings (while _.repoConf stores user settings)
     store.update(also)  # allows overriding certain values at certain points in time
     for remote in [None] + _.remotes:
-      tryOrIgnore(() -> shutil.copy2(encode(os.path.join(remote ?? _.root, metaFolder, metaFile)), encode(os.path.join(remote ?? _.root, metaFolder, metaBack))))  # backup
-      try: with codecs.open(encode(os.path.join(remote ?? _.root, metaFolder, metaFile)), "w", encoding = UTF8) as fd:
-        json.dump((store, list(_.branches.values()), _.repoConf), fd, ensure_ascii = False)  # stores using unicode codepoints, fd knows how to encode them
-      except Exception as E: error("Error saving branches%s" % ((" to remote path " + remote) if remote else ""))
+      _._saveBranches(remote, store); store["remote"] = True  # mark remote copies as read-only
 
   def getRevisionByName(_, name:str) -> int? =
     ''' Convenience accessor for named revisions (using commit message as tag name by convention). '''
