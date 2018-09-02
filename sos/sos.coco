@@ -7,15 +7,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # TODO #243 this
 try:  # try needed as paths differ when installed via pip TODO #243 investigate further
   import sos.usage as usage
   import sos.version as version
+  import sos.utility as _utility  # WARN necessary because "tests" can only mock "sos.utility.input", because "sos" does "import *" from "utility" and "sos.input" cannot be mocked for some reason
   from sos.utility import *
   from sos.pure import *
-  import sos.utility as _utility  # WARN necessary because "tests" can only mock "sos.utility.input", because "sos" does "import *" from "utility" and "sos.input" cannot be mocked for some reason
 except:
   import usage
   import version
+  import utility as _utility
   from utility import *
   from pure import *
-  import utility as _utility
 
 # Dependencies
 import configr
