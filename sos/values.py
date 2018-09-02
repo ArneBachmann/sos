@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x2f304b7d
+# __coconut_hash__ = 0xa05a5c1a
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -53,12 +53,12 @@ class CommitInfo(_coconut_NamedTuple("CommitInfo", [("number", 'int'), ("ctime",
         return _coconut.tuple.__new__(_cls, (number, ctime, message))  # line 26
 
 
-class PathInfo(_coconut_NamedTuple("PathInfo", [("nameHash", 'str'), ("size", '_coconut.typing.Optional[int]'), ("mtime", 'int'), ("hash", '_coconut.typing.Optional[str]')])):  # size == None means deleted in this revision  # line 32
-    __slots__ = ()  # size == None means deleted in this revision  # line 32
-    __ne__ = _coconut.object.__ne__  # size == None means deleted in this revision  # line 32
-    def __eq__(self, other):  # size == None means deleted in this revision  # line 32
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # size == None means deleted in this revision  # line 32
-# size == None means deleted in this revision
+class PathInfo(_coconut_NamedTuple("PathInfo", [("nameHash", 'str'), ("size", '_coconut.typing.Optional[int]'), ("mtime", 'int'), ("hash", '_coconut.typing.Optional[str]')])):  # size == None means deleted in this revision; mtime = int(1000 * epoch)  # line 32
+    __slots__ = ()  # size == None means deleted in this revision; mtime = int(1000 * epoch)  # line 32
+    __ne__ = _coconut.object.__ne__  # size == None means deleted in this revision; mtime = int(1000 * epoch)  # line 32
+    def __eq__(self, other):  # size == None means deleted in this revision; mtime = int(1000 * epoch)  # line 32
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # size == None means deleted in this revision; mtime = int(1000 * epoch)  # line 32
+# size == None means deleted in this revision; mtime = int(1000 * epoch)
 class ChangeSet(_coconut_NamedTuple("ChangeSet", [("additions", 'Dict[str, PathInfo]'), ("deletions", 'Dict[str, PathInfo]'), ("modifications", 'Dict[str, PathInfo]'), ("moves", 'Dict[str, Tuple[str, PathInfo]]')])):  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 33
     __slots__ = ()  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 33
     __ne__ = _coconut.object.__ne__  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)  # line 33

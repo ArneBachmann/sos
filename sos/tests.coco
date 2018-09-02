@@ -68,9 +68,12 @@ def debugTestRunner(post_mortem = None) =
 def wrapChannels(func: -> Any) -> str =
   ''' Wrap function call to capture and return strings emitted on stdout and stderr. '''
   oldv, oldso, oldse = sys.argv, sys.stdout, sys.stderr
-  buf = TextIOWrapper(BufferedRandom(BytesIO(b"")), encoding = sos.UTF8)
+  class StreamCopyWrapper(TextIOWrapper):
+    def __init__(_): TextIOWrapper.__init__(_, BufferedRandom(BytesIO(b"")), encoding = sos.UTF8)
+    def write(_, bla): oldso.write(bla); TextIOWrapper.write(_, bla)
+  buf = StreamCopyWrapper()
   handler = logging.StreamHandler(buf)  # TODO doesn't seem to be captured
-  sys.stdout = sys.stderr = buf
+  sys.stdout = sys.stderr = buf  # assignment goes right to left
   logging.getLogger().addHandler(handler)
   try: func()  # capture output into buf
   except Exception as E:  buf.write(str(E) + "\n"); traceback.print_exc(file = buf)
@@ -80,15 +83,16 @@ def wrapChannels(func: -> Any) -> str =
   buf.seek(0)
   buf.read()
 
-def mockInput(datas:str[], func: -> Any) -> Any:
+def mockInput(datas:str[], func: () -> Any) -> Any:
   try:  # via python sos/tests.py
     with mock.patch("sos._utility.input", side_effect = datas): return func()
   except:  # via setup.py
     with mock.patch("sos.utility.input", side_effect = datas): return func()
 
-def setRepoFlag(name:str, value:Any):
+def setRepoFlag(name:str, value:Any, toConfig:bool = False):
   with open(sos.metaFolder + os.sep + sos.metaFile, "r") as fd: flags, branches, config = json.loads(fd.read())
-  flags[name] = value
+  if not toConfig: flags[name] = value
+  else: config[name] = value
   with open(sos.metaFolder + os.sep + sos.metaFile, "w") as fd: fd.write(json.dumps((flags, branches, config)))
 
 def checkRepoFlag(name:str, flag:bool? = None, value:Any? = None) -> bool =
@@ -187,9 +191,10 @@ class Tests(unittest.TestCase):
     except SystemExit as E: _.assertEqual(0, E.code)
     m = sos.Metadata(os.getcwd())  # reload from file system
     for file in [f for f in os.listdir() if f.endswith(".bak")]: os.unlink(file)  # remove configuration file
+    _.createFile(9, b"")
     _.createFile(1, "1")
     m.createBranch(0)
-    _.assertEqual(1, len(m.paths))
+    _.assertEqual(2, len(m.paths))
     time.sleep(FS_PRECISION)  # time required by filesystem time resolution issues
     _.createFile(1, "2")  # modify existing file
     _.createFile(2, "2")  # add another file
@@ -534,7 +539,7 @@ class Tests(unittest.TestCase):
     _.assertIn("in sync", out)  # the other doesn't
     sos.defaults["useChangesCommand"] = False  # because sos.main() is never called
     out = wrapChannels(-> sos.status()).replace("\r", "")  # trigger repo info
-    _.assertAllIn(["Metadata format", "Content checking:    %sdeactivated" % sos.Fore.BLUE, "Data compression:    %sdeactivated" % sos.Fore.BLUE, "Repository mode:     %ssimple" % sos.Fore.GREEN, "Number of branches:  2"], out)
+    _.assertAllIn(["Metadata format", "Content checking:    %sSize & timestamp" % sos.Fore.BLUE, "Data compression:    %sdeactivated" % sos.Fore.BLUE, "Repository mode:     %ssimple" % sos.Fore.GREEN, "Number of branches:  2"], out)
     sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
     _.createFile(4, "xy")  # generate a file
     sos.switch("second", ["--force"])  # avoids warning on uncommited changes, but keeps file4
@@ -647,6 +652,13 @@ class Tests(unittest.TestCase):
     _.assertAllIn(["Inconsistent", "without"], wrapChannels(() -> _.assertEqual(b"\n", sos.eoldet(b"\ra\nnb\n"))))
     _.assertIsNone(sos.eoldet(b""))
     _.assertIsNone(sos.eoldet(b"sdf"))
+
+  def testMergeClassic(_):
+    _.createFile(1, contents = b"abcdefg")
+    b:bytes = b"iabcxeg"
+    _.assertEqual.__self__.maxDiff = None  # to get a full diff
+    out:str = wrapChannels(-> sos.mergeClassic(b, "file1", "from", "to", 24523234, 1))
+    _.assertAllIn(["*** from\tThu Jan  1 07:48:43 1970", "! iabcxeg", "! abcdefg"], out)
 
   def testMerge(_):
     ''' Check merge results depending on user options. '''
@@ -1080,6 +1092,20 @@ class Tests(unittest.TestCase):
 
   def testPublish(_):
     pass  # TODO how to test without modifying anything underlying? probably use --test flag or similar?
+
+  def testColorFlag(_):
+    sos.offline()
+    _.createFile(1)
+#    setRepoFlag("useColorOutput", False, toConfig = True)
+#    sos.Metadata.singleton = None  # for new read of configuration
+    sos.enableColor(False)
+    out:List[str] = wrapChannels(-> sos.changes(options = "--verbose")).replace("\r\n", "\n").split("\n")
+    _.assertTrue(any(line.startswith(sos.usage.MARKER_TEXT + "Changes of file tree") for line in out))
+#    setRepoFlag("useColorOutput", True,  toConfig = True)
+#    sos.Metadata.singleton = None
+    sos.enableColor(True)
+    out = wrapChannels(-> sos.changes(options = "--verbose")).replace("\r\n", "\n").split("\n")
+    _.assertTrue(any(line.startswith(sos.utility.MARKER_COLOR + "Changes of file tree") for line in out))  # because it may start with a color code
 
   def testMove(_):
     ''' Move primarily modifies tracking patterns and moves files around accordingly. '''

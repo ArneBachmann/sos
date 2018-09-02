@@ -1,10 +1,12 @@
-# SOS v1.6.7 #
+# SOS v1.6.8 #
 
 [![Travis badge](https://travis-ci.org/ArneBachmann/sos.svg?branch=master)](https://travis-ci.org/ArneBachmann/sos)
 [![Build status](https://ci.appveyor.com/api/projects/status/fe915rtx02buqe4r?svg=true)](https://ci.appveyor.com/project/ArneBachmann/sos)
 [![Code coverage badge](https://coveralls.io/repos/github/ArneBachmann/sos/badge.svg?branch=master)](https://coveralls.io/github/ArneBachmann/sos?branch=master)
 [![PyPI badge](https://img.shields.io/pypi/v/sos-vcs.svg)](https://badge.fury.io/py/sos-vcs)
 [![Gitter chat](https://img.shields.io/badge/chat-on%20gitter-5AB999.svg?logo=gitter-white)](https://gitter.im/sos-vcs/Lobby)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](http://www.repostatus.org/badges/latest/active.svg)](http://www.repostatus.org/#active)
+
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
 - Read the documentation on the [official website](https://sos-vcs.net), chat with the author and others [on Gitter](https://gitter.im/sos-vcs/Lobby), file issues and requests [on Github](https://github.com/ArneBachmann/sos/issues), fork the code repository [on Github](https://github.com/ArneBachmann/sos)

@@ -5,12 +5,8 @@ try: import sos.version as version
 except: import version
 try: from pyfiglet import Figlet
 except: Figlet = None  # optional dependency
-MARKER:str = r"/SOS/ "
-try:
-  from colorama import Fore
-  MARKER_COLOR = Fore.WHITE + MARKER + Fore.RESET
-  if sys.platform != "win32": MARKER = MARKER_COLOR  # override to use color even for log message on *n*x
-except: MARKER_COLOR = MARKER  # if library not installed, use fallback
+
+MARKER_TEXT:str = r"/SOS/ "
 
 # Constants
 APP:str = "Subversion Offline Solution"
@@ -338,10 +334,10 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
     None: "Enable logging of internal details (intended for developers only,)"
   },
   "only <tracked pattern>": {
-    None: """Restrict operation to specified already tracked tracking pattern(s,). Available for commands "changes", "commit", "diff", "switch", and "update". Use --only several times to include more file patterns"""
+    None: """Restrict operation to specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update". Use --only several times to include more file patterns"""
   },
   "except <tracked pattern>": {
-    None: """Avoid operation for specified already tracked tracking pattern(s,)  . Available for commands "changes", "commit", "diff", "switch", and "update". Use --except several times to exclude more file patterns"""
+    None: """Avoid operation for specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update". Use --except several times to exclude more file patterns"""
   },
   "remote <file system path>": {
     ("offline",): """Add a secondary storage locations that replicates all repository metadata operations (use --remote several times for more remote locations,)"""
@@ -428,11 +424,15 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
     None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""
   },
   "n": {
-    ("log",): """Maximum number of entries to show"""
+    ("log",): """Maximum number of entries to show""",
+    ("diff",): """Number of lines shown as context for each diff section"""
   },
   "relative": {
     ("changes", "log", "switch",): """Display paths relative to current working directory. Default: paths relative to SOS repository root""",
     ("add", "remove",):     """Display pattern path relative to SOS repository root. Default: absolute file system path"""
+  },
+  "classic": {
+    ("diff",): """Show classic diff output (that can be piped to tools like colordiff)"""
   }
 }
 
@@ -440,7 +440,7 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
 def getTitleFont(text:str, width:int) -> Tuple[str,str] =
   ''' Finds best fitting font for terminal's window width, falling back to SOS marker if nothing fits current terminal width. Returns (actual text, selected Figlet font). '''
   x:List[Tuple[int,str]] = sorted(t for t in [(max(len(_) for _ in Figlet(font = f, width = 999).renderText(text).split("\n")), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width)
-  if len(x) == 0: text = MARKER  # replace by shortest text
+  if len(x) == 0: text = MARKER_TEXT  # replace by shortest text
   (text, sorted(t for t in [(max(len(_) for _ in Figlet(font = f, width = 999).renderText(text).split("\n")), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width)[-1][1])
 
 def getTitle(large:bool = True) -> str?:  # https://github.com/pwaller/pyfiglet/blob/master/doc/figfont.txt
@@ -454,7 +454,7 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
   if version:
     title:str? = getTitle()
     if title: print(title + "\n")
-  print("%s%s%s" % (MARKER, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))
+  print("%s%s%s" % (MARKER_TEXT, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))
   if version: sys.exit(0)
   category:Category? = CategoryAbbrev.get(argument, None)  # convert shorthand for category
   command:str? = argument if category is None else None

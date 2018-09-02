@@ -29,7 +29,7 @@ data CommitInfo(
     message:str? = None  # optional commit message (or tag name)
   )
 
-data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision
+data PathInfo(nameHash:str, size:int?, mtime:int, hash:str?)  # size == None means deleted in this revision; mtime = int(1000 * epoch)
 data ChangeSet(additions:Dict[str,PathInfo], deletions:Dict[str,PathInfo], modifications:Dict[str,PathInfo], moves:Dict[str,Tuple[str,PathInfo]])  # avoid default assignment of {} as it leads to runtime errors (contains data on init for unknown reason)
 data Range(tipe:MergeBlockType, indexes:int[])  # MergeBlockType[1,2,4], line number, length  # TODO use enum
 data MergeBlock(tipe:MergeBlockType, lines:List[str], line:int, replaces:MergeBlock? = None, changes:Range? = None)

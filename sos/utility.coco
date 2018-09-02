@@ -7,8 +7,8 @@ import hashlib, logging, os, shutil, sys, time; START_TIME = time.time()  # earl
 try: from typing import Any, AnyStr, Dict, FrozenSet, Generic, IO, Iterable, Iterator, NoReturn, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass
 
-try: import sos.pure as pure; from sos.values import *
-except: import pure; from values import *
+try: import sos.pure as pure; from sos.values import *; import sos.usage as usage
+except: import pure; from values import *; import usage
 
 
 # Lazy imports for quicker initialization TODO make mypy accept this
@@ -39,23 +39,40 @@ debug_:bool = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in
 # Classes
 class Accessor(dict):
   ''' Dictionary with attribute access. '''
-  def __init__(_, mapping:Dict[str,Any]) -> None: dict.__init__(_, mapping)  # TODO remove -> None when fixed in Coconut stub
+  def __init__(_, mapping:Dict[str,Any] = {}) -> None: dict.__init__(_, mapping)  # TODO remove -> None when fixed in Coconut stub
   def __getattribute__(_, name:str) -> Any:  # or simply class C(dict): __getattr__ = dict.__getitem__
     try: return _[name]
     except: return dict.__getattribute__(_, name)
-  def __setattribute__(_, name:str, value: Any) -> None:
-    try: _[name] = value
-    except: dict.__setattribute__(_, name, value)
+  def __setattr__(_, name:str, value: Any) -> None: _[name] = value
+  def __bool__(_) -> bool: return bool(int(_[None]))
+  def __str__(_) -> str: return str(_[None])
+  def __add__(_, b:Any) -> str: return _.value + b
+
+useColor:List[bool?] = [None]
+def enableColor(enable = True):
+  ''' This piece of code only became necessary to enable run-time en-/disabling of the colored terminal output. '''
+  global useColor
+  if (useColor[0] and enable) or (not enable and not useColor[0]): return  # nothing to do
+  MARKER.value = MARKER_COLOR if enable and sys.platform != "win32" else usage.MARKER_TEXT  # HINT because it doesn't work with the loggers yet
+  if enable:
+    init(wrap = False)
+    if useColor[0] is None:  # very initial
+      sys.stdout = AnsiToWin32(sys.stdout).stream  # TODO replace by "better exceptions" code
+      sys.stderr = AnsiToWin32(sys.stderr).stream
+  else: deinit()
+  useColor[0] = enable
 
 Fore:Dict[str,str] = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]}); Back:Dict[str,str] = Fore
 Style:Dict[str,str] = Accessor({k: "" for k in ["NORMAL", "BRIGHT", "RESET_ALL"]})
-try: if hasattr(sys.stderr, "isatty") and sys.stderr.isatty():  # http://bluesock.org/~willkg/dev/ansi.html
-  from colorama import init, AnsiToWin32, Back, Fore, Style
-  init(wrap = False)
-  sys.stdout = AnsiToWin32(sys.stdout).stream  # wrap the color conversion manually
-  sys.stderr = AnsiToWin32(sys.stderr).stream
-  if sys.platform == "win32": Style.BRIGHT = ""  # sadly this changes background color as well
-except: pass
+MARKER:str = Accessor({"value": usage.MARKER_TEXT})  # assume default text-only
+try:
+  import colorama.ansitowin32
+  if colorama.ansitowin32.is_a_tty(sys.stderr):  # list of ansi codes: http://bluesock.org/~willkg/dev/ansi.html
+    from colorama import init, deinit, AnsiToWin32, Back, Fore, Style
+    MARKER_COLOR:str = Fore.WHITE + usage.MARKER_TEXT + Fore.RESET
+    if sys.platform == "win32": Style.BRIGHT = ""  # sadly this would modify background color as well in the Windows console to make it appear brighter
+    enableColor()
+except: MARKER_COLOR = usage.MARKER_TEXT  # if library not installed, use fallback even for colored texts
 
 if TYPE_CHECKING:  # available since coconut 1.3.1.21 (?)
   Number = TypeVar("Number", int, float)
@@ -91,9 +108,9 @@ class Logger:
 
 # Constants
 _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
-CONFIGURABLE_FLAGS:List[str] = ["strict", "track", "picky", "compress", "useChangesCommand", "useUnicodeFont"]
+CONFIGURABLE_FLAGS:List[str] = ["strict", "track", "picky", "compress", "useChangesCommand", "useUnicodeFont", "useColorOutput"]
 CONFIGURABLE_LISTS:List[str] = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
-CONFIGURABLE_INTS:List[str] = ["logLines"]
+CONFIGURABLE_INTS:List[str] = ["logLines", "diffLines"]
 GLOBAL_LISTS:List[str] = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 TRUTH_VALUES:List[str] = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
 FALSE_VALUES:List[str] = ["false", "no", "off", "0", "disable", "disabled"]
@@ -123,20 +140,36 @@ vcsNames:Dict[str,str] = {SVN: "Subversion", "git": "Git", "bzr": "Bazaar", "hg"
 NL_NAMES:Dict[bytes?,str] = {None: "<No newline>", b"\r\n": "<CR+LF>", b"\n\r": "<LF+CR>", b"\n": "<LF>", b"\r": "<CR>"}
 MAX_COMMAND_LINE:Dict[str?,int] = {"win32": 8191, "linux2": 4096, None: 1023}  # may be much longer on posix. https://stackoverflow.com/questions/3205027/maximum-length-of-command-line-string
 defaults:Accessor = Accessor({
-    "strict": False, "track": False, "picky": False, "compress": False, "useChangesCommand": False, "useUnicodeFont": sys.platform != "win32",
+    "strict": False, "track": False, "picky": False, "compress": False,
+    "useChangesCommand": False,
+    "useUnicodeFont": sys.platform != "win32",
+    "useColorOutput": True,
+    "diffLines": 2,
     "logLines": 20,
     "texttype": ["*.md", "*.coco", "*.py", "*.pyi", "*.pth"],
     "bintype": [],
     "ignoreDirs": [".*", "__pycache__", ".mypy_cache"],  # already includes metaFolder
     "ignoreDirsWhitelist": [],
     "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*%s" % DUMP_FILE] + ["~*"] if sys.platform == "win32" else [],
-    "ignoresWhitelist": [],
+    "ignoresWhitelist": []
   })
 
 
 # Functions
-def printo(s:str = "", nl:str = "\n", color:str? = None): tryOrIgnore(() -> sys.stdout.write((color ?? "") + s + (Fore.RESET if color else "") + nl) and False, (E) -> sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')) and False); sys.stdout.flush()  # PEP528 compatibility
-def printe(s:str = "", nl:str = "\n", color:str? = None): tryOrIgnore(() -> sys.stderr.write((color ?? "") + s + (Fore.RESET if color else "") + nl) and False, (E) -> sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')) and False); sys.stderr.flush()
+def siSize(size:int) -> str =
+  ''' Returns number and unit. '''
+  "%.2f MiB" % (float(size) / MEBI) if size > 1.25 * MEBI else ("%.2f KiB" % (float(size) / KIBI) if size > 1.25 * KIBI else ("%d bytes" % size))
+
+def printo(s:str = "", nl:str = "\n", color:str? = None):
+  color = useColor and color or ""
+  reset = Fore.RESET if useColor and color else ""
+  tryOrIgnore(( ) -> sys.stdout.write(color + s + reset + nl) and False,
+              (E) -> sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')) and False); sys.stdout.flush()  # PEP528 compatibility
+def printe(s:str = "", nl:str = "\n", color:str? = None):
+  color = useColor and color or ""
+  reset = Fore.RESET if useColor and color else ""
+  tryOrIgnore(( ) -> sys.stderr.write(color + s + reset + nl) and False,
+              (E) -> sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')) and False); sys.stderr.flush()
 def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writing filenames  # PEP 529 compatibility
 def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of reading filenames
 try:
@@ -161,12 +194,16 @@ def tryOrIgnore(func:Callable[[], Any], onError:Callable[[Exception], None] = (e
   except Exception as E: onError(E)
 
 def removePath(key:str, value:str) -> str =
-  ''' Cleanup of user-specified global file patterns. '''  # TODO improve
+  ''' Cleanup of user-specified global file patterns, used in config. '''  # TODO improve
   value if value in GLOBAL_LISTS or SLASH not in value else value[value.rindex(SLASH)+1:]
 
-def dictUpdate(dikt:Dict[Any,Any], by:Dict[Any,Any]) -> Dict[Any,Any]: d:Dict[Any,Any] = {}; d.update(dikt); d.update(by); return d
+def dictUpdate(dikt:Dict[Any,Any], by:Dict[Any,Any]) -> Dict[Any,Any]:
+  ''' Updates a dictionary by another one, returning a new copy without touching any of the passed dictionaries. '''
+  d:Dict[Any,Any] = dict(dikt); d.update(by); return d
 
-def openIt(file:str, mode:str, compress:bool = False) -> IO[bytes] = bz2.BZ2File(encode(file), mode) if compress else open(encode(file), mode + "b")  # Abstraction for opening both compressed and plain files
+def openIt(file:str, mode:str, compress:bool = False) -> IO[bytes] =
+  ''' Abstraction for opening both compressed and plain files. '''
+  bz2.BZ2File(encode(file), mode) if compress else open(encode(file), mode + "b")
 
 def eoldet(file:bytes) -> bytes? =
   ''' Determine EOL style from a binary string. '''
@@ -196,11 +233,14 @@ def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.pat
 
 def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None) -> str = os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")
 
-def Exit(message:str = "", code = 1): printe("[%sEXIT%s%s%s]" % (
-    Fore.YELLOW if code else Fore.GREEN,
-    Fore.RESET,
+def Exit(message:str = "", code = 1):
+  printe("[")
+  printe("EXIT", color = Fore.YELLOW if code else Fore.GREEN)
+  printe("%s%s]" % (
     " %.1fs" % (time.time() - START_TIME) if verbose else "",
-    (" " + message + "." if message != "" else ""))); sys.exit(code)
+    (" " + message + ".") if message != "" else "")
+  )
+  sys.exit(code)
 
 def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator:str = " ", process: -> str = -> '"%s"' % _) -> str =
   ''' Returns a packed string, destructively consuming entries from the provided list. Does similar as xargs. getconf ARG_MAX or xargs --show-limits. '''
@@ -209,7 +249,7 @@ def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.
   prefix
 
 def exception(E):
-  ''' Report an exception to the user to enable useful bug reporting. '''
+  ''' Report an exception to the user to allow useful bug reporting. '''
   printo(str(E))
   import traceback
   traceback.print_exc()
@@ -294,6 +334,14 @@ def user_block_input(output:List[str]):
     if line == sep: break
     output.append(line)  # writes to caller-provided list reference
 
+def mergeClassic(file:bytes, intofile:str, fromname:str, intoname:str, totimestamp:int, context:int, ignoreWhitespace:bool = False):
+  encoding:str; othreol:bytes?; othr:str[]; curreol:bytes?; curr:str[]
+  try:
+    encoding, othreol, othr = detectAndLoad(content = file, ignoreWhitespace = ignoreWhitespace)
+    encoding, curreol, curr = detectAndLoad(filename = intofile, ignoreWhitespace = ignoreWhitespace)
+  except Exception as E: Exit("Cannot diff '%s' vs '%s': %r" % (fromname ?? "<bytes>", intoname ?? "<bytes>", E))
+  for line in difflib.context_diff(othr, curr, fromname, intoname, time.ctime(int(totimestamp / 1000))): printo(line)  # from generator expression
+
 def merge(
       file:bytes? = None, into:bytes? = None,
       filename:str? = None, intoname:str? = None,
@@ -310,11 +358,11 @@ def merge(
       eol: if True, will use the other file's EOL marks
       in case of replace block and INSERT strategy, the change will be added **behind** the original. HINT could be configurable
   '''
-  encoding:str; othr:str[]; othreol:bytes?; curr:str[]; curreol:bytes?
+  encoding:str; othreol:bytes?; othr:str[]; curreol:bytes?; curr:str[]
   try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document
     encoding, othreol, othr = detectAndLoad(filename = filename, content = file, ignoreWhitespace = ignoreWhitespace)
     encoding, curreol, curr = detectAndLoad(filename = intoname, content = into, ignoreWhitespace = ignoreWhitespace)
-  except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename, intoname, E))
+  except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename ?? "<bytes>", intoname ?? "<bytes>", E))
   if None not in [othreol, curreol] and othreol != curreol: warn("Differing EOL-styles detected during merge. Using current file's style for merged output")
   output:List[str] = list(difflib.Differ().compare(othr, curr))  # from generator expression
   blocks:List[MergeBlock] = []  # merged result in blocks

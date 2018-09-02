@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xcb64f1dc
+# __coconut_hash__ = 0x4423d429
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -32,39 +32,33 @@ try:  # line 6
     from pyfiglet import Figlet  # line 6
 except:  # optional dependency  # line 7
     Figlet = None  # optional dependency  # line 7
-MARKER = r"/SOS/ "  # type: str  # line 8
-try:  # line 9
-    from colorama import Fore  # line 10
-    MARKER_COLOR = Fore.WHITE + MARKER + Fore.RESET  # line 11
-    if sys.platform != "win32":  # override to use color even for log message on *n*x  # line 12
-        MARKER = MARKER_COLOR  # override to use color even for log message on *n*x  # line 12
-except:  # if library not installed, use fallback  # line 13
-    MARKER_COLOR = MARKER  # if library not installed, use fallback  # line 13
+
+MARKER_TEXT = r"/SOS/ "  # type: str  # line 9
 
 # Constants
-APP = "Subversion Offline Solution"  # type: str  # line 16
-APPNAME = APP + " V%s (C) Arne Bachmann" % version.__release_version__  # type: str  # line 17
-VERSION = version.__version__  # type: str  # line 18
-COMMAND = "sos"  # type: str  # line 19
-del version  # unload module  # line 20
+APP = "Subversion Offline Solution"  # type: str  # line 12
+APPNAME = APP + " V%s (C) Arne Bachmann" % version.__release_version__  # type: str  # line 13
+VERSION = version.__version__  # type: str  # line 14
+COMMAND = "sos"  # type: str  # line 15
+del version  # unload module  # line 16
 
 
-Category = enum.Enum("Category", {"Repository_handling": 2, "Working_with_branches": 4, "Working_with_files": 6, "Defining_file_patterns": 8, "Configuration": 10, "Further_commands": 12})  # line 23
+Category = enum.Enum("Category", {"Repository_handling": 2, "Working_with_branches": 4, "Working_with_files": 6, "Defining_file_patterns": 8, "Configuration": 10, "Further_commands": 12})  # line 19
 
-CategoryAbbrev = {"repo": Category.Repository_handling, "branches": Category.Working_with_branches, "files": Category.Working_with_files, "patterns": Category.Defining_file_patterns, "config": Category.Configuration, "other": Category.Further_commands}  # type: Dict[str, Category]  # line 32
+CategoryAbbrev = {"repo": Category.Repository_handling, "branches": Category.Working_with_branches, "files": Category.Working_with_files, "patterns": Category.Defining_file_patterns, "config": Category.Configuration, "other": Category.Further_commands}  # type: Dict[str, Category]  # line 28
 
-class Argument(_coconut_NamedTuple("Argument", [("name", 'str'), ("long", 'str')])):  # command argument and description  # line 41
-    __slots__ = ()  # command argument and description  # line 41
-    __ne__ = _coconut.object.__ne__  # command argument and description  # line 41
-    def __eq__(self, other):  # command argument and description  # line 41
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # command argument and description  # line 41
+class Argument(_coconut_NamedTuple("Argument", [("name", 'str'), ("long", 'str')])):  # command argument and description  # line 37
+    __slots__ = ()  # command argument and description  # line 37
+    __ne__ = _coconut.object.__ne__  # command argument and description  # line 37
+    def __eq__(self, other):  # command argument and description  # line 37
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # command argument and description  # line 37
 # command argument and description
 
-class Command(_coconut_NamedTuple("Command", [("category", 'Category'), ("arguments", 'List[Argument]'), ("short", 'str'), ("long", 'str')])):  # line 43
-    __slots__ = ()  # line 43
-    __ne__ = _coconut.object.__ne__  # line 43
-    def __eq__(self, other):  # line 43
-        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # line 43
+class Command(_coconut_NamedTuple("Command", [("category", 'Category'), ("arguments", 'List[Argument]'), ("short", 'str'), ("long", 'str')])):  # line 39
+    __slots__ = ()  # line 39
+    __ne__ = _coconut.object.__ne__  # line 39
+    def __eq__(self, other):  # line 39
+        return self.__class__ is other.__class__ and _coconut.tuple.__eq__(self, other)  # line 39
 
 
 
@@ -100,7 +94,7 @@ COMMANDS = {"offline": Command(Category.Repository_handling, [Argument("[<branch
        The optional argument is either the name of a parameter to display as the only output,
        or a parameter type to enumerate all valid SOS parameters for the specified configuration type"""), "publish": Command(Category.Configuration, [Argument("[<message>]", "Commit message")], "Commit the SOS branch to the underlying VCS", """This command uses the underlying VCS's "add" and "commit" commands to create a new revision with the changes made in the current SOS branch.
        The SOS branch will consequently be marked as clean (removing the dirty flag).
-       In simple repository mode, the selection of files to commit is interactively, while in track and picky mode all files tracked or picked are committed.""")}  # type: Dict[str, Command]  # line 46
+       In simple repository mode, the selection of files to commit is interactively, while in track and picky mode all files tracked or picked are committed.""")}  # type: Dict[str, Command]  # line 42
 
 OPTIONS = {"sos": {None: """Pass command and options to SOS, even when not offline, e.g. 'sos --sos config add texttype "*.md"'"""}, "vcs": {None: "Pass command and options to underlying VCS, even in offline mode, e.g. " "sos --vcs add test.md" " for Git"}, "compress": {("offline",): """Compress all versioned files instead of simply copying them verbatim.
                   May be significantly slower, but reduces storage overhead.
@@ -111,17 +105,17 @@ OPTIONS = {"sos": {None: """Pass command and options to SOS, even when not offli
                     File sizes are always compared in both modes.
                     Cannot be changed via user interface after repository creation.
                     Most commands, however, support a "--strict" option nevertheless"""}, "force": {None: """Executes potentially harmful operations, telling SOS that you really intend to perform that command.
-             Most commands: Ignore uncommitted branches, continue to remove SOS repository metadata folders """, ("offline",): """If already in offline mode, remove offline repository first before creating empty offline repository anew""", ("online",): """Ignore uncommitted branches, continue to remove SOS repository metadata folder""", ("destroy",): """Ignore dirty branches (those with changes not committed back to the underlying VCS,) and continue with branch destruction""", ("switch",): """Override safety check to break switching when file tree contains modifications"""}, "full": {("dump",): """Force a full repository dump instead of a differential export"""}, "skip-backup": {("dump",): "Don't create a backup of a previous dump archive before dumping the repository" ""}, "changes": {("log",): "List differential changeset for each revision"}, "diff": {("log",): "Display textual diff for each revision"}, "repo": {("status",): """List branches and display repository status (regardless of "useChangesCommand" flag,)"""}, "stay": {("branch",): "Perform branch operation, but don't switch to newly created branch"}, "last": {("branch",): "Use last revision instead of current file tree as basis for new branch. Doesn't affect current file tree"}, "fast": {("branch",): "Use the experimental fast branch method. Always implies --last"}, "meta": {("switch",): "Only switch the branch's file tracking patterns when switching the branch. Won't update any files"}, "progress": {None: """Display file names during file tree traversal, show processing speed, and show compression advantage, if the "compress" flag is enabled"""}, "log": {None: """Configures the Python logging module to include source details like log level, timestamp, module, and line number with the logged messages"""}, "verbose": {None: "Enable more verbose user output"}, "debug": {None: "Enable logging of internal details (intended for developers only,)"}, "only <tracked pattern>": {None: """Restrict operation to specified already tracked tracking pattern(s,). Available for commands "changes", "commit", "diff", "switch", and "update". Use --only several times to include more file patterns"""}, "except <tracked pattern>": {None: """Avoid operation for specified already tracked tracking pattern(s,)  . Available for commands "changes", "commit", "diff", "switch", and "update". Use --except several times to exclude more file patterns"""}, "remote <file system path>": {("offline",): """Add a secondary storage locations that replicates all repository metadata operations (use --remote several times for more remote locations,)"""}, "patterns": {("ls",): "Only show tracking patterns"}, "p": {("ls",): "Only show tracking patterns"}, "tags": {("ls",): "List all repository tags (has nothing to do with file or filepattern listing,)"}, "recursive": {("ls",): "Recursively list also files in sub-folders"}, "r": {("ls",): "Recursively list also files in sub-folders"}, "all": {("ls",): "Recursively list all files, starting from repository root", ("log",): """Show all commits since creation of the branch.
+             Most commands: Ignore uncommitted branches, continue to remove SOS repository metadata folders """, ("offline",): """If already in offline mode, remove offline repository first before creating empty offline repository anew""", ("online",): """Ignore uncommitted branches, continue to remove SOS repository metadata folder""", ("destroy",): """Ignore dirty branches (those with changes not committed back to the underlying VCS,) and continue with branch destruction""", ("switch",): """Override safety check to break switching when file tree contains modifications"""}, "full": {("dump",): """Force a full repository dump instead of a differential export"""}, "skip-backup": {("dump",): "Don't create a backup of a previous dump archive before dumping the repository" ""}, "changes": {("log",): "List differential changeset for each revision"}, "diff": {("log",): "Display textual diff for each revision"}, "repo": {("status",): """List branches and display repository status (regardless of "useChangesCommand" flag,)"""}, "stay": {("branch",): "Perform branch operation, but don't switch to newly created branch"}, "last": {("branch",): "Use last revision instead of current file tree as basis for new branch. Doesn't affect current file tree"}, "fast": {("branch",): "Use the experimental fast branch method. Always implies --last"}, "meta": {("switch",): "Only switch the branch's file tracking patterns when switching the branch. Won't update any files"}, "progress": {None: """Display file names during file tree traversal, show processing speed, and show compression advantage, if the "compress" flag is enabled"""}, "log": {None: """Configures the Python logging module to include source details like log level, timestamp, module, and line number with the logged messages"""}, "verbose": {None: "Enable more verbose user output"}, "debug": {None: "Enable logging of internal details (intended for developers only,)"}, "only <tracked pattern>": {None: """Restrict operation to specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update". Use --only several times to include more file patterns"""}, "except <tracked pattern>": {None: """Avoid operation for specified already tracked tracking pattern(s). Available for commands "changes", "commit", "diff", "switch", and "update". Use --except several times to exclude more file patterns"""}, "remote <file system path>": {("offline",): """Add a secondary storage locations that replicates all repository metadata operations (use --remote several times for more remote locations,)"""}, "patterns": {("ls",): "Only show tracking patterns"}, "p": {("ls",): "Only show tracking patterns"}, "tags": {("ls",): "List all repository tags (has nothing to do with file or filepattern listing,)"}, "recursive": {("ls",): "Recursively list also files in sub-folders"}, "r": {("ls",): "Recursively list also files in sub-folders"}, "all": {("ls",): "Recursively list all files, starting from repository root", ("log",): """Show all commits since creation of the branch.
                 Default is only showing the last "logLines" entries""", ("publish",): """Commit all files present at offline time, instead of only modifications thereafter.
                     When going offline with SOS on an underlying VCS checkout with modifications, use this option.
-                    Otherwise - underlying VCS checkout was clean when going offline with SOS - avoid this option."""}, "a": {("ls",): "Recursively list all files, starting from repository root"}, "tag": {("commit",): "Store the commit message as a tag that can be used instead of numeric revisions"}, "add": {("switch",): "Only add new files"}, "add-lines": {("switch",): "Only add inserted lines"}, "add-chars": {("switch",): "Only add new characters"}, "rm": {("switch",): "Only remove vanished files"}, "rm-lines": {("switch",): "Only remove deleted lines"}, "rm-chars": {("switch",): "Only remove vanished characters"}, "ask": {("switch",): "Ask how to proceed with modified files"}, "ask-lines": {("switch",): "Ask how to proceed with modified lines"}, "ask-chars": {("switch",): "Ask how to proceed with modified characters"}, "eol": {("switch",): "Use EOL style from the integrated file instead. Default: EOL style of current file"}, "ignore-whitespace": {("diff",): "Ignore white spaces during comparison"}, "wrap": {("diff",): "Wrap text around terminal instead of cropping into terminal width"}, "soft": {("mv",): "Do not move or rename files, only affect the tracking pattern"}, "local": {("config set", "config unset", "config add", "config rm",): "Persist configuration setting in local repository, not in user-global settings store", ("config show",): "Only show configuration settings persisted in local repository, not from user-global settings store"}, "prune": {("config rm",): "Remove a list-type parameter together with the last entry"}, "sos": {None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""}, "n": {("log",): """Maximum number of entries to show"""}, "relative": {("changes", "log", "switch",): """Display paths relative to current working directory. Default: paths relative to SOS repository root""", ("add", "remove",): """Display pattern path relative to SOS repository root. Default: absolute file system path"""}}  # type: Dict[str, Dict[_coconut.typing.Optional[Tuple[str, ...]], str]]  # line 268
+                    Otherwise - underlying VCS checkout was clean when going offline with SOS - avoid this option."""}, "a": {("ls",): "Recursively list all files, starting from repository root"}, "tag": {("commit",): "Store the commit message as a tag that can be used instead of numeric revisions"}, "add": {("switch",): "Only add new files"}, "add-lines": {("switch",): "Only add inserted lines"}, "add-chars": {("switch",): "Only add new characters"}, "rm": {("switch",): "Only remove vanished files"}, "rm-lines": {("switch",): "Only remove deleted lines"}, "rm-chars": {("switch",): "Only remove vanished characters"}, "ask": {("switch",): "Ask how to proceed with modified files"}, "ask-lines": {("switch",): "Ask how to proceed with modified lines"}, "ask-chars": {("switch",): "Ask how to proceed with modified characters"}, "eol": {("switch",): "Use EOL style from the integrated file instead. Default: EOL style of current file"}, "ignore-whitespace": {("diff",): "Ignore white spaces during comparison"}, "wrap": {("diff",): "Wrap text around terminal instead of cropping into terminal width"}, "soft": {("mv",): "Do not move or rename files, only affect the tracking pattern"}, "local": {("config set", "config unset", "config add", "config rm",): "Persist configuration setting in local repository, not in user-global settings store", ("config show",): "Only show configuration settings persisted in local repository, not from user-global settings store"}, "prune": {("config rm",): "Remove a list-type parameter together with the last entry"}, "sos": {None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""}, "n": {("log",): """Maximum number of entries to show""", ("diff",): """Number of lines shown as context for each diff section"""}, "relative": {("changes", "log", "switch",): """Display paths relative to current working directory. Default: paths relative to SOS repository root""", ("add", "remove",): """Display pattern path relative to SOS repository root. Default: absolute file system path"""}, "classic": {("diff",): """Show classic diff output (that can be piped to tools like colordiff)"""}}  # type: Dict[str, Dict[_coconut.typing.Optional[Tuple[str, ...]], str]]  # line 264
 
 
 def getTitleFont(text: 'str', width: 'int') -> 'Tuple[str, str]':  # line 440
     ''' Finds best fitting font for terminal's window width, falling back to SOS marker if nothing fits current terminal width. Returns (actual text, selected Figlet font). '''  # line 441
     x = sorted((t for t in [(max((len(_) for _ in Figlet(font=f, width=999).renderText(text).split("\n"))), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width))  # type: List[Tuple[int, str]]  # line 442
     if len(x) == 0:  # replace by shortest text  # line 443
-        text = MARKER  # replace by shortest text  # line 443
+        text = MARKER_TEXT  # replace by shortest text  # line 443
     return (text, sorted((t for t in [(max((len(_) for _ in Figlet(font=f, width=999).renderText(text).split("\n"))), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width))[-1][1])  # line 444
 
 @_coconut_tco  # https://github.com/pwaller/pyfiglet/blob/master/doc/figfont.txt  # line 446
@@ -139,7 +133,7 @@ def usage(argument: 'str', version: 'bool'=False, verbose: 'bool'=False):  # lin
         title = getTitle()  # type: _coconut.typing.Optional[str]  # line 455
         if title:  # line 456
             print(title + "\n")  # line 456
-    print("%s%s%s" % (MARKER, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))  # line 457
+    print("%s%s%s" % (MARKER_TEXT, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))  # line 457
     if version:  # line 458
         sys.exit(0)  # line 458
     category = CategoryAbbrev.get(argument, None)  # type: _coconut.typing.Optional[Category]  # convert shorthand for category  # line 459

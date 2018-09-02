@@ -55,7 +55,7 @@ if 'test' in sys.argv:
   logging.basicConfig(level = logging.DEBUG, stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")
   sys.argv.append("--verbose")
   import sos.sos as sos
-  sys.argv.pop()
+  sys.argv.pop()  # remove --verbose flag
   print("Warning: Won't create distribution archive after running unit tests")
 
 if 'sdist' in sys.argv:
