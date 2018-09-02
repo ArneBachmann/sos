@@ -23,6 +23,7 @@ import sos  # import of package, not file
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
 sos.defaults["useUnicodeFont"] = False  # because sos.main() is never called
+sos.defaults["useColorOutput"] = True  # because sos.main() is never called
 
 
 def determineFilesystemTimeResolution() -> float =
