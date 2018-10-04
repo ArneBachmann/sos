@@ -42,8 +42,8 @@ __version_info__ = ({version[0]}, {version[1]}, {version[2]})
 __version__ = r'{fullName}'
 __release_version__ = '{release}'""".format(version = version, fullName = versionString + "-" + extra, release = RELEASE))
 
-  README = "\n".join(["# SOS v%s #" % RELEASE] + open(readmeFile, "r").read().split("\n")[1:])  # replace title in original README.md file
-  with open(readmeFile, "wb") as fd: fd.write(README.encode("UTF-8").replace(b"\r", b""))
+  README = "\n".join(["# SOS v%s #" % RELEASE] + open(readmeFile, "r", encoding = "utf-8").read().split("\n")[1:])  # replace title in original README.md file
+  with open(readmeFile, "w", encoding = "utf-8") as fd: fd.write(README.replace("\r", ""))
   print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")
   if 0 != subprocess.Popen("pandoc --from=markdown --to=rst --output=README.rst README.md", shell = True, bufsize = 1).wait(): print("Warning: Cannot run pandoc")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to continue
@@ -86,7 +86,7 @@ print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["chardet >= 3.0.4", "configr >= 2018.1202.3244", "termwidth >= 2017.2204.2811", "PyFiglet >= 0.7.5", 'colorama >= 0.3.9;sys_platform=="win32"', 'enum34;python_version<"3.4"'],  # most of them are optional dependencies
+  install_requires = ["chardet >= 3.0.4", "configr >= 2018.2004.2239", "termwidth >= 2017.2204.2811", "PyFiglet >= 0.7.5", 'colorama >= 0.3.9;sys_platform=="win32"', 'enum34;python_version<"3.4"'],  # most of them are optional dependencies
   python_requires = '>=%s' % COMPATIBILITY_LEVEL,  # https://www.python.org/dev/peps/pep-0508/#environment-markers
   setup_requires = "setuptools >= 39",
 #  requires = ["coconut-develop[jobs,mypy]"],  # doesn't work

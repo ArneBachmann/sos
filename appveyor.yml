@@ -24,11 +24,17 @@ environment:
       platform: x86
       image: ubuntu
     - PYTHON_VERSION: 3.4
+      platform: x86
+      image: ubuntu1804
+    - PYTHON_VERSION: 3.4
       platform: x64
       image: Visual Studio 2013
     - PYTHON_VERSION: 3.4
       platform: x64
       image: ubuntu
+    - PYTHON_VERSION: 3.4
+      platform: x64
+      image: ubuntu1804
     - PYTHON_VERSION: 3.5
       platform: x86
       image: Visual Studio 2013
@@ -36,11 +42,17 @@ environment:
       platform: x86
       image: ubuntu
     - PYTHON_VERSION: 3.5
+      platform: x86
+      image: ubuntu1804
+    - PYTHON_VERSION: 3.5
       platform: x64
       image: Visual Studio 2013
     - PYTHON_VERSION: 3.5
       platform: x64
       image: ubuntu
+    - PYTHON_VERSION: 3.5
+      platform: x64
+      image: ubuntu1804
     - PYTHON_VERSION: 3.6
       platform: x86
       image: Visual Studio 2013
@@ -48,11 +60,17 @@ environment:
       platform: x86
       image: ubuntu
     - PYTHON_VERSION: 3.6
+      platform: x86
+      image: ubuntu1804
+    - PYTHON_VERSION: 3.6
       platform: x64
       image: Visual Studio 2013
     - PYTHON_VERSION: 3.6
       platform: x64
       image: ubuntu
+    - PYTHON_VERSION: 3.6
+      platform: x64
+      image: ubuntu1804
 #    - PYTHON_VERSION: 2.7
 #      platform: x86
 #    - PYTHON_VERSION: 2.7
@@ -66,6 +84,10 @@ environment:
       NOMYPY: true
       image: ubuntu
     - PYTHON_VERSION: 3.3
+      platform: x86
+      NOMYPY: true
+      image: ubuntu1804
+    - PYTHON_VERSION: 3.3
       platform: x64
       NOMYPY: true
       image: Visual Studio 2013
@@ -73,6 +95,10 @@ environment:
       platform: x64
       NOMYPY: true
       image: ubuntu
+    - PYTHON_VERSION: 3.3
+      platform: x64
+      NOMYPY: true
+      image: ubuntu1804
 matrix:
   allow_failures:
     - PYTHON_VERSION: 3.6
@@ -82,11 +108,17 @@ matrix:
       platform: x64
       image: ubuntu
     - PYTHON_VERSION: 3.6
+      platform: x64
+      image: ubuntu1804
+    - PYTHON_VERSION: 3.6
       platform: x86
       image: Visual Studio 2013
     - PYTHON_VERSION: 3.6
       platform: x86
       image: ubuntu
+    - PYTHON_VERSION: 3.6
+      platform: x86
+      image: ubuntu1804
     - PYTHON_VERSION: 3.3
       platform: x86
       NOMYPY: true
@@ -96,6 +128,10 @@ matrix:
       NOMYPY: true
       image: ubuntu
     - PYTHON_VERSION: 3.3
+      platform: x86
+      NOMYPY: true
+      image: ubuntu1804
+    - PYTHON_VERSION: 3.3
       platform: x64
       NOMYPY: true
       image: Visual Studio 2013
@@ -103,6 +139,10 @@ matrix:
       platform: x64
       NOMYPY: true
       image: ubuntu
+    - PYTHON_VERSION: 3.3
+      platform: x64
+      NOMYPY: true
+      image: ubuntu1804
 init:
   - "set PY_VER=%PYTHON_VERSION:.=%"
   - "set PYTHON=C:\\PYTHON%PY_VER%"

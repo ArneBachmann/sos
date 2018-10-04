@@ -33,7 +33,7 @@ shutil = shutil()
 def loadConfig() -> configr.Configr =
   ''' Simplifies loading user-global config from file system or returning application defaults. '''
   config:configr.Configr = configr.Configr(usage.COMMAND, defaults = defaults)  # defaults are used if key is not configured, but won't be saved
-  f, g = config.loadSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))  # latter for testing only
+  f, g = config.loadSettings(clientCodeLocation = os.path.abspath(__file__), location = os.environ.get("TEST", None))  # required for testing only
   if f is None: debug("Encountered a problem while loading the user configuration: %r" % g)
   config
 
@@ -56,7 +56,7 @@ class Metadata:
     _.tags:List[str] = []  # list of known (unique) tags
     _.branch:int? = None  # current branch number
     _.branches:Dict[int,BranchInfo] = {}  # branch number zero represents the initial state at branching
-    _.repoConf:Dict[str,Any] = {}
+    _.repoConf:Dict[str,Any] = {}  # per-repo configuration items
     _.track:bool; _.picky:bool; _.strict:bool; _.compress:bool; _.version:str?; _.format:int?
     _.remotes:List[str] = []  # list of secondary storage locations (in same file system, no other protocols), which will replicate all write operations
     _.loadBranches(offline = offline, remotes = remotes)  # loads above values from repository, or uses application defaults
@@ -114,7 +114,7 @@ class Metadata:
         branches[:] = [branch + [None] * (8 - len(branch)) for branch in branches]  # adds empty branching point information (branch/revision)
         upgraded.append("1.3.5")
       _.branches = {i.number: i for i in (BranchInfo(*item) for item in branches)}  # re-create type info
-      _.repoConf = config
+      _.repoConf = config  # local configuration stored with repository, not in user-wide configuration
       if _.format == 1 or _.remotes is None:  # before remotes
         _.format = METADATA_FORMAT
         _.remotes = []  # default is no remotes
@@ -132,7 +132,7 @@ class Metadata:
     tryOrIgnore(() -> shutil.copy2(encode(os.path.join(remote ?? _.root, metaFolder, metaFile)), encode(os.path.join(remote ?? _.root, metaFolder, metaBack))))  # backup
     try: with codecs.open(encode(os.path.join(remote ?? _.root, metaFolder, metaFile)), "w", encoding = UTF8) as fd:
       json.dump((data, list(_.branches.values()), _.repoConf), fd, ensure_ascii = False)  # stores using unicode codepoints (instead of ascii encoding), the file descriptor knows how to encode them
-    except Exception as E: error("Error saving branches%s" % ((" to remote path " + remote) if remote else ""))
+    except Exception as E: debug("Error saving branches%s" % ((" to remote path " + remote) if remote else ""))
 
   def saveBranches(_, also:Dict[str,Any] = {}):
     ''' Save list of branches and current branch info to metadata file. '''
@@ -175,7 +175,7 @@ class Metadata:
       tryOrIgnore(-> shutil.copy2(encode(branchFolder(branch, file = metaFile, base = remote)), encode(branchFolder(branch, file = metaBack, base = remote))))  # backup
       try: with codecs.open(encode(branchFolder(branch, file = metaFile, base = remote)), "w", encoding = UTF8) as fd:
         json.dump(list(_.commits.values()), fd, ensure_ascii = False)
-      except Exception as E: error("Error saving branch%s" % ((" to remote path " + remote) if remote else ""))
+      except Exception as E: debug("Error saving branch%s" % ((" to remote path " + remote) if remote else ""))
 
   def duplicateBranch(_, branch:int, name:str? = None, initialMessage:str? = None, full:bool = True):
     ''' Create branch from an existing branch/revision.
@@ -291,7 +291,7 @@ class Metadata:
         tryOrIgnore(-> os.makedirs(encode(target)))
         tryOrIgnore(-> shutil.copy2(encode(os.path.join(target, metaFile)), encode(os.path.join(target, metaBack))))  # ignore error for first backup
         with codecs.open(encode(os.path.join(target, metaFile)), "w", encoding = UTF8) as fd: json.dump(_.paths, fd, ensure_ascii = False)
-      except Exception as E: error("Error saving commit%s" % ((" to remote path " + remote) if remote else ""))
+      except Exception as E: debug("Error saving commit%s" % ((" to remote path " + remote) if remote else ""))
 
   def findChanges(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None, dontConsider:FrozenSet[str]? = None, progress:bool = False) -> Tuple[ChangeSet,str?] =
     ''' Find changes on the file system vs. in-memory paths (which should reflect the latest commit state).
@@ -299,7 +299,7 @@ class Metadata:
         checkContent: also computes file content hashes
         inverse: retain original state (size, mtime, hash) instead of updated one
         considerOnly: set of tracking patterns. None for all (in simple mode). For update operation, consider union of other and current branch
-        dontConsider: set of tracking patterns to not consider in changes (always overrides considerOnly)
+        dontConsider: set of tracking patterns to not consider in changes (always overrides considerOnly!)
         progress: Show file names during processing
         returns: (ChangeSet = the state of file tree *differences*, unless "inverse" is True -> then return original data, message)
     '''
@@ -364,9 +364,14 @@ class Metadata:
             hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = [revisionFolder(branch, revision, base = remote ?? _.root, file = last.nameHash) for remote in [None] + _.remotes] if write else None, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")) if size > 0 else (None, 0)
             changed.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
           except Exception as E: exception(E)
-        elif size != last.size or (not checkContent and mtime != last.mtime) or (checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress, symbols = progressSymbols)[0] != last.hash), default = False)):  # detected a modification TODO error = False?
+        elif size != last.size\
+            or (not checkContent and mtime != last.mtime)\
+            or (    checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress, symbols = progressSymbols)[0] != last.hash), default = False)):  # detected a modification TODO invert error = False?
           try:
-            hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = [revisionFolder(branch, revision, base = remote ?? _.root, file = last.nameHash) for remote in [None] + _.remotes] if write else None, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")) if (last.size if inverse else size) > 0 else (last.hash if inverse else None, 0)
+            hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols,
+              saveTo = [revisionFolder(branch, revision, base = remote ?? _.root, file = last.nameHash) for remote in [None] + _.remotes] if write else None,
+              callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")
+            ) if (last.size if inverse else size) > 0 else (last.hash if inverse else hashFile(filepath, _.compress, symbols = progressSymbols, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = ""))[0], 0)
             changed.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
           except Exception as E: exception(E)
         else: continue  # with next file
@@ -511,7 +516,7 @@ class Metadata:
 def offline(name:str? = None, initialMessage:str? = None, options:str[] = [], remotes:List[str] = []):
   ''' Initial command to start working offline. '''
   if os.path.exists(encode(metaFolder)):
-    if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over.\nUse 'sos online' to check for out-of-sync branches, or\nWipe existing offline branches with 'sos offline --force'")
+    if '--force' not in options: Exit("Repository folder is either already offline or older branches and commits were left over\nUse 'sos online' to check for out-of-sync branches, or\nWipe existing offline branches with 'sos offline --force'")
     try:  # throw away all previous metadata before going offline
       for entry in os.listdir(metaFolder):  # TODO #251 why not rmtree the metadata alltogether as in "online"? I think removing .sos/ made problems on CI. test again
         resource = metaFolder + os.sep + entry
@@ -542,7 +547,7 @@ def online(options:str[] = []):
   m:Metadata = Metadata()
   strict:bool = '--strict' in options or m.strict
   m.loadBranches()
-  if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (modified) branches.\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions")
+  if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (modified) branches\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions.")
   m.loadBranch(m.branch)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
   if options.count("--force") < 2:
@@ -552,7 +557,7 @@ def online(options:str[] = []):
       considerOnly = None if not (m.track or m.picky) else m.getTrackingPatterns(),
       dontConsider = None if not (m.track or m.picky) else m.getTrackingPatterns(negative = True),
       progress = '--progress' in options)  # HINT no option for --only/--except here on purpose. No check for picky here, because online is not a command that considers staged files (but we could use --only here, alternatively)
-    if modified(changed): Exit("File tree is modified vs. current branch.\nUse 'sos online --force --force' to continue with removing the offline repository")
+    if modified(changed): Exit("File tree is modified vs. current branch\nUse 'sos online --force --force' to continue with removing the offline repository")
   try: shutil.rmtree(encode(metaFolder)); info("Exited offline mode. Continue working with your traditional VCS.")
   except Exception as E: Exit("Error removing offline repository: %r" % E)
   info(MARKER + "Offline repository removed, you're back online")
@@ -645,7 +650,7 @@ def diff(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps:F
 def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Create new revision from file tree changes vs. last commit. '''
   m:Metadata = Metadata()
-  if argument is not None and argument in m.tags: Exit("Illegal commit message. It was already used as a tag name")
+  if argument is not None and argument in m.tags: Exit("Illegal commit message. It was already used as a (unique) tag name and cannot be reused")
   trackingPatterns:FrozenSet[str] = m.getTrackingPatterns()  # SVN-like mode
   # No untracking patterns needed here
   if m.picky and not trackingPatterns: Exit("No file patterns staged for commit in picky mode")
@@ -697,7 +702,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
   printo("Current SOS version: %s" % version.__version__)
   printo("At creation version: %s" % m.version)
   printo("Metadata format:     %s" % m.format)
-  printo("Content checking:    %s" % (Fore.CYAN + "size & content" if m.strict else Fore.BLUE + "size & timestamp") + Fore.RESET)
+  printo("Content checking:    %s" % (Fore.CYAN + "size, then content" if m.strict else Fore.BLUE + "size & timestamp") + Fore.RESET)  # TODO size then timestamp?
   printo("Data compression:    %sactivated%s" % (Fore.CYAN if m.compress else Fore.BLUE + "de", Fore.RESET))
   printo("Repository mode:     %s%s" % (Fore.CYAN + "track" if m.track else (Fore.MAGENTA + "picky" if m.picky else Fore.GREEN + "simple"), Fore.RESET))
   printo("Number of branches:  %d" % len(m.branches))
@@ -1105,7 +1110,7 @@ def config(arguments:List[str?], options:List[str] = []):
   command:str; key:str; value:str; v:str
   command, key, value = (arguments + [None] * 2)[:3]  # TODO not already done in parse?
   if command is None: usage.usage("help", verbose = True)
-  if command not in ["set", "unset", "show", "list", "add", "rm"]: Exit("Unknown config command")
+  if command not in ("set", "unset", "show", "list", "add", "rm"): Exit("Unknown config command %r" % command)
   local:bool = "--local" in options
   m:Metadata = Metadata()  # loads layered configuration as well
   c:configr.Configr = m.c if local else m.c.__defaults
@@ -1116,18 +1121,20 @@ def config(arguments:List[str?], options:List[str] = []):
     c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (tryOrIgnore(-> int(value), (E) -> error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?
   elif command == "unset":
     if key is None: Exit("No key specified")
-    if key not in c.keys(): Exit("Unknown key")  # HINT: Works on local configurations when used with --local
+    if key not in c.keys(with_nested = False):
+      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))
     del c[key]
   elif command == "add":
     if None in (key, value): Exit("Key or value not specified")
-    if key not in CONFIGURABLE_LISTS: Exit("Unsupported key %r" % key)
-    if key not in c.keys(): c[key] = [_ for _ in c.__defaults[key]] if local else []  # prepare empty list, or copy from global, add new value below
+    if key not in CONFIGURABLE_LISTS: Exit("Unsupported key %r for list addition" % key)
+    if key not in c.keys(): c[key] = [_ for _ in c.__defaults[key]] if key in c.__defaults[key] else []  # prepare empty list, or copy from underlying, add new value below
     elif value in c[key]: Exit("Value already contained, nothing to do")
     if ";" in value: c[key].append(removePath(key, value))
     else: c[key].extend([removePath(key, v) for v in value.split(";")])
   elif command == "rm":
     if None in (key, value): Exit("Key or value not specified")
-    if key not in c.keys():  Exit("Unknown key %r" % key)
+    if key not in c.keys(with_nested = False):
+      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))
     if value not in c[key]:  Exit("Unknown value %r" % value)
     c[key].remove(value)
     if local and len(c[key]) == 0 and "--prune" in options: del c[key]  # remove local entry, to fallback to global
@@ -1141,7 +1148,7 @@ def config(arguments:List[str?], options:List[str] = []):
       c = m.c  # always use full configuration chain
       try:  # attempt single key
         assert key is not None; c[key]  # force exception if no key specified
-        l:bool = key in c.keys(); g:bool = key in c.__defaults.keys()
+        l:bool = key in c.keys(with_nested = False); g:bool = key in c.__defaults.keys(with_nested = False)
         printo("%s %s %r" % (key.rjust(20), out[3] if not (l or g) else (out[1] if l else out[2]), c[key]))
       except:  # normal value listing
         vals:Dict[str,Tuple[str,int]] = {k: (repr(v), 3) for k, v in defaults.items()}  # copy-by-value
@@ -1149,7 +1156,7 @@ def config(arguments:List[str?], options:List[str] = []):
         vals.update({k: (repr(v), 1) for k, v in c.__map.items()})
         for k, vt in sorted(vals.items()): printo("%s %s %s" % (k.rjust(20), out[vt[1]], vt[0]))
         if len(c.keys()) == 0: info("No local configuration stored")
-        if len(c.__defaults.keys()) == 0: info("No global configuration stored")
+        if len(c.__defaults.keys()) == 0: info("No global configuration stored.")
     return  # in case of list, no need to store anything
   if local: m.repoConf = c.__map; m.saveBranches(); Exit("OK", code = 0)  # saves changes of repoConfig
   else:  # global config
@@ -1241,7 +1248,7 @@ def parse(vcs:str, cwd:str, cmd:str):
     Exit(code = 0)  # regular exit
   except Exception, RuntimeError as E:
     exception(E)
-    Exit("An internal error occurred in SOS. Please report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing")
+    Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
 
 def main():
   global debug, info, warn, error  # to modify logger

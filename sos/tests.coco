@@ -540,7 +540,7 @@ class Tests(unittest.TestCase):
     _.assertIn("in sync", out)  # the other doesn't
     sos.defaults["useChangesCommand"] = False  # because sos.main() is never called
     out = wrapChannels(-> sos.status()).replace("\r", "")  # trigger repo info
-    _.assertAllIn(["Metadata format", "Content checking:    %sSize & timestamp" % sos.Fore.BLUE, "Data compression:    %sdeactivated" % sos.Fore.BLUE, "Repository mode:     %ssimple" % sos.Fore.GREEN, "Number of branches:  2"], out)
+    _.assertAllIn(["Metadata format", "Content checking:    %ssize & timestamp" % sos.Fore.BLUE, "Data compression:    %sdeactivated" % sos.Fore.BLUE, "Repository mode:     %ssimple" % sos.Fore.GREEN, "Number of branches:  2"], out)
     sos.defaults["useChangesCommand"] = True  # because sos.main() is never called
     _.createFile(4, "xy")  # generate a file
     sos.switch("second", ["--force"])  # avoids warning on uncommited changes, but keeps file4
@@ -917,7 +917,7 @@ class Tests(unittest.TestCase):
     _.createFile("ign2")
     _.createFile("bar", prefix = "sub")
     sos.offline("test")  # set up repo in tracking mode (SVN- or gitless-style)
-    try: sos.config(["set", "ignores", "ign1"])  # define an ignore pattern
+    try: sos.config(["set", "ignores", "ign1"])  # define an ignore pattern. HINT this is stored in a local test folder, not in the real global configuration!
     except SystemExit as E: _.assertEqual(0, E.code)
     try: sos.config(["add", "ignores", "ign2"])  # additional ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
@@ -1067,6 +1067,24 @@ class Tests(unittest.TestCase):
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1", "MOD ./file2"], wrapChannels(-> sos.diff("/", onlys = f{"./file2"})))  # MOD vs. DIF
     _.assertIn("MOD ./file1", wrapChannels(-> sos.diff("/", excps = f{"./file2"})))  # MOD vs. DIF
     _.assertNotIn("MOD ./file2", wrapChannels(-> sos.diff("/", excps = f{"./file2"})))
+
+  def testEmptyFiles(_):
+    sos.offline()
+    _.createFile(1, "")  # empty file
+    sos.commit()
+    changes = sos.changes()
+    _.assertEqual(0, len(changes.additions) + len(changes.modifications) + len(changes.deletions))
+
+    setRepoFlag("strict", True)
+    changes = sos.changes()
+    _.assertEqual(1, len(changes.modifications))  # because hash was set to None in simple mode
+    sos.commit()  # commit now with hash computation
+    setRepoFlag("strict", False)
+
+    time.sleep(FS_PRECISION)
+    _.createFile(1, "")  # touch file
+    changes = sos.changes()
+    _.assertEqual(1, len(changes.modifications))  # since modified timestamp
 
   def testDiff(_):
     try: sos.config(["set", "texttype", "file1"])  # manually mark this file as "textual"

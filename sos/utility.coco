@@ -125,6 +125,7 @@ bufSize:int = MEBI
 UTF8:str = "utf_8"  # early used constant, not defined in standard library
 SVN:str = "svn"
 SLASH:str = "/"
+PARENT:str = ".."
 DOT_SYMBOL:str = "\u00b7"
 MULT_SYMBOL:str = "\u00d7"
 CROSS_SYMBOL:str = "\u2716"
@@ -234,12 +235,14 @@ def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.pat
 def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None) -> str = os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")
 
 def Exit(message:str = "", code = 1):
-  printe("[")
-  printe("EXIT", color = Fore.YELLOW if code else Fore.GREEN)
+  lines:List[str] = message.split("\n")
+  printe("[", nl = "")
+  printe("EXIT", color = Fore.YELLOW if code else Fore.GREEN, nl ="")
   printe("%s%s]" % (
     " %.1fs" % (time.time() - START_TIME) if verbose else "",
-    (" " + message + ".") if message != "" else "")
+    (" " +lines[0] + ".") if lines[0] != "" else "")
   )
+  if len(lines) > 1: printe("\n".join(lines[1:]))
   sys.exit(code)
 
 def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator:str = " ", process: -> str = -> '"%s"' % _) -> str =
@@ -261,7 +264,7 @@ def hashFile(path:str, compress:bool, saveTo:List[str] = [], callback:Optional[(
   _hash = hashlib.sha256()
   wsize:int = 0
   if saveTo and os.path.exists(encode(saveTo[0])):
-    Exit("Hash collision detected. Leaving repository in inconsistent state.", 1)  # HINT this exits immediately
+    Exit("Hash collision detected. Leaving repository in inconsistent state", 1)  # HINT this exits immediately
   to = openIt(saveTo[0], "w", compress) if saveTo else None
   with open(encode(path), "rb") as fd:
     while True:
@@ -599,18 +602,18 @@ def relativize(root:str, filepath:str) -> Tuple[str,str] =
   relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)
 
 def parseArgumentOptions(cwd:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?, List[str]] =
-  ''' Returns (root-normalized) set of --only arguments, and set or --except arguments. '''
-  root:str = os.getcwd(); index:int = 0  # zero necessary as marker for last start position
+  ''' Returns (root-normalized) set of --only and --except arguments. '''
+  root:str = os.getcwd()
   onlys:List[str] = []; excps:List[str] = []; remotes:List[str] = []
-  for key, container in [("--only", onlys), ("--except", excps), ("--remote", remotes)]:
-    while True:
-      try:
-        index = 1 + listindex(options, key, index)
-        container.append(options[index])
-        del options[index]
-        del options[index - 1]
-      except: break  # no more found
-    index = 0
-  ( frozenset(oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(".." + SLASH)) if onlys else None,
-    frozenset(ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(".." + SLASH)) if excps else None,  # avoids out-of-repo paths
+  for keys, container in [(("--only", "--include"), onlys), (("--except", "--exclude"), excps), (("--remote", ), remotes)]:
+    founds = [i for i in range(len(options)) if any([options[i].startswith(key) for key in keys])]  # assuming no more than one = in the string
+    for i in reversed(founds):
+      if "=" in options[i]:
+        container.append(options[i].split("=")[1])
+      elif i + 1 < len(options):  # in case last --only has no argument
+        container.append(options[i + 1])
+        del options[i + 1]
+      del options[i]  # reverse removal
+  ( frozenset(oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(PARENT + SLASH)) if onlys else None,
+    frozenset(ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(PARENT + SLASH)) if excps else None,  # avoids out-of-repo paths
     remotes)
