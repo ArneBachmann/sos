@@ -55,10 +55,12 @@ def enableColor(enable = True):
   if (useColor[0] and enable) or (not enable and not useColor[0]): return  # nothing to do
   MARKER.value = MARKER_COLOR if enable and sys.platform != "win32" else usage.MARKER_TEXT  # HINT because it doesn't work with the loggers yet
   if enable:
-    init(wrap = False)
-    if useColor[0] is None:  # very initial
-      sys.stdout = AnsiToWin32(sys.stdout).stream  # TODO replace by "better exceptions" code
-      sys.stderr = AnsiToWin32(sys.stderr).stream
+    try:
+      init(wrap = False)
+      if useColor[0] is None:  # very initial
+        sys.stdout = AnsiToWin32(sys.stdout).stream  # TODO replace by "better exceptions" code
+        sys.stderr = AnsiToWin32(sys.stderr).stream
+    except: pass
   else: deinit()
   useColor[0] = enable
 
