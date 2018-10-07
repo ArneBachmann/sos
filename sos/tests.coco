@@ -659,7 +659,8 @@ class Tests(unittest.TestCase):
     b:bytes = b"iabcxeg"
     _.assertEqual.__self__.maxDiff = None  # to get a full diff
     out:str = wrapChannels(-> sos.mergeClassic(b, "file1", "from", "to", 24523234, 1))
-    _.assertAllIn(["*** from\tThu Jan  1 07:48:43 1970", "! iabcxeg", "! abcdefg"], out)
+    try: _.assertAllIn(["*** from\tThu Jan  1 07:48:43 1970", "! iabcxeg", "! abcdefg"], out)
+    except: _.assertAllIn(["*** from\tThu Jan  1 06:48:43 1970", "! iabcxeg", "! abcdefg"], out)  # differing local time on CI system TODO make this better
 
   def testMerge(_):
     ''' Check merge results depending on user options. '''

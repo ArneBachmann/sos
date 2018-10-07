@@ -61,7 +61,9 @@ def enableColor(enable = True):
         sys.stdout = AnsiToWin32(sys.stdout).stream  # TODO replace by "better exceptions" code
         sys.stderr = AnsiToWin32(sys.stderr).stream
     except: pass
-  else: deinit()
+  else:
+    try: deinit()
+    except: pass
   useColor[0] = enable
 
 Fore:Dict[str,str] = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]}); Back:Dict[str,str] = Fore
