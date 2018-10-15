@@ -1117,13 +1117,13 @@ class Tests(unittest.TestCase):
     sos.offline()
     _.createFile(1)
 #    setRepoFlag("useColorOutput", False, toConfig = True)
-#    sos.Metadata.singleton = None  # for new read of configuration
-    sos.enableColor(False)
+#    sos.Metadata.singleton = None  # for new slurp of configuration
+    sos.enableColor(False, force = True)
     out:List[str] = wrapChannels(-> sos.changes(options = "--verbose")).replace("\r\n", "\n").split("\n")
     _.assertTrue(any(line.startswith(sos.usage.MARKER_TEXT + "Changes of file tree") for line in out))
 #    setRepoFlag("useColorOutput", True,  toConfig = True)
 #    sos.Metadata.singleton = None
-    sos.enableColor(True)
+    sos.enableColor(True, force = True)
     out = wrapChannels(-> sos.changes(options = "--verbose")).replace("\r\n", "\n").split("\n")
     _.assertTrue(any(line.startswith(sos.utility.MARKER_COLOR + "Changes of file tree") for line in out))  # because it may start with a color code
 

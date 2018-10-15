@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xefa790a
+# __coconut_hash__ = 0x8267e52c
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -1328,13 +1328,13 @@ class Tests(unittest.TestCase):  # line 104
         sos.offline()  # line 1117
         _.createFile(1)  # line 1118
 #    setRepoFlag("useColorOutput", False, toConfig = True)
-#    sos.Metadata.singleton = None  # for new read of configuration
-        sos.enableColor(False)  # line 1121
+#    sos.Metadata.singleton = None  # for new slurp of configuration
+        sos.enableColor(False, force=True)  # line 1121
         out = wrapChannels(lambda _=None: sos.changes(options="--verbose")).replace("\r\n", "\n").split("\n")  # type: List[str]  # line 1122
         _.assertTrue(any((line.startswith(sos.usage.MARKER_TEXT + "Changes of file tree") for line in out)))  # line 1123
 #    setRepoFlag("useColorOutput", True,  toConfig = True)
 #    sos.Metadata.singleton = None
-        sos.enableColor(True)  # line 1126
+        sos.enableColor(True, force=True)  # line 1126
         out = wrapChannels(lambda _=None: sos.changes(options="--verbose")).replace("\r\n", "\n").split("\n")  # line 1127
         _.assertTrue(any((line.startswith(sos.utility.MARKER_COLOR + "Changes of file tree") for line in out)))  # because it may start with a color code  # line 1128
 

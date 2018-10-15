@@ -49,30 +49,32 @@ class Accessor(dict):
   def __add__(_, b:Any) -> str: return _.value + b
 
 useColor:List[bool?] = [None]
-def enableColor(enable = True):
-  ''' This piece of code only became necessary to enable run-time en-/disabling of the colored terminal output. '''
+def enableColor(enable:bool = True, force:bool = False):
+  ''' This piece of code only became necessary to enable enabling/disabling of the colored terminal output after initialization. '''
   global useColor
-  if (useColor[0] and enable) or (not enable and not useColor[0]): return  # nothing to do
+  if not force and (useColor[0] if enable else not useColor[0]): return  # nothing to do since already set
   MARKER.value = MARKER_COLOR if enable and sys.platform != "win32" else usage.MARKER_TEXT  # HINT because it doesn't work with the loggers yet
   if enable:
     try:
-      init(wrap = False)
-      if useColor[0] is None:  # very initial
-        sys.stdout = AnsiToWin32(sys.stdout).stream  # TODO replace by "better exceptions" code
-        sys.stderr = AnsiToWin32(sys.stderr).stream
+      colorama.init(wrap = False)
+      if useColor[0] is None:  # very initial, do some monkey-patching
+        sys.stdout = colorama.AnsiToWin32(sys.stdout).stream  # TODO replace by "better-exceptions" code
+        sys.stderr = colorama.AnsiToWin32(sys.stderr).stream
     except: pass
   else:
-    try: deinit()
+    try: colorama.deinit()
     except: pass
   useColor[0] = enable
 
-Fore:Dict[str,str] = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]}); Back:Dict[str,str] = Fore
+# fallbacks in case there is no colorama library present
+Fore:Dict[str,str]  = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]})
 Style:Dict[str,str] = Accessor({k: "" for k in ["NORMAL", "BRIGHT", "RESET_ALL"]})
+Back:Dict[str,str]  = Fore
 MARKER:str = Accessor({"value": usage.MARKER_TEXT})  # assume default text-only
 try:
-  import colorama.ansitowin32
+  import colorama, colorama.ansitowin32
   if colorama.ansitowin32.is_a_tty(sys.stderr):  # list of ansi codes: http://bluesock.org/~willkg/dev/ansi.html
-    from colorama import init, deinit, AnsiToWin32, Back, Fore, Style
+    from colorama import Back, Fore, Style
     MARKER_COLOR:str = Fore.WHITE + usage.MARKER_TEXT + Fore.RESET
     if sys.platform == "win32": Style.BRIGHT = ""  # sadly this would modify background color as well in the Windows console to make it appear brighter
     enableColor()
