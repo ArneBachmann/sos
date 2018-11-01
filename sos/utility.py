@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x32b30b0b
+# __coconut_hash__ = 0xbaab8345
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -90,8 +90,8 @@ class difflib:  # line 28
 difflib = difflib()  # type: object  # line 32
 
 
-verbose = '--verbose' in sys.argv or '-v' in sys.argv  # type: bool  # line 35
-debug_ = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv  # type: bool  # line 36
+verbose = [None] if '--verbose' in sys.argv or '-v' in sys.argv else []  # type: List[None]  # line 35
+debug_ = [None] if os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv else []  # type: List[None]  # line 36
 
 
 # Classes

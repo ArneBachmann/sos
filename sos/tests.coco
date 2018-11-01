@@ -1119,13 +1119,15 @@ class Tests(unittest.TestCase):
 #    setRepoFlag("useColorOutput", False, toConfig = True)
 #    sos.Metadata.singleton = None  # for new slurp of configuration
     sos.enableColor(False, force = True)
-    out:List[str] = wrapChannels(-> sos.changes(options = "--verbose")).replace("\r\n", "\n").split("\n")
+    sos.verbose[:] = [None]  # set "true"
+    out:List[str] = wrapChannels(-> sos.changes()).replace("\r\n", "\n").split("\n")
     _.assertTrue(any(line.startswith(sos.usage.MARKER_TEXT + "Changes of file tree") for line in out))
 #    setRepoFlag("useColorOutput", True,  toConfig = True)
 #    sos.Metadata.singleton = None
     sos.enableColor(True, force = True)
-    out = wrapChannels(-> sos.changes(options = "--verbose")).replace("\r\n", "\n").split("\n")
+    out = wrapChannels(-> sos.changes()).replace("\r\n", "\n").split("\n")
     _.assertTrue(any(line.startswith((sos.usage.MARKER_TEXT if sys.platform == "win32" else sos.utility.MARKER_COLOR) + "Changes of file tree") for line in out))  # because it may start with a color code
+    sos.verbose.pop()
 
   def testMove(_):
     ''' Move primarily modifies tracking patterns and moves files around accordingly. '''

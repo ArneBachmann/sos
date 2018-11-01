@@ -32,8 +32,8 @@ class difflib: def __getattribute__(_, key):
 difflib:object = difflib()
 
 
-verbose:bool = '--verbose' in sys.argv or '-v' in sys.argv
-debug_:bool = os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv
+verbose:List[None] = [None] if '--verbose' in sys.argv or '-v' in sys.argv else []
+debug_:List[None] =  [None] if os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv else []
 
 
 # Classes

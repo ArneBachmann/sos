@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xb9152c1
+# __coconut_hash__ = 0xd45a3b0a
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -1558,12 +1558,10 @@ def main():  # line 1258
 # Main part
 force_sos = [None] if '--sos' in sys.argv else []  # type: List[None]  # this is a trick allowing to modify the module-level flags from the test suite  # line 1292
 force_vcs = [None] if '--vcs' in sys.argv else []  # type: List[None]  # line 1293
-verbose = [None] if '--verbose' in sys.argv or '-v' in sys.argv else []  # type: List[None]  # imported from utility, and only modified here  # line 1294
-debug_ = [None] if os.environ.get("DEBUG", "False").lower() == "true" or '--debug' in sys.argv else []  # type: List[None]  # line 1295
-level = logging.DEBUG if '--debug' in sys.argv else logging.INFO  # type: int  # line 1296
+level = logging.DEBUG if '--debug' in sys.argv else logging.INFO  # type: int  # line 1294
 
-_log = Logger(logging.getLogger(__name__))  # line 1298
-debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1298
+_log = Logger(logging.getLogger(__name__))  # line 1296
+debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1296
 
-if __name__ == '__main__':  # line 1300
-    main()  # line 1300
+if __name__ == '__main__':  # line 1298
+    main()  # line 1298
