@@ -10,6 +10,16 @@ try:
     len(string) if l < 0 else l
 except: wcswidth:(str) -> int = len
 
+KIBI:int = 1 << 10
+MEBI:int = 1 << 20
+GIBI:int = 1 << 30
+
+_SECOND:int = 1000
+_MINUTE:int = _SECOND * 60
+_HOUR:int = _MINUTE * 60
+_DAY:int = _HOUR * 24
+_WEEK:int = _DAY * 7
+
 
 # "Pure" functions
 def sjoin(*s:Tuple[Any]) -> str = " ".join([str(e) for e in s if e != ''])
@@ -34,3 +44,20 @@ def ljust(string:str = "", width:int = termWidth) -> str =
   string + " " * max(0, width - wcswidth(string))
 
 def splitStrip(string:str) -> List[str] = [_.strip() for _ in string.replace("\r", "").split("\n")]
+
+def signedNumber(number:int, filled:bool = False) -> str =
+  ''' Always returns the sign. '''
+  "+" if number > 0 else ("-" if number < 0 else (" " if filled else ""))
+
+def siSize(size:int) -> str =
+  ''' Returns formatted number with SI unit. '''
+  "%.2f MiB" % (float(size) / MEBI) if size > 1.25 * MEBI else ("%.2f KiB" % (float(size) / KIBI) if size > 1.25 * KIBI else ("%d bytes" % size))
+
+def timeString(timeMs:int) -> str =
+  ''' Returns formatted time with unit. '''
+  "%.1f weeks" % (float(timeMs) / _WEEK) if timeMs > 8. * _WEEK / 7 else (
+  "%.1f days" % (float(timeMs) / _DAY) if timeMs > 1.125 * _DAY else (
+  "%.1f hours" % (float(timeMs) / _HOUR) if timeMs > 1.5 * _HOUR else (
+  "%.1f minutes" % (float(timeMs) / _MINUTE) if timeMs > 1.5 * _MINUTE else (
+  "%.0f seconds" % (float(timeMs) / _SECOND) if timeMs > 1.5 * _SECOND else (
+  "%d ms" % timeMs)))))

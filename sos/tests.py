@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x8267e52c
+# __coconut_hash__ = 0x6a7f7df5
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -1095,9 +1095,9 @@ class Tests(unittest.TestCase):  # line 104
         except SystemExit as E:  # line 926
             _.assertEqual(0, E.code)  # line 926
         out = wrapChannels(lambda _=None: sos.config(["show"])).replace("\r", "")  # type: str  # line 927
-        _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)  # line 928
+        _.assertAllIn(["             ignores", "[global]", "['ign1', 'ign2']"], out)  # line 928
         out = wrapChannels(lambda _=None: sos.config(["show", "ignores"])).replace("\r", "")  # line 929
-        _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)  # line 930
+        _.assertAllIn(["             ignores", "[global]", "['ign1', 'ign2']"], out)  # line 930
         out = sos.safeSplit(wrapChannels(lambda _=None: sos.ls()).replace("\r", ""), "\n")  # line 931
         _.assertInAny('    file1', out)  # line 932
         _.assertInAny('    ign1', out)  # line 933
@@ -1309,7 +1309,7 @@ class Tests(unittest.TestCase):  # line 104
         _.createFile(3)  # line 1101
         out = wrapChannels(lambda _=None: sos.diff("/-2"))  # type: str  # compare with r1 (second counting from last which is r2)  # line 1102
         _.assertIn("ADD ./file3", out)  # line 1103
-        _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "-~- 0 |xxxxxxxxxx|", "+~+ 0 |foobar|"], out)  # line 1104
+        _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "old 0 |xxxxxxxxxx|", "now 0 |foobar|"], out)  # line 1104
         _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(lambda _=None: sos.diff("/-2", onlys=_coconut.frozenset(("./file2",)))))  # line 1105
 
     def testReorderRenameActions(_):  # line 1107
@@ -1331,12 +1331,13 @@ class Tests(unittest.TestCase):  # line 104
 #    sos.Metadata.singleton = None  # for new slurp of configuration
         sos.enableColor(False, force=True)  # line 1121
         out = wrapChannels(lambda _=None: sos.changes(options="--verbose")).replace("\r\n", "\n").split("\n")  # type: List[str]  # line 1122
+        import pdb; pdb.set_trace()
         _.assertTrue(any((line.startswith(sos.usage.MARKER_TEXT + "Changes of file tree") for line in out)))  # line 1123
 #    setRepoFlag("useColorOutput", True,  toConfig = True)
 #    sos.Metadata.singleton = None
         sos.enableColor(True, force=True)  # line 1126
         out = wrapChannels(lambda _=None: sos.changes(options="--verbose")).replace("\r\n", "\n").split("\n")  # line 1127
-        _.assertTrue(any((line.startswith(sos.utility.MARKER_COLOR + "Changes of file tree") for line in out)))  # because it may start with a color code  # line 1128
+        _.assertTrue(any((line.startswith((sos.usage.MARKER_TEXT if sys.platform == "win32" else sos.utility.MARKER_COLOR) + "Changes of file tree") for line in out)))  # because it may start with a color code  # line 1128
 
     def testMove(_):  # line 1130
         ''' Move primarily modifies tracking patterns and moves files around accordingly. '''  # line 1131

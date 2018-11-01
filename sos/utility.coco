@@ -50,24 +50,22 @@ class Accessor(dict):
 
 useColor:List[bool?] = [None]
 def enableColor(enable:bool = True, force:bool = False):
-  ''' This piece of code only became necessary to enable enabling/disabling of the colored terminal output after initialization. '''
-  global useColor
+  ''' This piece of code only became necessary to enable enabling/disabling of the colored terminal output after initialization.
+      enable: target state
+      force: for testing only
+  '''
   if not force and (useColor[0] if enable else not useColor[0]): return  # nothing to do since already set
   MARKER.value = MARKER_COLOR if enable and sys.platform != "win32" else usage.MARKER_TEXT  # HINT because it doesn't work with the loggers yet
-  if enable:
-    try:
+  try:
+    if useColor[0] is None:  # very initial, do some monkey-patching
       colorama.init(wrap = False)
-      if useColor[0] is None:  # very initial, do some monkey-patching
-        sys.stdout = colorama.AnsiToWin32(sys.stdout).stream  # TODO replace by "better-exceptions" code
-        sys.stderr = colorama.AnsiToWin32(sys.stderr).stream
-    except: pass
-  else:
-    try: colorama.deinit()
-    except: pass
+      sys.stdout = colorama.AnsiToWin32(sys.stdout).stream  # TODO replace by "better-exceptions" code
+      sys.stderr = colorama.AnsiToWin32(sys.stderr).stream
+  except: pass
   useColor[0] = enable
 
 # fallbacks in case there is no colorama library present
-Fore:Dict[str,str]  = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW"]})
+Fore:Dict[str,str]  = Accessor({k: "" for k in ["RESET", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "YELLOW", "WHITE"]})
 Style:Dict[str,str] = Accessor({k: "" for k in ["NORMAL", "BRIGHT", "RESET_ALL"]})
 Back:Dict[str,str]  = Fore
 MARKER:str = Accessor({"value": usage.MARKER_TEXT})  # assume default text-only
@@ -114,7 +112,8 @@ class Logger:
 
 # Constants
 _log = Logger(logging.getLogger(__name__)); debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error
-CONFIGURABLE_FLAGS:List[str] = ["strict", "track", "picky", "compress", "useChangesCommand", "useUnicodeFont", "useColorOutput"]
+ONLY_GLOBAL_FLAGS:List[str] = ["strict", "track", "picky", "compress"]
+CONFIGURABLE_FLAGS:List[str] = ["useChangesCommand", "useUnicodeFont", "useColorOutput"]
 CONFIGURABLE_LISTS:List[str] = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 CONFIGURABLE_INTS:List[str] = ["logLines", "diffLines"]
 GLOBAL_LISTS:List[str] = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
@@ -126,8 +125,7 @@ metaFolder:str = ".sos"
 DUMP_FILE:str = metaFolder + ".zip"
 metaFile:str = ".meta"
 metaBack:str = metaFile + BACKUP_SUFFIX
-KIBI:int = 1 << 10; MEBI:int = 1 << 20; GIBI:int = 1 << 30
-bufSize:int = MEBI
+bufSize:int = pure.MEBI
 UTF8:str = "utf_8"  # early used constant, not defined in standard library
 SVN:str = "svn"
 SLASH:str = "/"
@@ -147,34 +145,32 @@ vcsNames:Dict[str,str] = {SVN: "Subversion", "git": "Git", "bzr": "Bazaar", "hg"
 NL_NAMES:Dict[bytes?,str] = {None: "<No newline>", b"\r\n": "<CR+LF>", b"\n\r": "<LF+CR>", b"\n": "<LF>", b"\r": "<CR>"}
 MAX_COMMAND_LINE:Dict[str?,int] = {"win32": 8191, "linux2": 4096, None: 1023}  # may be much longer on posix. https://stackoverflow.com/questions/3205027/maximum-length-of-command-line-string
 defaults:Accessor = Accessor({
-    "strict": False, "track": False, "picky": False, "compress": False,
-    "useChangesCommand": False,
+    "strict": False, "track": False, "picky": False, "compress": False,  # these cannot be modified by the user interface
+    "useChangesCommand": False,  # for Git likeness
     "useUnicodeFont": sys.platform != "win32",
-    "useColorOutput": True,
+    "useColorOutput": True,  # TODO make this depend on colorama present, which isn't loaded here (lazy eval?)
     "diffLines": 2,
     "logLines": 20,
-    "texttype": ["*.md", "*.coco", "*.py", "*.pyi", "*.pth"],
+    "texttype": ["*.md", "*.coco", "*.py", "*.pyi", "*.pth", "*.ps1"],
     "bintype": [],
     "ignoreDirs": [".*", "__pycache__", ".mypy_cache"],  # already includes metaFolder
     "ignoreDirsWhitelist": [],
     "ignores": ["__coconut__.py", "*.bak", "*.py[cdo]", "*.class", ".fslckout", "_FOSSIL_", "*%s" % DUMP_FILE] + ["~*"] if sys.platform == "win32" else [],
     "ignoresWhitelist": []
   })
+RETRY_NUM:int = 3
+RETRY_WAIT:int = 1.5
 
 
 # Functions
-def siSize(size:int) -> str =
-  ''' Returns number and unit. '''
-  "%.2f MiB" % (float(size) / MEBI) if size > 1.25 * MEBI else ("%.2f KiB" % (float(size) / KIBI) if size > 1.25 * KIBI else ("%d bytes" % size))
-
 def printo(s:str = "", nl:str = "\n", color:str? = None):
-  color = useColor and color or ""
-  reset = Fore.RESET if useColor and color else ""
+  color = useColor[0] and color or ""
+  reset = Fore.RESET if useColor[0] and color else ""
   tryOrIgnore(( ) -> sys.stdout.write(color + s + reset + nl) and False,
               (E) -> sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')) and False); sys.stdout.flush()  # PEP528 compatibility
 def printe(s:str = "", nl:str = "\n", color:str? = None):
-  color = useColor and color or ""
-  reset = Fore.RESET if useColor and color else ""
+  color = useColor[0] and color or ""
+  reset = Fore.RESET if useColor[0] and color else ""
   tryOrIgnore(( ) -> sys.stderr.write(color + s + reset + nl) and False,
               (E) -> sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')) and False); sys.stderr.flush()
 def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writing filenames  # PEP 529 compatibility
@@ -272,17 +268,26 @@ def hashFile(path:str, compress:bool, saveTo:List[str] = [], callback:Optional[(
   if saveTo and os.path.exists(encode(saveTo[0])):
     Exit("Hash collision detected. Leaving repository in inconsistent state", 1)  # HINT this exits immediately
   to = openIt(saveTo[0], "w", compress) if saveTo else None
-  with open(encode(path), "rb") as fd:
-    while True:
-      buffer:bytes = fd.read(bufSize)
-      _hash.update(buffer)
-      if to: to.write(buffer)
-      if len(buffer) < bufSize: break
-      if indicator: indicator.getIndicator()
-    if to:
-      to.close()
-      wsize = os.stat(encode(saveTo[0])).st_size
-      for remote in saveTo[1:]: tryOrDefault(() -> shutil.copy2(encode(saveTo[0]), encode(remote)), (e) -> error("Error creating remote copy %r" % remote))
+  retry:int = RETRY_NUM
+  while True:
+    try:
+      with open(encode(path), "rb") as fd:
+        while True:
+          buffer:bytes = fd.read(bufSize)
+          _hash.update(buffer)
+          if to: to.write(buffer)
+          if len(buffer) < bufSize: break
+          if indicator: indicator.getIndicator()
+        if to:
+          to.close()
+          wsize = os.stat(encode(saveTo[0])).st_size
+          for remote in saveTo[1:]: tryOrDefault(() -> shutil.copy2(encode(saveTo[0]), encode(remote)), (e) -> error("Error creating remote copy %r" % remote))
+      break
+    except WinError as E:
+      retry -= 1
+      if retry == 0: raise E
+      error("Cannot open %r - retrying %d more times in %.1d seconds" % (path, RETRY_WAIT))
+      time.sleep(RETRY_WAIT)
   (_hash.hexdigest(), wsize)
 
 def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =

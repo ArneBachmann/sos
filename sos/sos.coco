@@ -67,7 +67,7 @@ class Metadata:
 
     if Metadata.singleton is None:  # load configuration lazily only once per runtime
       Metadata.singleton = configr.Configr(data = _.repoConf, defaults = loadConfig())  # load global configuration backed by defaults, as fallback behind the local configuration
-      if "useColorOutput" in Metadata.singleton: enableColor(Metadata.singleton.useColorOutput)
+      if "useColorOutput" in Metadata.singleton: enableColor(Metadata.singleton.useColorOutput)  # otherwise keep default
     _.c:configr.Configr = Metadata.singleton
 
   def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
@@ -85,12 +85,12 @@ class Metadata:
     '''
     relp:(str, str) -> str = (path, root) -> os.path.relpath(path, root).replace(SLASH, os.sep) if root else path  # using relative paths if root is not None, otherwise SOS repo normalized paths
     moves:Dict[str,PathInfo] = dict(changed.moves.values())  # of origin-pathinfo
-    realadditions:Dict[str,PathInfo] = {k: v for k, v in changed.additions.items() if k not in changed.moves}
-    realdeletions:Dict[str,PathInfo] = {k: v for k, v in changed.deletions.items() if k not in moves}
+    realadditions:Dict[str,PathInfo] = {k: v for k, v in changed.additions.items() if k not in changed.moves}  # targets
+    realdeletions:Dict[str,PathInfo] = {k: v for k, v in changed.deletions.items() if k not in moves}          # sources
     if len(changed.moves)         > 0: printo(ajoin("MOV ", ["%s  <-  %s" % (relp(path, root), relp(dpath, root)) for path, (dpath, dinfo) in sorted(changed.moves.items())], "\n") + Style.RESET_ALL, color = Fore.BLUE + Style.BRIGHT)
-    if len(        realadditions) > 0: printo(ajoin("ADD ", sorted(         ["%s  (%s)" % (relp(p, root), siSize(pinfo.size)) for p, pinfo in realadditions.items()]), "\n"), color = Fore.GREEN)
+    if len(        realadditions) > 0: printo(ajoin("ADD ", sorted(         ["%s  (%s)" % (relp(p, root), pure.siSize(pinfo.size) if pinfo is not None else "-") for p, pinfo in realadditions.items()]), "\n"), color = Fore.GREEN)
     if len(        realdeletions) > 0: printo(ajoin("DEL ", sorted(         [relp(p, root) for p in realdeletions.keys()]), "\n"), color = Fore.RED)
-    if len(changed.modifications) > 0: printo(ajoin("MOD ", [relp(m, root) if commitTime is None else (relp(m, root) + (" <older than previously committed>" if pi.mtime < _.paths[m].mtime else "")) for (m, pi) in sorted(changed.modifications.items())], "\n"), color = Fore.YELLOW)
+    if len(changed.modifications) > 0: printo(ajoin("MOD ", [relp(m, root) + (" <binary>" if not _.isTextType(os.path.basename(m)) else "") + ("" if commitTime is None else (" <older than previously committed>" if pi.mtime < _.paths[m].mtime else "")) + ((" [%s%s %s%s]" % (pure.signedNumber(pi.size - _.paths[m].size), siSize(pi.size - _.paths[m].size), pure.signedNumber(pi.mtime - _.paths[m].mtime), pure.timeString(pi.mtime - _.paths[m].mtime)) if verbose else "") if pi is not None else "") for (m, pi) in sorted(changed.modifications.items())], "\n"), color = Fore.YELLOW)
 
   def loadBranches(_, offline:bool = False, remotes:List[str] = []):
     ''' Load list of branches and current branch info from metadata file. offline = True command avoids message. '''
@@ -622,8 +622,8 @@ def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitesp
       elif block.tipe == MergeBlockType.REMOVE:
         for no, line in enumerate(block.lines):          printo(wrap("+++ %%0%dd |%%s|" % linemax % (no + block.line, line)), color = Fore.GREEN)
       elif block.tipe == MergeBlockType.REPLACE:
-        for no, line in enumerate(block.replaces.lines): printo(wrap("-~- %%0%dd |%%s|" % linemax % (no + block.replaces.line, line)), color = Fore.MAGENTA)
-        for no, line in enumerate(block.lines):          printo(wrap("+~+ %%0%dd |%%s|" % linemax % (no + block.line, line)), color = Fore.CYAN)
+        for no, line in enumerate(block.replaces.lines): printo(wrap("old %%0%dd |%%s|" % linemax % (no + block.replaces.line, line)), color = Fore.MAGENTA)
+        for no, line in enumerate(block.lines):          printo(wrap("now %%0%dd |%%s|" % linemax % (no + block.line, line)), color = Fore.CYAN)
 #      elif block.tipe == MergeBlockType.KEEP: pass  # TODO #257 allow to show kept stuff, or a part of pre-post lines
 #      elif block.tipe == MergeBlockType.MOVE:  # intra-line modifications
       if block.tipe != MergeBlockType.KEEP: printo()
@@ -683,7 +683,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
       Fore.RED, Fore.RESET, len(changed.deletions) - len(changed.moves),
       Fore.YELLOW, PLUSMINUS_SYMBOL if m.c.useUnicodeFont else "~", Fore.RESET, len(changed.modifications),
       Fore.BLUE + Style.BRIGHT, MOVE_SYMBOL if m.c.useUnicodeFont else "#", Style.RESET_ALL, len(changed.moves),
-      siSize(stored + overhead),
+      pure.siSize(stored + overhead),
       count,
       (overhead * 100. / (stored + overhead)) if stored + overhead > 0 else 0.
     ))
@@ -1030,7 +1030,7 @@ def log(options:str[] = [], cwd:str? = None):
           Fore.MAGENTA, "TAG" if (commit.message ?? "") in m.tags else "", Fore.RESET
         )
       )
-      if changes_: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}), root = cwd if '--relative' in options else None)  # TODO moves detection?
+      if changes_: m.listChanges(ChangeSet({a: None for a in _add}, {d: None for d in _del}, {m: None for m in _mod}, {}), root = cwd if '--relative' in options else None)  # TODO why using None here? to avoid stating files for performance reasons?
       if diff_: pass  #  _diff(m, changes)  # needs from revision diff
     olds = news  # replaces olds for next revision compare
     last = {k: v for k, v in nxts.items()}  # create new reference
@@ -1108,7 +1108,7 @@ def publish(message:str?, cmd:str, options:str[] = [], onlys:FrozenSet[str]? = N
 
 def config(arguments:List[str?], options:List[str] = []):
   command:str; key:str; value:str; v:str
-  command, key, value = (arguments + [None] * 2)[:3]  # TODO not already done in parse?
+  command, key, value = (arguments + [None] * 2)[:3]
   if command is None: usage.usage("help", verbose = True)
   if command not in ("set", "unset", "show", "list", "add", "rm"): Exit("Unknown config command %r" % command)
   local:bool = "--local" in options
@@ -1116,9 +1116,9 @@ def config(arguments:List[str?], options:List[str] = []):
   c:configr.Configr = m.c if local else m.c.__defaults
   if command == "set":
     if None in (key, value): Exit("Key or value not specified")
-    if key not in (([] if local else CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % ("local " if local else "global", key))  # TODO move defaultbranch to configurable_texts?
-    if key in CONFIGURABLE_FLAGS and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())
-    c[key] = value.lower() in TRUTH_VALUES if key in CONFIGURABLE_FLAGS else (tryOrIgnore(-> int(value), (E) -> error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?
+    if key not in ((([] if local else ONLY_GLOBAL_FLAGS) + CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % ("local" if local else "global", key))  # TODO move defaultbranch to configurable_texts?
+    if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())
+    c[key] = value.lower() in TRUTH_VALUES if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) else (tryOrIgnore(-> int(value), (E) -> error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?
   elif command == "unset":
     if key is None: Exit("No key specified")
     if key not in c.keys(with_nested = False):
@@ -1140,21 +1140,26 @@ def config(arguments:List[str?], options:List[str] = []):
     if local and len(c[key]) == 0 and "--prune" in options: del c[key]  # remove local entry, to fallback to global
   else:  # Show or list
     if   key == "ints":  printo(", ".join(CONFIGURABLE_INTS))  # list valid configuration items
-    elif key == "flags": printo(", ".join(CONFIGURABLE_FLAGS))
+    elif key == "flags": printo(", ".join(ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS))
     elif key == "lists": printo(", ".join(CONFIGURABLE_LISTS))
-    elif key == "texts": printo(", ".join([_ for _ in defaults.keys() if _ not in (CONFIGURABLE_FLAGS + CONFIGURABLE_LISTS)]))
+    elif key == "texts": printo(", ".join([_ for _ in defaults.keys() if _ not in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS + CONFIGURABLE_INTS + CONFIGURABLE_LISTS)]))
     else:  # no key: list all
       out:Dict[int,str] = {3: "[default]", 2: "[global] ", 1: "[local]  "}  # in contrast to Git, we don't need (nor want) to support a "system" config scope
       c = m.c  # always use full configuration chain
       try:  # attempt single key
         assert key is not None; c[key]  # force exception if no key specified
         l:bool = key in c.keys(with_nested = False); g:bool = key in c.__defaults.keys(with_nested = False)
-        printo("%s %s %r" % (key.rjust(20), out[3] if not (l or g) else (out[1] if l else out[2]), c[key]))
+        printo(key.rjust(20), color = Fore.WHITE, nl = "")
+        printo(" " + (out[3] if not (l or g) else (out[1] if l else out[2])) + " ", color = Fore.CYAN, nl = "")
+        printo(repr(c[key]))
       except:  # normal value listing
         vals:Dict[str,Tuple[str,int]] = {k: (repr(v), 3) for k, v in defaults.items()}  # copy-by-value
         vals.update({k: (repr(v), 2) for k, v in c.__defaults.items()})
         vals.update({k: (repr(v), 1) for k, v in c.__map.items()})
-        for k, vt in sorted(vals.items()): printo("%s %s %s" % (k.rjust(20), out[vt[1]], vt[0]))
+        for k, vt in sorted(vals.items()):
+          printo(k.rjust(20), color = Fore.WHITE, nl = "")
+          printo(" " + out[vt[1]] + " ", color = Fore.CYAN, nl = "")
+          printo(vt[0])
         if len(c.keys()) == 0: info("No local configuration stored")
         if len(c.__defaults.keys()) == 0: info("No global configuration stored.")
     return  # in case of list, no need to store anything
@@ -1213,8 +1218,8 @@ def parse(vcs:str, cwd:str, cmd:str):
   try:
     onlys, excps, remotes = parseArgumentOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
-    arguments:List[str?] = [c.strip() for c in sys.argv[2:] if not (c.startswith("-") and (len(c) == 2 or c[1] == "-"))]
-    options = [c.strip() for c in sys.argv[2:] if c.startswith("-") and (len(c) == 2 or c[1] == "-")]  # options with arguments have to be parsed from sys.argv
+    arguments:List[str] = [c.strip() for c in sys.argv[2:] if not ((len(c) == 2 and c.startswith("-")) or (len(c) > 2 and c[1] == "-"))]
+    options:List[str] = [c.strip() for c in sys.argv[2:] if ((len(c) == 2 and c.startswith("-")) or (len(c) > 2 and c[1] == "-"))]  # options *with* arguments have to be parsed directly from sys.argv inside using functions
     debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))
     if command[:1] in "amr": relPath, pattern = relativize(root, os.path.join(cwd, arguments[0] if arguments else "." ))
     if command[:1] == "m":
@@ -1258,7 +1263,8 @@ def main():
   if '--help' in sys.argv or len(sys.argv) < 2: usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose = verbose)
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
   root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
-  debug("Detected SOS root folder: %s\nDetected VCS root folder: %s" % (root ?? "-", vcs ?? "-"))
+  debug("Detected SOS root folder: %s" % (root ?? "-"))
+  debug("Detected VCS root folder: %s" % (vcs ?? "-"))
   defaults["defaultbranch"] = vcsBranches.get(cmd, vcsBranches[SVN]) ?? "default"  # sets dynamic default with SVN fallback
   defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback
   if (not force_vcs or force_sos) and (root is not None or (command ?? "")[:2] == "of" or (command ?? "_")[:1] in "hv"):  # in offline mode or just going offline

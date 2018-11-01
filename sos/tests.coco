@@ -925,9 +925,9 @@ class Tests(unittest.TestCase):
     try: sos.config(["set", "ignoresWhitelist", "ign1;ign2"])  # define a list of ignore patterns
     except SystemExit as E: _.assertEqual(0, E.code)
     out:str = wrapChannels(-> sos.config(["show"])).replace("\r", "")
-    _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)
+    _.assertAllIn(["             ignores", "[global]", "['ign1', 'ign2']"], out)
     out = wrapChannels(-> sos.config(["show", "ignores"])).replace("\r", "")
-    _.assertIn("             ignores [global]  ['ign1', 'ign2']", out)
+    _.assertAllIn(["             ignores", "[global]", "['ign1', 'ign2']"], out)
     out = sos.safeSplit(wrapChannels(-> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny('    file1', out)
     _.assertInAny('    ign1', out)
@@ -1101,7 +1101,7 @@ class Tests(unittest.TestCase):
     _.createFile(3)
     out:str = wrapChannels(-> sos.diff("/-2"))  # compare with r1 (second counting from last which is r2)
     _.assertIn("ADD ./file3", out)
-    _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "-~- 0 |xxxxxxxxxx|", "+~+ 0 |foobar|"], out)
+    _.assertAllIn(["MOD ./file2", "DIF ./file1  <No newline>", "old 0 |xxxxxxxxxx|", "now 0 |foobar|"], out)
     _.assertAllNotIn(["MOD ./file1", "DIF ./file1"], wrapChannels(-> sos.diff("/-2", onlys = f{"./file2"})))
 
   def testReorderRenameActions(_):
@@ -1125,7 +1125,7 @@ class Tests(unittest.TestCase):
 #    sos.Metadata.singleton = None
     sos.enableColor(True, force = True)
     out = wrapChannels(-> sos.changes(options = "--verbose")).replace("\r\n", "\n").split("\n")
-    _.assertTrue(any(line.startswith(sos.utility.MARKER_COLOR + "Changes of file tree") for line in out))  # because it may start with a color code
+    _.assertTrue(any(line.startswith((sos.usage.MARKER_TEXT if sys.platform == "win32" else sos.utility.MARKER_COLOR) + "Changes of file tree") for line in out))  # because it may start with a color code
 
   def testMove(_):
     ''' Move primarily modifies tracking patterns and moves files around accordingly. '''

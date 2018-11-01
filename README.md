@@ -225,7 +225,8 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - `picky`: Flag for always going offline in picky mode (Git-style). Default: False
 - `compress`: Flag for compressing versioned artifacts. Default: False
 - `useChangesCommand`: Flag for making `sos status` into `sos status --repo` and using `sos changes` instead of `sos status` to more closely copy Fossil's behaviour
-- `useUnicodeFont`: Flag to use more fancy symbols, granted the console font supports them
+- `useColorOutput`: Flag for coloring console output. Default: Depends on operating system and available libraries
+- `useUnicodeFont`: Flag to use more fancy symbols, granted the console font supports them. Default: Depends on operating system
 - `defaultbranch`: Name of the initial branch created when going offline. Default: Dynamic per type of VCS in current working directory (e.g. `master` for Git, `trunk` for SVN, no name for Fossil)
 - `texttype`: List of file patterns that should be recognized as text files that can be merged through textual diff, in addition to what Python's `mimetypes` library will detect as a `text/...` mime. Example: `*.bak` could be a text file on your system, so add it to the `texttype` configuration, either globally (default) or locally (using `--local`). *Default*: Empty list
 - `bintype`: List of file patterns that should be recognized as binary files which cannot be merged textually, overriding potential matches in `texttype`. Default: Empty list
@@ -244,6 +245,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 ## Recipes ##
 - Diff between any two revisions: Switch to the revision you want to compare against, then perform a diff with the other revision as argument
 - Ignore whitespaces during diff: Add the option `--iw` or `--ignore-whitespace`
+- Revert all changes except some files: Use `sos switch / --except "glob*" --except ...` or use `sos switch / --only "glob*"`
 
 
 ## Hints and Tipps ##
@@ -254,6 +256,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions, moves, or renames
 - The dirty flag is only relevant in tracking and picky mode (?) TODO investigate - is this true, and if yes, why
 - Branching larger amounts of binary files may be expensive as all files are copied and/or compressed during `sos offline`. A workaround is to `sos offline` only in the folders that are relevant for a specific task
+- If you see the Windows system error `[Errno 13]` (hinting at permission problems), don't go looking for user right problems, rather check for other processes locking files in the file tree
 
 
 ## Development and Contribution ##

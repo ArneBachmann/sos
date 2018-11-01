@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x29c451d5
+# __coconut_hash__ = 0x9f46179f
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -34,34 +34,56 @@ try:  # line 6
 except:  # line 11
     wcswidth = len  # type: _coconut.typing.Callable[[str], int]  # line 11
 
+KIBI = 1 << 10  # type: int  # line 13
+MEBI = 1 << 20  # type: int  # line 14
+GIBI = 1 << 30  # type: int  # line 15
+
+_SECOND = 1000  # type: int  # line 17
+_MINUTE = _SECOND * 60  # type: int  # line 18
+_HOUR = _MINUTE * 60  # type: int  # line 19
+_DAY = _HOUR * 24  # type: int  # line 20
+_WEEK = _DAY * 7  # type: int  # line 21
+
 
 # "Pure" functions
-@_coconut_tco  # line 15
-def sjoin(*s: 'Tuple[Any]') -> 'str':  # line 15
-    return _coconut_tail_call(" ".join, [str(e) for e in s if e != ''])  # line 15
+@_coconut_tco  # line 25
+def sjoin(*s: 'Tuple[Any]') -> 'str':  # line 25
+    return _coconut_tail_call(" ".join, [str(e) for e in s if e != ''])  # line 25
 
-def ajoin(sep: 'str', seq: '_coconut.typing.Sequence[str]', nl: 'str'="", first: 'bool'=True) -> 'str':  # line 17
-    return ((sep if first else "") + (nl + sep).join(seq)) if seq else ""  # line 17
+def ajoin(sep: 'str', seq: '_coconut.typing.Sequence[str]', nl: 'str'="", first: 'bool'=True) -> 'str':  # line 27
+    return ((sep if first else "") + (nl + sep).join(seq)) if seq else ""  # line 27
 
-def requiredDecimalDigits(number: 'int') -> 'int':  # line 19
-    return 1 if number <= 0 else int(math.floor(round(math.log(number, 10), 6)) + 1)  # line 20
+def requiredDecimalDigits(number: 'int') -> 'int':  # line 29
+    return 1 if number <= 0 else int(math.floor(round(math.log(number, 10), 6)) + 1)  # line 30
 
-def conditionalIntersection(a: '_coconut.typing.Optional[FrozenSet[str]]', b: 'FrozenSet[str]') -> 'FrozenSet[str]':  # Used to match only arguments, or use only stored patterns  # line 22
-    return a & b if a else b  # Used to match only arguments, or use only stored patterns  # line 22
+def conditionalIntersection(a: '_coconut.typing.Optional[FrozenSet[str]]', b: 'FrozenSet[str]') -> 'FrozenSet[str]':  # Used to match only arguments, or use only stored patterns  # line 32
+    return a & b if a else b  # Used to match only arguments, or use only stored patterns  # line 32
 
-def getTermWidth() -> 'int':  # line 24
-    try:  # line 25
-        import termwidth  # line 25
-    except:  # HINT could be factored out, or even increased for most modern systems  # line 26
-        return 80  # HINT could be factored out, or even increased for most modern systems  # line 26
-    return termwidth.getTermWidth()[0]  # line 27
+def getTermWidth() -> 'int':  # line 34
+    try:  # line 35
+        import termwidth  # line 35
+    except:  # HINT could be factored out, or even increased for most modern systems  # line 36
+        return 80  # HINT could be factored out, or even increased for most modern systems  # line 36
+    return termwidth.getTermWidth()[0]  # line 37
 
 # Global variable
-termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80  # line 30
+termWidth = getTermWidth() - 1  # uses curses or returns conservative default of 80  # line 40
 
-def ljust(string: 'str'="", width: 'int'=termWidth) -> 'str':  # line 32
-    assert width > 0  # line 33
-    return string + " " * max(0, width - wcswidth(string))  # line 34
+def ljust(string: 'str'="", width: 'int'=termWidth) -> 'str':  # line 42
+    assert width > 0  # line 43
+    return string + " " * max(0, width - wcswidth(string))  # line 44
 
-def splitStrip(string: 'str') -> 'List[str]':  # line 36
-    return [_.strip() for _ in string.replace("\r", "").split("\n")]  # line 36
+def splitStrip(string: 'str') -> 'List[str]':  # line 46
+    return [_.strip() for _ in string.replace("\r", "").split("\n")]  # line 46
+
+def signedNumber(number: 'int', filled: 'bool'=False) -> 'str':  # line 48
+    ''' Always returns the sign. '''  # line 49
+    return "+" if number > 0 else ("-" if number < 0 else (" " if filled else ""))  # line 50
+
+def siSize(size: 'int') -> 'str':  # line 52
+    ''' Returns formatted number with SI unit. '''  # line 53
+    return "%.2f MiB" % (float(size) / MEBI) if size > 1.25 * MEBI else ("%.2f KiB" % (float(size) / KIBI) if size > 1.25 * KIBI else ("%d bytes" % size))  # line 54
+
+def timeString(timeMs: 'int') -> 'str':  # line 56
+    ''' Returns formatted time with unit. '''  # line 57
+    return "%.1f weeks" % (float(timeMs) / _WEEK) if timeMs > 8. * _WEEK / 7 else ("%.1f days" % (float(timeMs) / _DAY) if timeMs > 1.125 * _DAY else ("%.1f hours" % (float(timeMs) / _HOUR) if timeMs > 1.5 * _HOUR else ("%.1f minutes" % (float(timeMs) / _MINUTE) if timeMs > 1.5 * _MINUTE else ("%.0f seconds" % (float(timeMs) / _SECOND) if timeMs > 1.5 * _SECOND else ("%d ms" % timeMs)))))  # line 58
