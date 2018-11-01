@@ -1126,7 +1126,7 @@ class Tests(unittest.TestCase):
 #    sos.Metadata.singleton = None
     sos.enableColor(True, force = True)
     out = wrapChannels(-> sos.changes()).replace("\r\n", "\n").split("\n")
-    _.assertTrue(any(line.startswith((sos.usage.MARKER_TEXT if sys.platform == "win32" else sos.utility.MARKER_COLOR) + "Changes of file tree") for line in out))  # because it may start with a color code
+    _.assertTrue(any(line.startswith((sos.usage.MARKER_TEXT if sys.platform == "win32" else sos.MARKER_COLOR) + "Changes of file tree") for line in out))  # because it may start with a color code
     sos.verbose.pop()
 
   def testMove(_):

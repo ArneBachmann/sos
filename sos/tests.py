@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x7d2dd42a
+# __coconut_hash__ = 0x79a28239
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -1337,7 +1337,7 @@ class Tests(unittest.TestCase):  # line 104
 #    sos.Metadata.singleton = None
         sos.enableColor(True, force=True)  # line 1127
         out = wrapChannels(lambda _=None: sos.changes()).replace("\r\n", "\n").split("\n")  # line 1128
-        _.assertTrue(any((line.startswith((sos.usage.MARKER_TEXT if sys.platform == "win32" else sos.utility.MARKER_COLOR) + "Changes of file tree") for line in out)))  # because it may start with a color code  # line 1129
+        _.assertTrue(any((line.startswith((sos.usage.MARKER_TEXT if sys.platform == "win32" else sos.MARKER_COLOR) + "Changes of file tree") for line in out)))  # because it may start with a color code  # line 1129
         sos.verbose.pop()  # line 1130
 
     def testMove(_):  # line 1132
