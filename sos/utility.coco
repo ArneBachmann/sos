@@ -71,7 +71,7 @@ Back:Dict[str,str]  = Fore
 MARKER:str = Accessor({"value": usage.MARKER_TEXT})  # assume default text-only
 try:
   import colorama, colorama.ansitowin32
-  if colorama.ansitowin32.is_a_tty(sys.stderr):  # list of ansi codes: http://bluesock.org/~willkg/dev/ansi.html
+  if sys.stderr.isatty:  # list of ansi codes: http://bluesock.org/~willkg/dev/ansi.html
     from colorama import Back, Fore, Style
     MARKER_COLOR:str = Fore.WHITE + usage.MARKER_TEXT + Fore.RESET
     if sys.platform == "win32": Style.BRIGHT = ""  # sadly this would modify background color as well in the Windows console to make it appear brighter
@@ -116,7 +116,7 @@ ONLY_GLOBAL_FLAGS:List[str] = ["strict", "track", "picky", "compress"]
 CONFIGURABLE_FLAGS:List[str] = ["useChangesCommand", "useUnicodeFont", "useColorOutput"]
 CONFIGURABLE_LISTS:List[str] = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
 CONFIGURABLE_INTS:List[str] = ["logLines", "diffLines"]
-GLOBAL_LISTS:List[str] = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]
+GLOBAL_LISTS:List[str] = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]  # lists that don't allow folders with their file patterns
 TRUTH_VALUES:List[str] = ["true", "yes", "on", "1", "enable", "enabled"]  # all lower-case normalized
 FALSE_VALUES:List[str] = ["false", "no", "off", "0", "disable", "disabled"]
 PROGRESS_MARKER:List[str] =  ["|/-\\", "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588\u2587\u2586\u2585\u2584\u2583\u2582", "\U0001f55b\U0001f550\U0001f551\U0001f552\U0001f553\U0001f554\U0001f555\U0001f556\U0001f557\U0001f558\U0001f559\U0001f55a\U0001f559\U0001f558\U0001f557\U0001f556\U0001f555\U0001f554\U0001f553\U0001f552\U0001f551\U0001f550"]
@@ -148,7 +148,7 @@ defaults:Accessor = Accessor({
     "strict": False, "track": False, "picky": False, "compress": False,  # these cannot be modified by the user interface
     "useChangesCommand": False,  # for Git likeness
     "useUnicodeFont": sys.platform != "win32",
-    "useColorOutput": True,  # TODO make this depend on colorama present, which isn't loaded here (lazy eval?)
+    "useColorOutput": True,  # TODO make this depend on colorama present, which isn't loaded here yet (lazy eval?)
     "diffLines": 2,
     "logLines": 20,
     "texttype": ["*.md", "*.coco", "*.py", "*.pyi", "*.pth", "*.ps1"],
@@ -197,7 +197,7 @@ def tryOrIgnore(func:Callable[[], Any], onError:Callable[[Exception], None] = (e
   except Exception as E: onError(E)
 
 def removePath(key:str, value:str) -> str =
-  ''' Cleanup of user-specified global file patterns, used in config. '''  # TODO improve
+  ''' Cleanup of user-specified *global* file patterns, used in config. '''
   value if value in GLOBAL_LISTS or SLASH not in value else value[value.rindex(SLASH)+1:]
 
 def dictUpdate(dikt:Dict[Any,Any], by:Dict[Any,Any]) -> Dict[Any,Any]:

@@ -18,7 +18,8 @@ except:
   from pure import *
 
 # Dependencies
-import configr
+try: import configr
+except: pass  # TODO this is here to avoid import error when setup.py is called but actually needs to install its dependencies first. enhance this
 
 
 # Lazy module auto-import for quick tool startup
@@ -1112,7 +1113,7 @@ def config(arguments:List[str?], options:List[str] = []):
   if command is None: usage.usage("help", verbose = True)
   if command not in ("set", "unset", "show", "list", "add", "rm"): Exit("Unknown config command %r" % command)
   local:bool = "--local" in options
-  m:Metadata = Metadata()  # loads layered configuration as well
+  m:Metadata = Metadata()  # loads nested configuration (local - global - defaults)
   c:configr.Configr = m.c if local else m.c.__defaults
   if command == "set":
     if None in (key, value): Exit("Key or value not specified")
@@ -1124,13 +1125,13 @@ def config(arguments:List[str?], options:List[str] = []):
     if key not in c.keys(with_nested = False):
       Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))
     del c[key]
-  elif command == "add":
+  elif command == "add":  # TODO copy list from defaults if not local/global
     if None in (key, value): Exit("Key or value not specified")
     if key not in CONFIGURABLE_LISTS: Exit("Unsupported key %r for list addition" % key)
-    if key not in c.keys(): c[key] = [_ for _ in c.__defaults[key]] if key in c.__defaults[key] else []  # prepare empty list, or copy from underlying, add new value below
+    if key not in c.keys(): c[key] = [_ for _ in c.__defaults[key]] if key in c.__defaults[key] else []  # prepare empty list, or copy from underlying, add new value below TODO also allow one more level of underlying?
     elif value in c[key]: Exit("Value already contained, nothing to do")
-    if ";" in value: c[key].append(removePath(key, value))
-    else: c[key].extend([removePath(key, v) for v in value.split(";")])
+    if ";" not in value: c[key].append(removePath(key, value.strip()))
+    else: c[key].extend([removePath(key, v) for v in safeSplit(value, ";")])
   elif command == "rm":
     if None in (key, value): Exit("Key or value not specified")
     if key not in c.keys(with_nested = False):

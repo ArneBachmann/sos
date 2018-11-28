@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xbaab8345
+# __coconut_hash__ = 0xf55e283d
 
 # Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
 
@@ -142,7 +142,7 @@ MARKER = Accessor({"value": usage.MARKER_TEXT})  # type: str  # assume default t
 try:  # line 72
     import colorama  # line 73
     import colorama.ansitowin32  # line 73
-    if colorama.ansitowin32.is_a_tty(sys.stderr):  # list of ansi codes: http://bluesock.org/~willkg/dev/ansi.html  # line 74
+    if sys.stderr.isatty:  # list of ansi codes: http://bluesock.org/~willkg/dev/ansi.html  # line 74
         from colorama import Back  # line 75
         from colorama import Fore  # line 75
         from colorama import Style  # line 75
@@ -209,7 +209,7 @@ ONLY_GLOBAL_FLAGS = ["strict", "track", "picky", "compress"]  # type: List[str] 
 CONFIGURABLE_FLAGS = ["useChangesCommand", "useUnicodeFont", "useColorOutput"]  # type: List[str]  # line 116
 CONFIGURABLE_LISTS = ["texttype", "bintype", "ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]  # type: List[str]  # line 117
 CONFIGURABLE_INTS = ["logLines", "diffLines"]  # type: List[str]  # line 118
-GLOBAL_LISTS = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]  # type: List[str]  # line 119
+GLOBAL_LISTS = ["ignores", "ignoreDirs", "ignoresWhitelist", "ignoreDirsWhitelist"]  # type: List[str]  # lists that don't allow folders with their file patterns  # line 119
 TRUTH_VALUES = ["true", "yes", "on", "1", "enable", "enabled"]  # type: List[str]  # all lower-case normalized  # line 120
 FALSE_VALUES = ["false", "no", "off", "0", "disable", "disabled"]  # type: List[str]  # line 121
 PROGRESS_MARKER = ["|/-\\", "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588\u2587\u2586\u2585\u2584\u2583\u2582", "\U0001f55b\U0001f550\U0001f551\U0001f552\U0001f553\U0001f554\U0001f555\U0001f556\U0001f557\U0001f558\U0001f559\U0001f55a\U0001f559\U0001f558\U0001f557\U0001f556\U0001f555\U0001f554\U0001f553\U0001f552\U0001f551\U0001f550"]  # type: List[str]  # line 122
@@ -296,7 +296,7 @@ def tryOrIgnore(func: 'Callable[[], Any]', onError: 'Callable[[Exception], None]
         onError(E)  # line 197
 
 def removePath(key: 'str', value: 'str') -> 'str':  # line 199
-    ''' Cleanup of user-specified global file patterns, used in config. '''  # TODO improve  # line 200
+    ''' Cleanup of user-specified *global* file patterns, used in config. '''  # line 200
     return value if value in GLOBAL_LISTS or SLASH not in value else value[value.rindex(SLASH) + 1:]  # line 201
 
 def dictUpdate(dikt: 'Dict[Any, Any]', by: 'Dict[Any, Any]') -> 'Dict[Any, Any]':  # line 203
