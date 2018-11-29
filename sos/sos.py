@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x5653308b
+# __coconut_hash__ = 0xb5a11135
 
-# Compiled with Coconut version 1.3.1-post_dev28 [Dead Parrot]
+# Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
 # Coconut Header: -------------------------------------------------------------
 
@@ -557,7 +557,6 @@ class Metadata:  # line 46
     def getParentBranch(_, branch: 'int', revision: 'int') -> 'int':  # line 458
         return _.getParentBranches(branch, revision)[-1]  # line 458
 
-    @_coconut_tco  # line 460
     def getHighestRevision(_, branch: 'int') -> '_coconut.typing.Optional[int]':  # line 460
         ''' Find highest revision of a branch, even if current branch has no commits. '''  # line 461
         m = Metadata()  # type: Metadata  # line 462
@@ -565,7 +564,7 @@ class Metadata:  # line 46
         while other is not None:  # line 464
             m.loadBranch(other)  # line 465
             if m.commits:  # line 466
-                return _coconut_tail_call(max, m.commits)  # line 466
+                return max(m.commits)  # line 466
             other = _.branches[branch].parent  # reference to originating parent branch, or None  # line 467
         return None  # line 468
 

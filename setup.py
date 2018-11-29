@@ -81,7 +81,7 @@ if 'checkdocs' in sys.argv:
 
 import sos.version
 
-with open(readmeFile.split(".")[0] + ".rst", "r") as fd: README = fd.read()
+with open(readmeFile.split(".")[0] + ".rst", "r", encoding = "utf-8") as fd: README = fd.read()
 print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
