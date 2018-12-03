@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xaa021bad
+# __coconut_hash__ = 0x31cc1be8
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -400,7 +400,7 @@ def hashFile(path: 'str', compress: 'bool', saveTo: 'List[str]'=[], callback: 'O
                     for remote in saveTo[1:]:  # line 284
                         tryOrDefault(lambda: shutil.copy2(encode(saveTo[0]), encode(remote)), lambda e: error("Error creating remote copy %r" % remote))  # line 284
             break  # line 285
-        except WinError as E:  # line 286
+        except Exception as E:  # (IsADirectoryError, PermissionError)  # line 286
             retry -= 1  # line 287
             if retry == 0:  # line 288
                 raise E  # line 288
