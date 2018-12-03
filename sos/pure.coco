@@ -22,6 +22,9 @@ _WEEK:int = _DAY * 7
 
 
 # "Pure" functions
+def unzip(lizt:List[Tuple[Any]]) -> Tuple[List[Any]] =
+  zip(*lizt)
+
 def sjoin(*s:Tuple[Any]) -> str = " ".join([str(e) for e in s if e != ''])
 
 def ajoin(sep:str, seq:str[], nl:str = "", first:bool = True) -> str = ((sep if first else "") + (nl + sep).join(seq)) if seq else ""

@@ -283,7 +283,7 @@ def hashFile(path:str, compress:bool, saveTo:List[str] = [], callback:Optional[(
           wsize = os.stat(encode(saveTo[0])).st_size
           for remote in saveTo[1:]: tryOrDefault(() -> shutil.copy2(encode(saveTo[0]), encode(remote)), (e) -> error("Error creating remote copy %r" % remote))
       break
-    except WinError as E:
+    except Exception as E:  # (IsADirectoryError, PermissionError)
       retry -= 1
       if retry == 0: raise E
       error("Cannot open %r - retrying %d more times in %.1d seconds" % (path, RETRY_WAIT))

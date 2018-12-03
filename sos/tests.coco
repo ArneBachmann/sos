@@ -150,10 +150,17 @@ class Tests(unittest.TestCase):
       except AssertionError as E: raise AssertionError("Mismatch vs. remote: %r\n% in %sr" % (filenames, others, dirpath)) from None
 
 
-  # Uni tests
+  # Unit tests
   def testAccessor(_):
     a = sos.Accessor({"a": 1})
     _.assertEqual((1, 1), (a["a"], a.a))
+
+  def testUnzip(_):
+    a:Tuple[int, str][] = zip([1, 2, 3], ["a", "b", "c"])
+    i:Tuple[int]; c:Tuple[str]
+    i, c = sos.unzip(a)
+    _.assertEqual((1, 2, 3), i)
+    _.assertEqual(("a", "b", "c"), c)
 
   def testIndexing(_):
     m = sos.Metadata()
@@ -256,7 +263,7 @@ class Tests(unittest.TestCase):
     sos.offline(options = ["--track"])
     os.mkdir("sub")
     _.createFile("sub" + os.sep + "file1", "sdfsdf")
-    out:str = wrapChannels(-> sos.add("sub", "sub/file?"))
+    out:str = wrapChannels(-> sos.add(["sub"], ["sub/file?"]))
     _.assertAllIn(["Added tracking pattern", "'%s'" % "file?", os.path.abspath("sub")], out)
     sos.commit("test")  # should pick up sub/file1 pattern
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # sub/file1 was added
@@ -705,7 +712,7 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", None, ["--picky"])
     changes = sos.changes()
     _.assertEqual(0, len(changes.additions))  # do not list any existing file as an addition
-    out:str = wrapChannels(-> sos.add(".", "./file?", options = ["--force", "--relative"]))
+    out:str = wrapChannels(-> sos.add(["."], ["./file?"], options = ["--force", "--relative"]))
     _.assertAllIn(["Added tracking pattern", "'%s'" % "file?", "'.'"], out)
     _.createFile(1, "aa")
     sos.commit("First")  # add one file
@@ -713,7 +720,7 @@ class Tests(unittest.TestCase):
     _.createFile(2, "b")
     try: sos.commit("Second")  # add nothing, because picky
     except: pass
-    sos.add(".", "./file?")
+    sos.add(["."], ["./file?"])
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))
     out = wrapChannels(-> sos.log()).replace("\r", "")
@@ -731,7 +738,7 @@ class Tests(unittest.TestCase):
     _.assertNotIn("    r1", out)
     _.assertIn("  * r2", out)
     _.createFile(3, prefix = "sub")
-    sos.add("sub", "sub/file?")
+    sos.add(["sub"], ["sub/file?"])
     changes = sos.changes()
     _.assertEqual(1, len(changes.additions))
     _.assertTrue("sub/file3" in changes.additions)
@@ -742,16 +749,16 @@ class Tests(unittest.TestCase):
     sos.offline("trunk", None, ["--track"])
     _.createFile(1, "x")
     _.createFile(1, "x", prefix = "sub")
-    sos.add(".", "./file?")  # add glob pattern to track
+    sos.add(["."], ["./file?"])  # add glob pattern to track
     sos.commit("First")
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file
-    sos.add(".", "sub/file?")  # add glob pattern to track
+    sos.add(["."], ["sub/file?"])  # add glob pattern to track
     sos.commit("Second")  # one new file + meta
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file
     os.unlink("file1")  # remove from basefolder
     _.createFile(2, "y")
-    sos.remove(".", "sub/file?")
-    try: sos.remove(".", "sub/bla"); _.fail("Expected exit")  # TODO check more textual details here
+    sos.remove(["."], ["sub/file?"])
+    try: sos.remove(["."], ["sub/bla"]); _.fail("Expected exit")  # TODO check more textual details here
     except SystemExit as E: _.assertEqual(1, E.code)
     sos.commit("Third")
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 2))))  # one new file + meta
@@ -766,7 +773,7 @@ class Tests(unittest.TestCase):
     sos.offline("test", options = ["--track"])  # set up repo in tracking mode (SVN- or gitless-style)
     _.createFile(1)
     _.createFile("a123a")  # untracked file "a123a"
-    sos.add(".", "./file?")  # add glob tracking pattern
+    sos.add(["."], ["./file?"])  # add glob tracking pattern
     sos.commit("second")  # versions "file1"
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # one new file + meta file
     out:str = wrapChannels(-> sos.status()).replace("\r", "")
@@ -782,8 +789,8 @@ class Tests(unittest.TestCase):
     _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 3))))  # meta file only, no other tracked path/file
 
     sos.branch("Other")  # second branch containing file1 and file2 tracked by "./file?"
-    sos.remove(".", "./file?")  # remove tracking pattern, but don't touch previously created and versioned files
-    sos.add(".", "./a*a")  # add tracking pattern
+    sos.remove(["."], ["./file?"])  # remove tracking pattern, but don't touch previously created and versioned files
+    sos.add([".", "."], ["./a*a", "./a*?"])  # add tracking pattern
     changes = sos.changes()  # should pick up addition only, because tracked, but not the deletion, as not tracked anymore
     _.assertEqual(0, len(changes.modifications))
     _.assertEqual(0, len(changes.deletions))  # not tracked anymore, but contained in version history and not removed
@@ -815,7 +822,7 @@ class Tests(unittest.TestCase):
     sos.offline("test", options = ["--track"])  # set up repo in tracking mode (SVN- or gitless-style)
     _.createFile(1)
     _.createFile("foo")
-    sos.add(".", "./file*")  # capture one file
+    sos.add(["."], ["./file*"])  # capture one file
     sos.ls()
     out:str = sos.safeSplit(wrapChannels(-> sos.ls()).replace("\r", ""), "\n")
     _.assertInAny("TRK file1  (file*)", out)
@@ -824,7 +831,7 @@ class Tests(unittest.TestCase):
     out = sos.safeSplit(wrapChannels(-> sos.ls(options = ["--patterns"])).replace("\r", ""), "\n")
     _.assertInAny("TRK file*", out)
     _.createFile("a", prefix = "sub")
-    sos.add("sub", "sub/a")
+    sos.add(["sub"], ["sub/a"])
     sos.ls("sub")
     _.assertInAny("TRK a  (a)", sos.safeSplit(wrapChannels(-> sos.ls("sub")).replace("\r", ""), "\n"))
 
@@ -955,13 +962,13 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     sos.defaults.ignores[:] = ["file*"]  # replace in-place
     sos.offline("xx", options = ["--track", "--strict"])  # because nothing to commit due to ignore pattern
-    sos.add(".", "./file*")  # add tracking pattern for "file1"
+    sos.add(["."], ["./file*"])  # add tracking pattern for "file1"
     sos.commit(options = ["--force"])  # attempt to commit the file
     _.assertEqual(1, len(os.listdir(sos.revisionFolder(0, 1))))  # only meta data, file1 was ignored
     try: sos.online(); _.fail()  # Exit because dirty
     except: pass  # exception expected
     _.createFile("x2")  # add another change
-    sos.add(".", "./x?")  # add tracking pattern for "file1"
+    sos.add(["."], ["./x?"])  # add tracking pattern for "file1"
     try: sos.online(["--force"]); _.fail()  # force beyond dirty flag check
     except: pass
     sos.online(["--force", "--force"])  # force beyond file tree modifications check
@@ -970,7 +977,7 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     sos.defaults.ignoresWhitelist[:] = ["file*"]
     sos.offline("xx", None, ["--track"])
-    sos.add(".", "./file*")
+    sos.add(["."], ["./file*"])
     sos.commit()  # should NOT ask for force here
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # meta data and "file1", file1 was whitelisted
 
@@ -1035,8 +1042,8 @@ class Tests(unittest.TestCase):
     _.createFile("a.2")
     _.createFile("b.1")
     _.createFile("b.2")
-    sos.add(".", "./a.?")
-    sos.add(".", "./?.1", negative = True)
+    sos.add(["."], ["./a.?"])
+    sos.add(["."], ["./?.1"], negative = True)
     out:str = wrapChannels(-> sos.commit())
     _.assertIn("ADD ./a.2", out)
     _.assertNotIn("ADD ./a.1", out)
@@ -1051,8 +1058,8 @@ class Tests(unittest.TestCase):
     sos.offline(options = ["--track", "--strict"])
     _.createFile(1)
     _.createFile(2)
-    sos.add(".", "./file1")
-    sos.add(".", "./file2")
+    sos.add(["."], ["./file1"])
+    sos.add(["."], ["./file2"])
     sos.commit(onlys = f{"./file1"})
     _.assertEqual(2, len(os.listdir(sos.revisionFolder(0, 1))))  # only meta and file1
     sos.commit()  # adds also file2
@@ -1133,7 +1140,7 @@ class Tests(unittest.TestCase):
     ''' Move primarily modifies tracking patterns and moves files around accordingly. '''
     sos.offline(options = ["--strict", "--track"])
     _.createFile(1)
-    sos.add(".", "./file?")
+    sos.add(["."], ["./file?"])
     # assert error when source folder is missing
     out:str = wrapChannels(-> sos.move("sub", "sub/file?", ".", "./?file"))
     _.assertIn("Source folder doesn't exist", out)
@@ -1151,7 +1158,7 @@ class Tests(unittest.TestCase):
     out = wrapChannels(-> sos.move(".", "./a*", ".", "./b*"))
     _.assertIn("No files match the specified file pattern", out)
     _.assertIn("EXIT CODE", out)
-    sos.add(".", "./*")  # add catch-all tracking pattern to root folder
+    sos.add(["."], ["./*"])  # add catch-all tracking pattern to root folder
     out = wrapChannels(-> sos.move(".", "./a*", ".", "./b*", options = ["--force"]))
     _.assertIn("  './*' matches 3 files", out)
     _.assertIn("EXIT CODE", out)
@@ -1159,8 +1166,8 @@ class Tests(unittest.TestCase):
     _.createFile(1)
     _.createFile(2)
     _.createFile(3)
-    sos.add(".", "./file*")
-    sos.remove(".", "./*")
+    sos.add(["."], ["./file*"])
+    sos.remove(["."], ["./*"])
     try: sos.config(["set", "ignores", "file3;file4"])  # define an ignore pattern
     except SystemExit as E: _.assertEqual(0, E.code)
     try: sos.config(["set", "ignoresWhitelist", "file3"])
@@ -1174,8 +1181,8 @@ class Tests(unittest.TestCase):
 #    sos.move("?-?-?")
     # test rename unsolvable conflicts
     # test --soft option
-    sos.remove(".", "./?file")  # untrack pattern, which was renamed before
-    sos.add(".", "./?a?b", ["--force"])
+    sos.remove(["."], ["./?file"])  # untrack pattern, which was renamed before
+    sos.add(["."], ["./?a?b"], ["--force"])
     sos.move(".", "./?a?b", ".", "./a?b?", ["--force", "--soft"])
     _.createFile("1a2b")  # should not be tracked
     _.createFile("a1b2")  # should be tracked
@@ -1184,7 +1191,7 @@ class Tests(unittest.TestCase):
     _.assertTrue(os.path.exists(sos.revisionFolder(0, 1, file = "93b38f90892eb5c57779ca9c0b6fbdf6774daeee3342f56f3e78eb2fe5336c50")))  # a1b2
     _.createFile("1a1b1")
     _.createFile("1a1b2")
-    sos.add(".", "./?a?b*")
+    sos.add(["."], ["./?a?b*"])
     # test target pattern exists
     out = wrapChannels(-> sos.move(".", "./?a?b*", ".", "./z?z?"))
     _.assertIn("not unique", out)

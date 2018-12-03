@@ -4,7 +4,7 @@ matrix:
   include:
     - os: linux
       dist: trusty
-      python: pypy3
+      python: pypy3.5
       env:
         - UBUNTU=trusty
         - NOMYPY=true
@@ -40,7 +40,7 @@ matrix:
         - UBUNTU=precise
     - os: linux
       dist: precise
-      python: pypy3
+      python: pypy3.5
       env:
         - UBUNTU=precise
         - NOMYPY=true
@@ -57,7 +57,7 @@ matrix:
   allow_failures:
     - os: linux
       dist: precise
-      python: pypy3
+      python: pypy3.5
       env:
         - UBUNTU=precise
         - NOMYPY=true

@@ -9,4 +9,10 @@ if "%NOMYPY%" == "" (
 	python setup.py clean build
   python test
 )
-coverage run --branch --debug=sys --source=sos sos/tests.py --verbose && coverage html && coverage annotate sos/tests.py
+if errorlevel 1 (
+  echo Python test exited with an error
+  exit 1
+) else (
+  coverage run --branch --debug=sys --source=sos sos/tests.py --verbose && coverage html && coverage annotate sos/tests.py
+  exit 0
+)
