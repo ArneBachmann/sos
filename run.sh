@@ -7,7 +7,7 @@ then
   python test --mypy
 else
 	python setup.py clean build
-  python test
+  python setup.py test
 fi
 
 if [ $? -eq 0 ]; then

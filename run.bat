@@ -7,7 +7,7 @@ if "%NOMYPY%" == "" (
   python test --mypy
 ) else (
 	python setup.py clean build
-  python test
+  python setup.py test
 )
 if errorlevel 1 (
   echo Python test exited with an error
