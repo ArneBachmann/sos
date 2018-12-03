@@ -3,12 +3,11 @@ echo NOMYPY=%NOMYPY%
 
 if "%NOMYPY%" == "" (
 
-	python setup.py clean build
-  python test --mypy
+	python setup.py clean build --mypy
 ) else (
 	python setup.py clean build
-  python setup.py test
 )
+python setup.py test
 if errorlevel 1 (
   echo Python test exited with an error
   exit 1
