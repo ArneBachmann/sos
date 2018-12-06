@@ -62,6 +62,9 @@ SOS supports three different file handling models that you may use to your likin
 - SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
 - Filename encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
+### Tutorial ###
+See the [tutorial](https://github.com/ArneBachmann/sos/blob/master/docs/TUTORIAL.md) to make your first steps with SOS.
+
 
 ## Latest Changes ##
 - **Version 1.7**, not yet released:
@@ -267,7 +270,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Development and Contribution ##
-See [CONTRIBUTING.md](https://github.com/ArneBachmann/sos/blob/master/CONTRIBUTING.md) for further information.
+See the [contribution guideline](https://github.com/ArneBachmann/sos/blob/master/CONTRIBUTING.md) for further information.
 
 Ideas for future developments:
 - [Issue 158](https://github.com/ArneBachmann/sos/issues/158) Remote metadata folder would allow separating the repository from the checkout, and - in combination with a locking library like `fasteners` could even be used as a multi-user repository. Estimated development effort is 3+3 hours.
