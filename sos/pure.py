@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x330c1448
+# __coconut_hash__ = 0x46b9b159
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -90,4 +90,4 @@ def siSize(size: 'int') -> 'str':  # line 55
 
 def timeString(timeMs: 'int') -> 'str':  # line 59
     ''' Returns formatted time with unit. '''  # line 60
-    return "%.1f weeks" % (float(timeMs) / _WEEK) if timeMs > 8. * _WEEK / 7 else ("%.1f days" % (float(timeMs) / _DAY) if timeMs > 1.125 * _DAY else ("%.1f hours" % (float(timeMs) / _HOUR) if timeMs > 1.5 * _HOUR else ("%.1f minutes" % (float(timeMs) / _MINUTE) if timeMs > 1.5 * _MINUTE else ("%.0f seconds" % (float(timeMs) / _SECOND) if timeMs > 1.5 * _SECOND else ("%d ms" % timeMs)))))  # line 61
+    return "%.1f weeks" % (float(timeMs) / _WEEK) if timeMs > 8. * _WEEK / 7 else ("%.1f days" % (float(timeMs) / _DAY) if timeMs > 1.125 * _DAY else ("%.1f hours" % (float(timeMs) / _HOUR) if timeMs > 1.5 * _HOUR else ("%.1f minutes" % (float(timeMs) / _MINUTE) if timeMs > 1.5 * _MINUTE else ("%.1f seconds" % (float(timeMs) / _SECOND) if timeMs > 1.5 * _SECOND else ("%d ms" % timeMs)))))  # line 61

@@ -62,5 +62,5 @@ def timeString(timeMs:int) -> str =
   "%.1f days" % (float(timeMs) / _DAY) if timeMs > 1.125 * _DAY else (
   "%.1f hours" % (float(timeMs) / _HOUR) if timeMs > 1.5 * _HOUR else (
   "%.1f minutes" % (float(timeMs) / _MINUTE) if timeMs > 1.5 * _MINUTE else (
-  "%.0f seconds" % (float(timeMs) / _SECOND) if timeMs > 1.5 * _SECOND else (
+  "%.1f seconds" % (float(timeMs) / _SECOND) if timeMs > 1.5 * _SECOND else (
   "%d ms" % timeMs)))))

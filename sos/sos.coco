@@ -71,7 +71,9 @@ class Metadata:
       if "useColorOutput" in Metadata.singleton: enableColor(Metadata.singleton.useColorOutput)  # otherwise keep default
     _.c:configr.Configr = Metadata.singleton
 
-  def isTextType(_, filename:str) -> bool = ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
+  def isTextType(_, filename:str) -> bool =
+    ''' Based on the file extension or user-defined file patterns, this function determines if the file is of any diffable text type. '''
+    ((mimetypes.guess_type(filename)[0] ?? "").startswith("text/") or any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.texttype])) and not any([fnmatch.fnmatch(filename, pattern) for pattern in _.c.bintype])
 
   def correctNegativeIndexing(_, revision:int) -> int =
     ''' As the na_e says, this deter_ines the correct positive revision nu_ber for negative indexing (-1 being last, -2 being second last). '''
@@ -266,7 +268,7 @@ class Metadata:
         _.branches[dep] = dataCopy(BranchInfo, _.branches[dep], parent = None, revision = None)  # delete fast-branching reference information
     printo(pure.ljust() + "\r")  # clean line output
     tryOrIgnore(() -> shutil.rmtree(encode(branchFolder(branch) + BACKUP_SUFFIX)))  # remove previous backup first
-    tryOrIgnore(() -> os.rename(encode(branchFolder(branch)), encode(branchFolder(branch) + BACKUP_SUFFIX)), (E) -> Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?"))
+    tryOrIgnore(() -> os.rename(encode(branchFolder(branch)), encode(branchFolder(branch) + BACKUP_SUFFIX)), (E) -> Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", exception = E))
     binfo = _.branches[branch]  # keep reference to removed branch info for caller
     del _.branches[branch]
     _.branch = (branch + 1) if (branch + 1) in _.branches else max(_.branches)  # switch to another valid branch
@@ -343,7 +345,7 @@ class Metadata:
         filename = relPath + SLASH + file
         filepath = os.path.join(path, file)
         try: stat = os.stat(encode(filepath))
-        except Exception as E: exception(E); continue
+        except Exception as E: printo(exception(E)); continue
         size, mtime = stat.st_size, int(stat.st_mtime * 1000)
         show:str? = indicator.getIndicator() if progress else None
         if show:  # indication character returned
@@ -357,7 +359,7 @@ class Metadata:
             changed.additions[filename] = PathInfo(nameHash, size, mtime, hashed)
             compressed += written; original += size
           except PermissionError as E: error("File permission error for %s" % filepath)
-          except Exception as F: exception(F)  # HINT e.g. FileNotFoundError will not add to additions
+          except Exception as F: printo(exception(F))  # HINT e.g. FileNotFoundError will not add to additions
           continue  # with next file
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
@@ -365,7 +367,7 @@ class Metadata:
             hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = [revisionFolder(branch, revision, base = remote ?? _.root, file = last.nameHash) for remote in [None] + _.remotes] if write else None, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")) if size > 0 else (None, 0)
             changed.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
             compressed += written; original += last.size if inverse else size
-          except Exception as E: exception(E)
+          except Exception as E: printo(exception(E))
         elif (size != last.size
             or (not checkContent and mtime != last.mtime)
             or (    checkContent and tryOrDefault(() -> (hashFile(filepath, _.compress, symbols = progressSymbols)[0] != last.hash), default = False))
@@ -377,7 +379,7 @@ class Metadata:
             ) if (last.size if inverse else size) > 0 else (last.hash if inverse else hashFile(filepath, _.compress, symbols = progressSymbols, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = ""))[0], 0)
             changed.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
             compressed += written; original += last.size if inverse else size
-          except Exception as E: exception(E)
+          except Exception as E: printo(exception(E))
         else: continue  # with next file
       if relPath in knownPaths: knownPaths[relPath][:] = list(set(knownPaths[relPath]) - set(walk))  # at least one file is tracked HINT may leave empty lists in dict, but removing them costs more than traversing them silently
     for path, names in knownPaths.items():  # all paths that weren't walked by
@@ -428,15 +430,15 @@ class Metadata:
     if argument.startswith(SLASH): return (_.branch, _.getRevisionByName(argument[1:]))  # current branch
     if argument.endswith(SLASH):
       try: return (_.getBranchByName(argument[:-1]), -1)
-      except ValueError: Exit("Unknown branch label '%s'" % argument)
+      except ValueError as E: Exit("Unknown branch label '%s'" % argument, exception = E)
     if SLASH in argument:
       b, r = argument.split(SLASH)[:2]
       try: return (_.getBranchByName(b), _.getRevisionByName(r))
-      except ValueError: Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r))
+      except ValueError as E: Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r), exception = E)
     branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
     try: return (branch ?? _.branch, int(argument if argument else "-1") if branch is None else -1)  # either branch name/number or reverse/absolute revision number
-    except: Exit("Unknown branch label or wrong number format")
+    except Exception as E: Exit("Unknown branch label or wrong number format", exception = E)
     Exit("This should never happen. Please create an issue report")
 
   def findRevision(_, branch:int, revision:int, nameHash:str) -> Tuple[int,str] =
@@ -525,7 +527,7 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = [], re
         resource = metaFolder + os.sep + entry
         if os.path.isdir(resource): shutil.rmtree(encode(resource))
         else: os.unlink(encode(resource))
-    except: Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder)
+    except Exception as E: Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder, exception = E)
   for remote in remotes:
     try: os.makedirs(os.path.join(remote, metaFolder))
     except Exception as E: error("Creating remote repository metadata in %s" % remote)
@@ -562,7 +564,7 @@ def online(options:str[] = []):
       progress = '--progress' in options)  # HINT no option for --only/--except here on purpose. No check for picky here, because online is not a command that considers staged files (but we could use --only here, alternatively)
     if modified(changed): Exit("File tree is modified vs. current branch\nUse 'sos online --force --force' to continue with removing the offline repository")
   try: shutil.rmtree(encode(metaFolder)); info("Exited offline mode. Continue working with your traditional VCS.")
-  except Exception as E: Exit("Error removing offline repository: %r" % E)
+  except Exception as E: Exit("Error removing offline repository.", exception = E)
   info(MARKER + "Offline repository removed, you're back online")
 
 def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
@@ -1063,7 +1065,7 @@ def dump(argument:str, options:str[] = []):
       if verbose: info("Creating backup...")
       shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))
       if delta: with zipfile.ZipFile(argument, "r") as _zip: entries = _zip.namelist()  # list of pure relative paths without leading dot, normal slashes
-    except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry. %r" % E)
+    except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry.", exception = E)
   if verbose: info("Dumping revisions...")
   if delta: warnings.filterwarnings('ignore', 'Duplicate name.*')  # , UserWarning, "zipfile", 0)  # don't show duplicate entries warnings
   with zipfile.ZipFile(argument, "a" if delta else "w", compression) as _zip:  # create
@@ -1265,8 +1267,7 @@ def parse(vcs:str, cwd:str, cmd:str):
     else: Exit("Unknown command '%s'" % command)
     Exit(code = 0)  # regular exit
   except Exception, RuntimeError as E:
-    exception(E)
-    Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.")
+    Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", exception = E)
 
 def main():
   global debug, info, warn, error  # to modify logger

@@ -152,8 +152,20 @@ class Tests(unittest.TestCase):
 
   # Unit tests
   def testAccessor(_):
-    a = sos.Accessor({"a": 1})
+    a:Accessor = sos.Accessor({"a": 1})
     _.assertEqual((1, 1), (a["a"], a.a))
+
+  def testCharDet(_):
+    _.assertEqual("ascii", sos.detectEncoding(b"abc"))
+    _.assertEqual("UTF-8-SIG", sos.detectEncoding("abc".encode("utf-8-sig")))  # with BOM
+    _.assertEqual(sos.UTF8, sos.detectEncoding("abcüöä".encode("utf-8")))  # without BOM
+
+  def testTimeString(_):
+    _.assertEqual('1500 ms', sos.pure.timeString(1500))
+    _.assertEqual('1.5 seconds', sos.pure.timeString(1501))
+    _.assertEqual('23.0 hours', sos.pure.timeString(1000*60*60*23))
+    _.assertEqual('8.0 days', sos.pure.timeString(1000*60*60*24*8))
+    _.assertEqual('1.3 weeks', sos.pure.timeString(1000*60*60*24*9))
 
   def testUnzip(_):
     a:Tuple[int, str][] = zip([1, 2, 3], ["a", "b", "c"])
@@ -161,6 +173,10 @@ class Tests(unittest.TestCase):
     i, c = sos.unzip(a)
     _.assertEqual((1, 2, 3), i)
     _.assertEqual(("a", "b", "c"), c)
+
+  def testUsage(_):
+    out = wrapChannels(-> sos.usage.usage("commit"))
+    _.assertAllIn(["commit [<message>]  Create a new revision", "Arguments:", "Options:"], out)
 
   def testIndexing(_):
     m = sos.Metadata()

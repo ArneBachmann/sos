@@ -9,7 +9,7 @@
 
 
 - License: [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/)
-- Read the documentation on the [official website](https://sos-vcs.net), chat with the author and others [on Gitter](https://gitter.im/sos-vcs/Lobby), file issues and requests [on Github](https://github.com/ArneBachmann/sos/issues), fork the code repository [on Github](https://github.com/ArneBachmann/sos)
+- Read the documentation on the [official website](https://sos-vcs.net), chat with the author and others [on Gitter](https://gitter.im/sos-vcs/Lobby), file issues and requests [on Github](https://github.com/ArneBachmann/sos/issues), or check out the code repository [on Github](https://github.com/ArneBachmann/sos)
 - [Buy the developer a coffee](https://PayPal.Me/ArneBachmann/) to show your appreciation!
 
 ### From the author ###
@@ -19,7 +19,7 @@
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
 - **PyPI**: [*Python Package Index*](https://pypi.python.org/pypi)
 - **SCM**: *Source Control Management*
-- **SOS**: *Subversion Offline Solution*
+- **SOS**: *Subversion Offline Solution* (this tool)
 - **SVN**: [Apache Subversion](http://subversion.apache.org)
 - **VCS**: *Version Control System*
 
@@ -181,7 +181,9 @@ While completing version 1.0 of SOS after almost two months of development, I in
 
 Here is a comparison between SOS and traditional VCS's commands:
 - `branch` creates a branch from the current file tree, but also switches to it immediately. There is no requirement to name branches, removing all barriers
-    - SOS allows to branch from the latest committed revision via `sos branch [<name>] --last`; this automatically applies when in tracking and picky mode. In consequence any changes performed since last commit will automatically be considered as a change for the next commit on the branch unless `--stay` was added as well to not switch to the new branch
+    - SOS allows to branch from the latest committed revision via `sos branch [<name>] --last`; this automatically applies when in tracking and picky mode.
+      In consequence any changes performed since last commit will automatically be considered as a change for the next commit on the branch unless `--stay` was added as well, to not switch to the new branch
+    - Using the `--fast` option will store a reference to the originating branch and revision instead of copying all files. This option is currently only available when also using `--last` to avoid confusion on what data is considered (not the current file tree, but the last committed revision)
 - `commit` creates a numbered revision from the current file tree, similar to how SVN does, but revision numbers are only unique per branch, as they aren't stored in a global namespace. The commit message is strictly *optional* on purpose (as `sos commit` serves largely as a CTRL+S replacement)
     - The first revision (created during execution of `sos offline` or `sos branch`) always has the number `0`
     - Each `sos commit` increments the revision number by one; revisions are referenced by this numeric index, the revision's optional commit message if given, or a tag
@@ -244,6 +246,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - SOS doesn't store branching point information (or references); each branch stands alone and has no relation whatsoever to other branches or certain revisions thereof, except incidentally its initial file contents
 - File tracking patterns are stored per branch, but **not** versioned with commits. This means that the "what to track" metadata is not part of the changesets. This is a simplification stemming from the main idea that revisions form a linear order of safepoints, and users rarely go back to older revisions
 - `sos update` will **not warn** if local changes are present. This is a noteworthy exception to the failsafe approach taken for most other commands
+- Detection of text types workes solely on file extension and user-defined patterns. In case decoding a text file fails, an error is shown
 
 
 ## Recipes ##

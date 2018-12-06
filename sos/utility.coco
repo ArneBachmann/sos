@@ -126,7 +126,7 @@ DUMP_FILE:str = metaFolder + ".zip"
 metaFile:str = ".meta"
 metaBack:str = metaFile + BACKUP_SUFFIX
 bufSize:int = pure.MEBI
-UTF8:str = "utf_8"  # early used constant, not defined in standard library
+UTF8:str = "utf-8"  # early used constant, not defined in standard library
 SVN:str = "svn"
 SLASH:str = "/"
 PARENT:str = ".."
@@ -177,16 +177,20 @@ def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writin
 def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of reading filenames
 try:
   import chardet  # https://github.com/chardet/chardet
-  def detectEncoding(binary:bytes) -> str = chardet.detect(binary)["encoding"]
-except: def detectEncoding(binary:bytes) -> str =  # Guess the encoding
+  def detectEncoding(binary:bytes) -> str? = chardet.detect(binary)["encoding"]  # None if nothing useful detected (=binary)
+except: def detectEncoding(binary:bytes) -> str? =  # Guess the encoding
   ''' Fallback if chardet library missing. '''
   try: binary.decode(UTF8); return UTF8
   except UnicodeError: pass
+  try: binary.decode("UTF-8-SIG"); return UTF8
+  except UnicodeError: pass
   try: binary.decode("utf_16"); return "utf_16"
+  except UnicodeError: pass
+  try: binary.decode("ascii"); return "ascii"  # HINT: can still contain whitespace which is hard to diff
   except UnicodeError: pass
   try: binary.decode("cp1252"); return "cp1252"
   except UnicodeError: pass
-  "ascii"  # this code will never be reached, as above is an 8-bit charset that always matches
+  None
 
 def tryOrDefault(func:Callable[[], Any], default:Any) -> Any:
   try: return func()
@@ -236,8 +240,8 @@ def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.pat
 
 def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None) -> str = os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")
 
-def Exit(message:str = "", code = 1):
-  lines:List[str] = message.split("\n")
+def Exit(message:str = "", code:int = 1, excp:Any = None):
+  lines:List[str] = (message + ("" if excp is None else ("\n" + exception(excp)))).replace("\r", "\n").split("\n")
   printe("[", nl = "")
   printe("EXIT", color = Fore.YELLOW if code else Fore.GREEN, nl ="")
   printe("%s%s]" % (
@@ -253,12 +257,10 @@ def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.
   while len(strings) > 0 and len(prefix + separator + (strings[0] |> process)) <= length: prefix += separator + (strings.pop(0) |> process)
   prefix
 
-def exception(E):
+def exception(E) -> str =
   ''' Report an exception to the user to allow useful bug reporting. '''
-  printo(str(E))
   import traceback
-  traceback.print_exc()
-  traceback.print_stack()
+  str(E) + "\n" + traceback.format_exc() + "\n" + traceback.format_list(traceback.extract_stack())
 
 def hashFile(path:str, compress:bool, saveTo:List[str] = [], callback:Optional[(str) -> None] = None, symbols:str = PROGRESS_MARKER[0]) -> Tuple[str,int] =
   ''' Calculate and return (hash of file contents, compressed sized (if writing) else 0). '''
@@ -298,6 +300,9 @@ def getAnyOfMap(map:Dict[str,Any], params:str[], default:Any = None) -> Any =
 def strftime(timestamp:int? = None) -> str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp / 1000. if timestamp is not None else None))
 
 def detectAndLoad(filename:str? = None, content:bytes? = None, ignoreWhitespace:bool = False) -> Tuple[str,bytes?,str[]] =
+  ''' Detects a (text) file's encoding, detects the end of line markers, loads the file and splits it into lines.
+      returns: 3-tuple (encoding-string, end-of-line bytes, [lines])
+  '''
   lines:List[str] = []
   if filename is not None: with open(encode(filename), "rb") as fd: content = fd.read()
   encoding:str = detectEncoding(content) ?? sys.getdefaultencoding()
@@ -353,7 +358,7 @@ def mergeClassic(file:bytes, intofile:str, fromname:str, intoname:str, totimesta
   try:
     encoding, othreol, othr = detectAndLoad(content = file, ignoreWhitespace = ignoreWhitespace)
     encoding, curreol, curr = detectAndLoad(filename = intofile, ignoreWhitespace = ignoreWhitespace)
-  except Exception as E: Exit("Cannot diff '%s' vs '%s': %r" % (fromname ?? "<bytes>", intoname ?? "<bytes>", E))
+  except Exception as E: Exit("Cannot diff '%s' vs '%s': %r" % (fromname ?? "<bytes>", intoname ?? "<bytes>"), exception = E)  # in case of binary files
   for line in difflib.context_diff(othr, curr, fromname, intoname, time.ctime(int(totimestamp / 1000))): printo(line)  # from generator expression
 
 def merge(
@@ -376,7 +381,7 @@ def merge(
   try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document
     encoding, othreol, othr = detectAndLoad(filename = filename, content = file, ignoreWhitespace = ignoreWhitespace)
     encoding, curreol, curr = detectAndLoad(filename = intoname, content = into, ignoreWhitespace = ignoreWhitespace)
-  except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename ?? "<bytes>", intoname ?? "<bytes>", E))
+  except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename ?? "<bytes>", intoname ?? "<bytes>"), exception = E)
   if None not in [othreol, curreol] and othreol != curreol: warn("Differing EOL-styles detected during merge. Using current file's style for merged output")
   output:List[str] = list(difflib.Differ().compare(othr, curr))  # from generator expression
   blocks:List[MergeBlock] = []  # merged result in blocks
