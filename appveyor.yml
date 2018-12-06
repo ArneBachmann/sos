@@ -117,8 +117,8 @@ environment:
     - PYTHON_VERSION: 3.6
       platform: x86
       image: ubuntu1804
-matrix:
-  allow_failures:
+#matrix:
+#  allow_failures:
 #    - PYTHON_VERSION: 3.3
 #      platform: x86
 #      NOMYPY: true
