@@ -20,22 +20,30 @@ Once installed, confirm that everything is fine via
 sos version
 ```
 
-or
+which shows something like
 
-```bash
-sos help
+```
+ ,---.          ,--.                                ,--.                 ,-----.  ,---. ,---.,--.,--.                 ,---.         ,--.          ,--.  ,--.
+'   .-' ,--.,--.|  |-.,--.  ,--.,---. ,--.--. ,---. `--' ,---. ,--,--,  '  .-.  '/  .-'/  .-'|  |`--',--,--,  ,---.  '   .-'  ,---. |  |,--.,--.,-'  '-.`--' ,---. ,--,--,
+`.  `-. |  ||  || .-. '\  `'  /| .-. :|  .--'(  .-' ,--.| .-. ||      \ |  | |  ||  `-,|  `-,|  |,--.|      \| .-. : `.  `-. | .-. ||  ||  ||  |'-.  .-',--.| .-. ||      \
+.-'    |'  ''  '| `-' | \    / \   --.|  |   .-'  `)|  |' '-' '|  ||  | '  '-'  '|  .-'|  .-'|  ||  ||  ||  |\   --. .-'    |' '-' '|  |'  ''  '  |  |  |  |' '-' '|  ||  |
+`-----'  `----'  `---'   `--'   `----'`--'   `----' `--' `---' `--''--'  `-----' `--'  `--'  `--'`--'`--''--' `----' `-----'  `---' `--' `----'   `--'  `--' `---' `--''--'
+
+/SOS/ Subversion Offline Solution V1.6.9 (C) Arne Bachmann (PyPI: 2018.2206.2757-v1.6.0-72-ge98aaa4)
 ```
 
 
 ## First steps ##
-Say you have a project you work on, but you are  either *a)* using a means of transport without (affordable) internet access, *b)* experiencing a power or network outage, *c)* need VCS functionality for something not yet in a repository or checkout. SOS will be there for you immediately.
+Say you have a project you work on, but you are either **a)** using a means of transport without (affordable) internet access, **b)** experiencing a power or network outage, **c)** in need of VCS functionality for something not yet in a repository or checkout.
+SOS will support you in any case.
 
 For the sake of this tutorial, we assume you are working in a local Subversion checkout.
-As I don't know any public SVN platforms to checkout for this repository, instead download and unzip a random project from Github, e.g., [one](https://github.com/ArneBachmann/realestate-sunamount/archive/master.zip) of my small Coconut projects.
+As I don't know any public SVN platforms to checkout from for this tutorial, **download** and **unzip** a random project from Github instead, e.g., [this one](https://github.com/ArneBachmann/realestate-sunamount/archive/master.zip), a small Coconut project.
 
-Let's start! You are on the train without network connectivity for some reason and want to start working on the (just downloaded) RESE project to improve some code parts.
+Let's start! Imagine you are taking a train without network connectivity for some reason and want to start working on the (just downloaded) RESE project to improve some code parts. In the shell type this:
 
 ```bash
+cd realestate-sunamount-master
 sos offline
 ```
 
@@ -66,12 +74,12 @@ Processing speed was 15.02 MiB/s.
 [EXIT]
 ```
 
-"Going offline" will create a sub-folder `.sos` that contains a baseline copy of your project.
-You can immediately start hacking away and not worry about changing anything beyond repair, as you can always revert your changes to the point in time your started going offline.
+By "going offline" this way a sub-folder `.sos` will be created that contains a baseline copy of your project.
+You can immediately start hacking away and not worry about changing anything beyond repair, as you can always revert your changes to the point in time you started going offline or did your last `commit`.
 
-You may also use the command line switches `--compress` and `--strict` to enable data compression inside the SOS internals (slow but less data overhead) and change the file change detection to full file hashing instead of only checking size and timestamp.
+You may also use the command line switches `--compress` and `--strict` to enable data compression inside the SOS internals (slow but less data overhead) and change the file change detection method to full file contents hashing instead of relying on size and timestamp only.
 
-OK, let's start working. You open your editor and edit a source file inside `realestate-sunamount-master`, e.g. `make.bat` from
+OK, let's start working. You open your editor and edit a source file inside `realestate-sunamount-master`, e.g. `make.bat` from:
 
 ```Powershell
 @echo off
@@ -79,7 +87,7 @@ echo Compiling
 ...
 ```
 
-to
+to this:
 
 ```Powershell
 @echo off
@@ -87,15 +95,17 @@ echo Compiling...
 ...
 ```
 
-Before committing your change to the SOS offline-repository just yet, you'd like to see a summary of your changes:
+Satisfied with your improvement, you want to commit your change to the local offline SOS history to make a snapshot of your work that you can later refer to or go back to.
+But before committing your change just yet, you'd like to see a summary of your changes to confirm everything's alright:
 
 ```bash
 sos status
 ```
 
-or, if you prefer a less Git-like and more Fossil-like command,
+or, if you prefer a less Git-like and more Fossil-like command:
 
 ```bash
+sos config set useChangesCommand on
 sos changes
 ```
 
@@ -106,7 +116,10 @@ MOD ./make.bat
 [EXIT]
 ```
 
-Ok, so we know that `make.bat` has been modified. Let's display the changes in detail:
+The first defines a user-global SOS configuration setting unless using `--local` which would apply to the current checkout only (in contrast to what Git does via `--global`).
+The useChangesCommand setting determines the behavior of the `status` command to show the repository stats instead of the checkout status (if `off` use `status --repo[sitory]` to show the stats).
+
+Ok, so we know that `make.bat` has been modified. Let's display the changes in more detail:
 
 ```bash
 sos diff
@@ -122,4 +135,45 @@ now 1 |echo Compiling...|
 [EXIT]
 ```
 
-which tells us exactly what was changed from old to new. The pipe symbols mark the beginning and end of each displayed line, so you can also see whitespaces.
+which tells us exactly on what line what was changed from old to new.
+The pipe symbols mark the beginning and end of each displayed line, so you can also notice trailing whitespaces.
+
+It's now time to commit our change.
+SOS was designed with minimal barriers in mind, therefore you can simply do:
+
+```bash
+sos commit
+```
+
+or `sos ci` or `sos com`.
+You can also specify a commit message and specify which files to commit:
+
+```bash
+sos commit "First change" --only "*.bat"
+```
+
+which shows the following output:
+
+```
+MOD ./make.bat
+Processing speed was 177.47 kiB/s.
+/SOS/ Created new revision r01 'First change' (+00/-00/±01/⇌00) summing 507 bytes in 1 files (33.93% SOS overhead)
+```
+
+The output is a very condensed summary of changes.
+It shows the created revision's number `01`, the commit message `First change`, the added, removed, modified and moved files, the number of bytes and files processed, and the percentage of data required by SOS to manage its metadata, usually in the range of less than a percent.
+
+To get an overview of the recent SOS commit history:
+
+```bash
+sos log
+```
+
+which shows:
+
+```
+/SOS/ Offline commit history of branch 'trunk'
+    r0 @2018-12-06 23:26:29 (+14/-00/±00/T00) |Offline repository created on 2018-12-06 23:26:29|
+  ➙ r1 @2018-12-07 15:11:08 (+00/-00/±01/T01) |First change|
+[EXIT 0.0s]
+```
