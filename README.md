@@ -12,9 +12,6 @@
 - Read the documentation on the [official website](https://sos-vcs.net), chat with the author and others [on Gitter](https://gitter.im/sos-vcs/Lobby), file issues and requests [on Github](https://github.com/ArneBachmann/sos/issues), or check out the code repository [on Github](https://github.com/ArneBachmann/sos)
 - [Buy the developer a coffee](https://PayPal.Me/ArneBachmann/) to show your appreciation!
 
-### From the author ###
-> I've been developing this software continuously over the course of the last months in my spare time, and I think it turned out great so far. Due to other duties in my life I cannot, however, continue at this pace without the support of a lively community, or getting some kind of funding for the effort that I put into SOS. Bug reports, feature requests and contributions are welcome, granted there's enough time to process them. Please support SOS in any way suiting you, and spread the word!
-
 ### List of Abbreviations and Definitions ###
 - **MPL**: [*Mozilla Public License*](https://www.mozilla.org/en-US/MPL/)
 - **PyPI**: [*Python Package Index*](https://pypi.python.org/pypi)
@@ -63,7 +60,7 @@ SOS supports three different file handling models that you may use to your likin
 - Filename encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
 ### Tutorial ###
-See the [tutorial](https://github.com/ArneBachmann/sos/blob/master/docs/TUTORIAL.md) to make your first steps with SOS.
+See the [tutorial](https://arnebachmann.github.io/sos/docs/TUTORIAL.html) to make your first steps with SOS.
 
 
 ## Latest Changes ##
@@ -270,7 +267,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Development and Contribution ##
-See the [contribution guideline](https://github.com/ArneBachmann/sos/blob/master/CONTRIBUTING.md) for further information.
+See the [contribution guideline](https://arnebachmann.github.io/sos/docs/CONTRIBUTING.html) for further information.
 
 Ideas for future developments:
 - [Issue 158](https://github.com/ArneBachmann/sos/issues/158) Remote metadata folder would allow separating the repository from the checkout, and - in combination with a locking library like `fasteners` could even be used as a multi-user repository. Estimated development effort is 3+3 hours.
