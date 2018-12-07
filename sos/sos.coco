@@ -696,7 +696,7 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
 def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
   ''' Show branches and current repository state. '''
   m:Metadata = Metadata()
-  if not (m.c.useChangesCommand or '--repo' in options): changes(argument, options, onlys, excps); return
+  if not (m.c.useChangesCommand or any(option.startswith('--repo') for option in options)): changes(argument, options, onlys, excps); return
   current:int = m.branch
   strict:bool = '--strict' in options or m.strict
   printo(MARKER_COLOR + "Offline repository status")

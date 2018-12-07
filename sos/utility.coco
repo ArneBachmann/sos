@@ -1,7 +1,6 @@
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-# Utiliy functions
 import hashlib, logging, os, shutil, sys, time; START_TIME = time.time()  # early time tracking
 
 try: from typing import Any, AnyStr, Dict, FrozenSet, Generic, IO, Iterable, Iterator, NoReturn, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
@@ -14,21 +13,15 @@ except: import pure; from values import *; import usage
 # Lazy imports for quicker initialization TODO make mypy accept this
 bz2:Any; codecs:Any; difflib:Any
 class bz2: def __getattribute__(_, key):
-  global bz2
-  import bz2
-  return bz2.__getattribute__(key)
+  global bz2; import bz2; return bz2.__getattribute__(key)
 bz2:object = bz2()
 
 class codecs: def __getattribute__(_, key):
-  global codecs
-  import codecs
-  return codecs.__getattribute__(key)
+  global codecs; import codecs; return codecs.__getattribute__(key)
 codecs:object = codecs()
 
 class difflib: def __getattribute__(_, key):
-  global difflib
-  import difflib
-  return difflib.__getattribute__(key)
+  global difflib; import difflib; return difflib.__getattribute__(key)
 difflib:object = difflib()
 
 
@@ -140,7 +133,7 @@ MOVE_SYMBOL:str = "\u21cc"  # alternative for "#". or use \U0001F5C0", which is 
 METADATA_FORMAT:int = 2  # counter for (partially incompatible) consecutive formats (was undefined, "1" is the first numbered format version after that)
 vcsFolders:Dict[str,str] = {".svn": SVN, ".git": "git", ".bzr": "bzr", ".hg": "hg", ".fslckout": "fossil", "_FOSSIL_": "fossil", ".CVS": "cvs", "_darcs": "darcs", "_MTN": "monotone", ".git/GL_COMMIT_EDIT_MSG": "gl"}
 vcsBranches:Dict[str,str?] = {SVN: "trunk", "git": "master", "bzr": "trunk", "hg": "default", "fossil": None, "cvs": None, "darcs": None, "monotone": None}
-vcsCommits:Dict[str,Tuple[bool,str?]] = {SVN: (True, None), "git": (False, None), "bzr": (True, None), "hg": (True, None), "fossil": (True, "--no-warnings"), "cvs": (True, None), "darcs": (False, "--all"), "monotone": (False, None)}  # bool: tracked? (otherwise picky), str:arguments to "commit" TODO CVS, RCS have probably different per-file operation
+vcsCommits:Dict[str,Tuple[bool,str?]] = {SVN: (True, None), "git": (False, None), "bzr": (True, None), "hg": (True, None), "fossil": (True, "--no-warnings"), "cvs": (True, None), "darcs": (False, "--all"), "monotone": (False, None)}  # 2-tuple(is_tracked? (otherwise picky), str-arguments to "commit") TODO CVS, RCS have probably different per-file operation
 vcsNames:Dict[str,str] = {SVN: "Subversion", "git": "Git", "bzr": "Bazaar", "hg": "Mercurial", "fossil": "Fossil", "cvs": "CVS", "darcs": "darcs", "monotone": "monotone"}#  from cmd to long name
 NL_NAMES:Dict[bytes?,str] = {None: "<No newline>", b"\r\n": "<CR+LF>", b"\n\r": "<LF+CR>", b"\n": "<LF>", b"\r": "<CR>"}
 MAX_COMMAND_LINE:Dict[str?,int] = {"win32": 8191, "linux2": 4096, None: 1023}  # may be much longer on posix. https://stackoverflow.com/questions/3205027/maximum-length-of-command-line-string
@@ -151,7 +144,7 @@ defaults:Accessor = Accessor({
     "useColorOutput": True,  # TODO make this depend on colorama present, which isn't loaded here yet (lazy eval?)
     "diffLines": 2,
     "logLines": 20,
-    "texttype": ["*.md", "*.coco", "*.py", "*.pyi", "*.pth", "*.ps1"],
+    "texttype": ["*.md", "*.coco", "*.py", "*.pyi", "*.pth", "*.ps1", "*.bat"],
     "bintype": [],
     "ignoreDirs": [".*", "__pycache__", ".mypy_cache"],  # already includes metaFolder
     "ignoreDirsWhitelist": [],

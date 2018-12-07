@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x9fa795fd
+# __coconut_hash__ = 0xf03ba30d
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -841,7 +841,7 @@ def commit(argument: '_coconut.typing.Optional[str]'=None, options: '_coconut.ty
 def status(argument: '_coconut.typing.Optional[str]'=None, vcs: '_coconut.typing.Optional[str]'=None, cmd: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[], onlys: '_coconut.typing.Optional[FrozenSet[str]]'=None, excps: '_coconut.typing.Optional[FrozenSet[str]]'=None):  # line 696
     ''' Show branches and current repository state. '''  # line 697
     m = Metadata()  # type: Metadata  # line 698
-    if not (m.c.useChangesCommand or '--repo' in options):  # line 699
+    if not (m.c.useChangesCommand or any((option.startswith('--repo') for option in options))):  # line 699
         changes(argument, options, onlys, excps)  # line 699
         return  # line 699
     current = m.branch  # type: int  # line 700
