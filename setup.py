@@ -120,7 +120,7 @@ setup(
   license = 'MPL-2.0',
   packages = find_packages(),  # should return ["sos"], but returns []
   package_dir = {"sos": "sos"},
-  package_data = {"": ["../LICENSE", "../*.md", "../README.rst", "*.coco"]},  # *.py is included in any case
+  package_data = {"": ["../LICENSE", "../*.md", "../README.rst", "*.coco", "docs/*.md"]},  # *.py is included in any case
   include_package_data = False,  # if True, will *NOT* package the data!
   zip_safe = False,  # TODO re-add and test extras section for backport = enum34
   extras_require = { ':python_version < "3.5"': 'typing >= 3.5.3' },

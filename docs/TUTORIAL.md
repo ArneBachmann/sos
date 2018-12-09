@@ -160,8 +160,8 @@ Processing speed was 177.47 kiB/s.
 /SOS/ Created new revision r01 'First change' (+00/-00/±01/⇌00) summing 507 bytes in 1 files (33.93% SOS overhead)
 ```
 
-The output is a very condensed summary of changes.
-It shows the created revision's number `01`, the commit message `First change`, the added, removed, modified and moved files, the number of bytes and files processed, and the percentage of data required by SOS to manage its metadata, usually in the range of less than a percent.
+The output is a condensed summary of changes.
+It shows the created revision's number `01`, the commit message, the number of added, removed, modified and moved files, the number of bytes and files processed, and the percentage of metadata overhead occupied by SOS to manage the offline repository, which is usually less than one percent.
 
 To get an overview of the recent SOS commit history:
 
@@ -177,3 +177,81 @@ which shows:
   ➙ r1 @2018-12-07 15:11:08 (+00/-00/±01/T01) |First change|
 [EXIT 0.0s]
 ```
+
+Or even:
+
+```bash
+sos log --changes`
+```
+
+which also shows the files modifed in each commit:
+
+```
+/SOS/ Offline commit history of branch 'trunk'
+    r0 @2018-12-06 23:26:29 (+14/-00/±00/T00) |Offline repository created on 2018-12-06 23:26:29|
+ADD ./.gitignore  (-)
+ADD ./LICENSE  (-)
+ADD ./README.md  (-)
+ADD ./__coconut__.py  (-)
+ADD ./example.coco  (-)
+ADD ./example.py  (-)
+ADD ./make.bat  (-)
+ADD ./make.sh  (-)
+ADD ./setup.py  (-)
+ADD ./sunamount.md  (-)
+ADD rese/__coconut__.py  (-)
+ADD rese/__init__.py  (-)
+ADD rese/sunamount.coco  (-)
+ADD rese/sunamount.py  (-)
+  ➙ r1 @2018-12-07 15:11:08 (+00/-00/±01/T01) |First change|
+MOD ./make.bat
+[EXIT]
+```
+
+You can work this way as long as you want and record regular snapshots of your work until you want to go back online:
+
+```bash
+sos online
+```
+
+which tells you something important:
+
+```
+[EXIT There are still unsynchronized (modified) branches.]
+Use 'sos log' to list them.
+Use 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.
+Use 'sos online --force' to erase all aggregated offline revisions.
+```
+
+This means that SOS won't let you go back online, i.e., remove the offline repository, until you have secured all your offline work back into the underlying VCS (if any).
+
+You can also check the status of the repository and all its branches:
+
+```bash
+sos status --repo
+```
+
+or just `sos status`, if the configuration setting `useChangesCommand` is turned **on**:
+
+```
+/SOS/ Offline repository status
+Repository root:     /home/ash/Desktop/realestate-sunamount-master
+Underlying VCS root: None
+Underlying VCS type: None
+Installation path:   /home/ash/Desktop/all/projects/sos
+Current SOS version: 2018.2207.2518-v1.6.0-77-g396bea8
+At creation version: 2018.2206.2757-v1.6.0-72-ge98aaa4
+Metadata format:     2
+Content checking:    size & timestamp
+Data compression:    deactivated
+Repository mode:     simple
+Number of branches:  1
+✔ File tree is unchanged
+  * b0 'trunk' @2018-12-06 23:26:29 (modified) with 2 commits, using 0.13 MiB (+2.001% SOS overhead). Last comment: 'First change'
+[EXIT]
+```
+
+As you can see after some repository internals, the only branch is marked as **modified**, which means it has been changed since you went offline.
+Make sure you don't forget to secure your changes to the underlying VCS you went offline frome before issueing `sos online` to remove the offline repository.
+
+But of course there are two more ideas about VCS we need to cover: Branching, rollback and merging.

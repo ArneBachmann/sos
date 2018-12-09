@@ -264,6 +264,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - The dirty flag is only relevant in tracking and picky mode TODO investigate - is this true, and if yes, why
 - Branching larger amounts of binary files may be expensive as all files are copied and/or compressed just like during `sos offline`. A workaround is to `sos offline` only in the folders that are relevant for a specific task
 - If you see the Windows system error `[Errno 13]` (hinting at permission problems), don't go looking for user right problems, rather check for other processes locking files in the file tree
+- For files detected as being moved or renamed, using `--only` or `--except` for just the old or new path will lead to either only remove the old file path or only add the new entry, but will not be recognized as a move action in the history, as the other half of the move action is missing
 
 
 ## Development and Contribution ##
