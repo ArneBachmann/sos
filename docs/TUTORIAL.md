@@ -146,6 +146,7 @@ sos commit
 ```
 
 or `sos ci` or `sos com`.
+This works similar to `git add --all` as it mirrors all folder tree changes into the repository.
 You can also specify a commit message and specify which files to commit:
 
 ```bash
@@ -251,7 +252,7 @@ Number of branches:  1
 [EXIT]
 ```
 
-As you can see after some repository internals, the only branch is marked as **modified**, which means it has been changed since you went offline.
-Make sure you don't forget to secure your changes to the underlying VCS you went offline frome before issueing `sos online` to remove the offline repository.
+Here you see (after some repository internals), that the only branch is marked as **modified**, which means it has been changed since you went offline and wasn't committed to the underlying VCS yet (after coming back online).
+Make sure you don't forget to secure your changes to the underlying VCS you went offline from before issuing `sos online` to remove the offline repository.
 
 But of course there are two more ideas about VCS we need to cover: Branching, rollback and merging.

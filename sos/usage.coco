@@ -420,6 +420,15 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
   "prune": {
     ("config rm",): "Remove a list-type parameter together with the last entry"
   },
+  "no-remotes": {
+    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Do not operate on any remote targets"
+  },
+  "only-remotes": {
+    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Only operate on specified remote targets (vs. all configured during 'offline')"
+  },
+  "except-remotes": {
+    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Don't operate on specified remote targets"
+  },
   "sos": {
     None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""
   },
@@ -484,7 +493,7 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
         for optname, descriptions in sorted(matchingoptions):
           if len(descriptions) == 0: continue
           print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen +  (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl = "\n") if len(descriptions) > 1 else ""))
-  if command is None:
+  if command is None and category is None:
     print("\nCommon options:")
     genericOptions:Dict[str,str] = {k: v[None] for k, v in OPTIONS.items() if None in v}
     maxlen = max(len(_) for _ in genericOptions)

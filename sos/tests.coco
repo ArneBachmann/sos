@@ -106,9 +106,10 @@ class Tests(unittest.TestCase):
 
   def setUp(_):
     sos.Metadata.singleton = None
-    for entry in os.listdir(testFolder):  # cannot reliably remove testFolder on Windows when using TortoiseSVN as VCS
-      resource:str = os.path.join(testFolder, entry)
-      shutil.rmtree(sos.encode(resource)) if os.path.isdir(sos.encode(resource)) else os.unlink(sos.encode(resource))
+    for folder in (testFolder, rmteFolder):
+      for entry in os.listdir(folder):  # cannot reliably remove testFolder on Windows when using TortoiseSVN as VCS
+        resource:str = os.path.join(folder, entry)
+        shutil.rmtree(sos.encode(resource)) if os.path.isdir(sos.encode(resource)) else os.unlink(sos.encode(resource))
     os.chdir(testFolder)
 
   # Assertion helpers
@@ -596,6 +597,13 @@ class Tests(unittest.TestCase):
     _.assertTrue("\"master\"" in meta)
     os.rmdir(".git")
 
+  def testNoRemotes(_):
+    sos.offline(remotes = [rmteFolder])
+    _.createFile(1)
+    sos.commit(options = ["--no-remotes"])
+    _.assertTrue(_.existsFile(sos.revisionFolder(0, 1, file = "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa")))
+    _.assertFalse(_.existsFile(os.path.join(sos.branchFolder(0, rmteFolder), "r%d" % 1, "b9ee10a87f612e299a6eb208210bc0898092a64c48091327cc2aaeee9b764ffa")))
+
   def testUpdate(_):
     sos.offline("trunk")  # create initial branch b0/r0
     _.createFile(1, "x" * 100)
@@ -1067,7 +1075,7 @@ class Tests(unittest.TestCase):
     _.assertNotIn("ADD ./b.2", out)
 
   def testOnly(_):
-    _.assertEqual((f{"./A", "x/B"}, f{"./C"}, ["bla"]), sos.parseArgumentOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--remote", "bla", "--only"]))
+    _.assertEqual((f{"./A", "x/B"}, f{"./C"}, ["bla"], ["blo"]), sos.parseArgumentOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--remote", "bla", "--exclude-remote", "blo", "--only"]))
     _.assertEqual(f{"B"}, sos.conditionalIntersection(f{"A", "B", "C"}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(f{}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(None, f{"B", "D"}))
@@ -1254,7 +1262,7 @@ class Tests(unittest.TestCase):
 
   def testHashCollision(_):
     old = sos.Metadata.findChanges
-    def patched(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None, dontConsider:FrozenSet[str]? = None, progress:bool = False) -> Tuple[sos.ChangeSet,str?] =
+    def patched(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None, dontConsider:FrozenSet[str]? = None, progress:bool = False, remotes:List[str] = []) -> Tuple[sos.ChangeSet,str?] =
       import collections  # used only in this method
       write = branch is not None and revision is not None
       if write:

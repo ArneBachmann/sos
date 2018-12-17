@@ -4,7 +4,7 @@
 import hashlib, logging, os, shutil, sys, time; START_TIME = time.time()  # early time tracking
 
 try: from typing import Any, AnyStr, Dict, FrozenSet, Generic, IO, Iterable, Iterator, NoReturn, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
-except: pass
+except: pass  # TODO import this only when running mypy?
 
 try: import sos.pure as pure; from sos.values import *; import sos.usage as usage
 except: import pure; from values import *; import usage
@@ -610,19 +610,20 @@ def relativize(root:str, filepath:str) -> Tuple[str,str] =
   relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)
   relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)
 
-def parseArgumentOptions(cwd:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?, List[str]] =
+def parseArgumentOptions(cwd:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?, List[str], List[str]] =
   ''' Returns (root-normalized) set of --only and --except arguments. '''
   root:str = os.getcwd()
-  onlys:List[str] = []; excps:List[str] = []; remotes:List[str] = []
-  for keys, container in [(("--only", "--include"), onlys), (("--except", "--exclude"), excps), (("--remote", ), remotes)]:
-    founds = [i for i in range(len(options)) if any([options[i].startswith(key) for key in keys])]  # assuming no more than one = in the string
+  onlys:List[str] = []; excps:List[str] = []; remotes:List[str] = []; noremotes:List[str] = []
+  for keys, container in [(("--only", "--include"), onlys), (("--except", "--exclude"), excps), (("--remote", "--remotes", "--only-remote", "--only-remotes", "--include-remote", "--include-remotes"), remotes), (("--except-remote", "--except-remotes", "--exclude-remote", "--exclude-remotes"), noremotes)]:
+    founds = [i for i in range(len(options)) if any([options[i].startswith(key + "=") or options[i] == key for key in keys])]  # assuming no more than one = in the string
     for i in reversed(founds):
       if "=" in options[i]:
-        container.append(options[i].split("=")[1])
+        container.extend(safeSplit(options[i].split("=")[1]), ";")  # TODO keep semicolon or use comma?
       elif i + 1 < len(options):  # in case last --only has no argument
-        container.append(options[i + 1])
+        container.extend(safeSplit(options[i + 1], ";"))
         del options[i + 1]
       del options[i]  # reverse removal
   ( frozenset(oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(PARENT + SLASH)) if onlys else None,
     frozenset(ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(PARENT + SLASH)) if excps else None,  # avoids out-of-repo paths
-    remotes)
+    remotes,
+    noremotes)

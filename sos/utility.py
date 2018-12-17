@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xbaeb5495
+# __coconut_hash__ = 0x101a8c22
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -47,8 +47,8 @@ try:  # we cannot delay this import, since we need to type-check the Coconut ver
     from typing import Type  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
     from typing import TypeVar  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
     from typing import Union  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
-except:  # line 7
-    pass  # line 7
+except:  # TODO import this only when running mypy?  # line 7
+    pass  # TODO import this only when running mypy?  # line 7
 
 try:  # line 9
     from sos import pure  # line 9
@@ -844,19 +844,20 @@ def relativize(root: 'str', filepath: 'str') -> 'Tuple[str, str]':  # line 608
     relpath = os.path.relpath(os.path.dirname(os.path.abspath(filepath)), root).replace(os.sep, SLASH)  # line 610
     return relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)  # line 611
 
-def parseArgumentOptions(cwd: 'str', options: 'List[str]') -> 'Tuple[_coconut.typing.Optional[FrozenSet[str]], _coconut.typing.Optional[FrozenSet[str]], List[str]]':  # line 613
+def parseArgumentOptions(cwd: 'str', options: 'List[str]') -> 'Tuple[_coconut.typing.Optional[FrozenSet[str]], _coconut.typing.Optional[FrozenSet[str]], List[str], List[str]]':  # line 613
     ''' Returns (root-normalized) set of --only and --except arguments. '''  # line 614
     root = os.getcwd()  # type: str  # line 615
     onlys = []  # type: List[str]  # line 616
     excps = []  # type: List[str]  # line 616
     remotes = []  # type: List[str]  # line 616
-    for keys, container in [(("--only", "--include"), onlys), (("--except", "--exclude"), excps), (("--remote",), remotes)]:  # line 617
-        founds = [i for i in range(len(options)) if any([options[i].startswith(key) for key in keys])]  # assuming no more than one = in the string  # line 618
+    noremotes = []  # type: List[str]  # line 616
+    for keys, container in [(("--only", "--include"), onlys), (("--except", "--exclude"), excps), (("--remote", "--remotes", "--only-remote", "--only-remotes", "--include-remote", "--include-remotes"), remotes), (("--except-remote", "--except-remotes", "--exclude-remote", "--exclude-remotes"), noremotes)]:  # line 617
+        founds = [i for i in range(len(options)) if any([options[i].startswith(key + "=") or options[i] == key for key in keys])]  # assuming no more than one = in the string  # line 618
         for i in reversed(founds):  # line 619
             if "=" in options[i]:  # line 620
-                container.append(options[i].split("=")[1])  # line 621
+                container.extend(safeSplit(options[i].split("=")[1]), ";")  # TODO keep semicolon or use comma?  # line 621
             elif i + 1 < len(options):  # in case last --only has no argument  # line 622
-                container.append(options[i + 1])  # line 623
+                container.extend(safeSplit(options[i + 1], ";"))  # line 623
                 del options[i + 1]  # line 624
             del options[i]  # reverse removal  # line 625
-    return (frozenset((oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(PARENT + SLASH))) if onlys else None, frozenset((ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(PARENT + SLASH))) if excps else None, remotes)  # line 626
+    return (frozenset((oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(PARENT + SLASH))) if onlys else None, frozenset((ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(PARENT + SLASH))) if excps else None, remotes, noremotes)  # line 626
