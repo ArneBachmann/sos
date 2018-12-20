@@ -146,10 +146,11 @@ sos commit
 ```
 
 or `sos ci` or `sos com`.
-You can also specify a commit message and specify which files to commit:
+This works similar to `git add --all && git commit -m ""` as it mirrors all folder tree changes into the repository.
+You can also specify a commit message, and specify which files to commit or not exclude:
 
 ```bash
-sos commit "First change" --only "*.bat"
+sos commit "First change" --only "*.bat" --except "*.cmd"
 ```
 
 which shows the following output:
@@ -220,7 +221,7 @@ which tells you something important:
 [EXIT There are still unsynchronized (modified) branches.]
 Use 'sos log' to list them.
 Use 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.
-Use 'sos online --force' to erase all aggregated offline revisions.
+Use 'sos online --force' to erase all aggregated offline revisions without further action.
 ```
 
 This means that SOS won't let you go back online, i.e., remove the offline repository, until you have secured all your offline work back into the underlying VCS (if any).
@@ -231,7 +232,7 @@ You can also check the status of the repository and all its branches:
 sos status --repo
 ```
 
-or just `sos status`, if the configuration setting `useChangesCommand` is turned **on**:
+or just `sos status`, if the configuration setting `useChangesCommand` has been turned **on** (locally or globally):
 
 ```
 /SOS/ Offline repository status
@@ -251,7 +252,7 @@ Number of branches:  1
 [EXIT]
 ```
 
-As you can see after some repository internals, the only branch is marked as **modified**, which means it has been changed since you went offline.
-Make sure you don't forget to secure your changes to the underlying VCS you went offline frome before issueing `sos online` to remove the offline repository.
+Here you see (after some repository internals), that the only branch is marked as **modified**, which means it has been changed since you went offline and wasn't committed to the underlying VCS yet, i.e., using the `sos publish` command.
+Make sure you don't forget to secure your changes to the underlying VCS you went offline from before issuing `sos online` to remove the offline repository. You can also use SOS to do that, using `sos commit --vcs -m "Message"` to trigger a underlying VCS commit and clear the dirty flag.
 
 But of course there are two more ideas about VCS we need to cover: Branching, rollback and merging.

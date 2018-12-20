@@ -125,29 +125,36 @@ class Metadata:
       if upgraded:
         for upgrade in upgraded: printo("WARNING  Upgraded repository metadata to match SOS version %r" % upgrade, color = Fore.YELLOW)
         warn("To revert the metadata upgrade%s, restore %s/%s from %s/%s NOW" % ("s" if len(upgraded) > 1 else "", metaFolder, metaFile, metaFolder, metaBack))
-        _.saveBranches()
+        _.saveBranches(_.remotes)
     except Exception as E:  # if not found, create metadata folder with default values
       _.branches = {}
       _.track, _.picky, _.strict, _.compress, _.version, _.remotes, _.format = [defaults[k] for k in ["track", "picky", "strict", "compress"]] + [version.__version__, remotes, METADATA_FORMAT]
       (debug if offline else warn)("Couldn't read branches metadata: %r" % E)  # hide warning only when going offline
 
   def _saveBranches(_, remote:str?, data:Dikt[str,Any]):
+    ''' Subfunction to save branches to a local or remote offline repository location. '''
     tryOrIgnore(() -> shutil.copy2(encode(os.path.join(remote ?? _.root, metaFolder, metaFile)), encode(os.path.join(remote ?? _.root, metaFolder, metaBack))))  # backup
     try: with codecs.open(encode(os.path.join(remote ?? _.root, metaFolder, metaFile)), "w", encoding = UTF8) as fd:
       json.dump((data, list(_.branches.values()), _.repoConf), fd, ensure_ascii = False)  # stores using unicode codepoints (instead of ascii encoding), the file descriptor knows how to encode them
     except Exception as E: debug("Error saving branches%s" % ((" to remote path " + remote) if remote else ""))
 
-  def saveBranches(_, also:Dict[str,Any] = {}):
+  def saveBranches(_, remotes:List[str] = [], also:Dict[str,Any] = {}):
     ''' Save list of branches and current branch info to metadata file. '''
     store:Dict[str,Any] = {
         "tags": _.tags, "branch": _.branch,
         "track": _.track, "picky": _.picky, "strict": _.strict, "compress": _.compress, "version": _.version, "format": METADATA_FORMAT,  # HINT uses _.version instead of constant to allow the upgrade procedure to write a specific version
         "remotes": _.remotes,
-        "remote": False
+        "remote": False  # on local branch, this is always False, all others are True
       }  # dictionary of repository settings (while _.repoConf stores user settings)
     store.update(also)  # allows overriding certain values at certain points in time
-    for remote in [None] + _.remotes:
+    for remote in [None] + remotes:
       _._saveBranches(remote, store); store["remote"] = True  # mark remote copies as read-only
+
+  def _extractRemotesFromArguments(_, options:List[str]) -> List[str] =
+    ''' Common behavior to parse and extract the remotes options from command line-arguments. '''
+    _a:Any; remotes:List[str]; noremotes:List[str]
+    _a, _a, remotes, noremotes = parseArgumentOptions("", options)  # re-parse options for the --(only-)remotes and --exlude-remotes options
+    [] if "--no-remotes" in options else list(set(remotes if remotes else _.remotes) - set(noremotes))
 
   def getRevisionByName(_, name:str) -> int? =
     ''' Convenience accessor for named revisions (using commit message as tag name by convention). '''
@@ -172,15 +179,16 @@ class Metadata:
     _.commits = {i.number: i for i in (CommitInfo(*item) for item in commits)}  # re-create type info
     _.branch = branch
 
-  def saveBranch(_, branch:int):
+  def saveBranch(_, branch:int, options:List[str] = []):
     ''' Save all commits to a branch meta data file. '''
-    for remote in [None] + _.remotes:
+    remotes:List[str] = _._extractRemotesFromArguments(options)
+    for remote in [None] + remotes:
       tryOrIgnore(-> shutil.copy2(encode(branchFolder(branch, file = metaFile, base = remote)), encode(branchFolder(branch, file = metaBack, base = remote))))  # backup
       try: with codecs.open(encode(branchFolder(branch, file = metaFile, base = remote)), "w", encoding = UTF8) as fd:
         json.dump(list(_.commits.values()), fd, ensure_ascii = False)
       except Exception as E: debug("Error saving branch%s" % ((" to remote path " + remote) if remote else ""))
 
-  def duplicateBranch(_, branch:int, name:str? = None, initialMessage:str? = None, full:bool = True):
+  def duplicateBranch(_, branch:int, options:List[str] = [], name:str? = None, initialMessage:str? = None, full:bool = True):
     ''' Create branch from an existing branch/revision.
         In case of full branching, copy all revisions, otherwise create only reference to originating branch/revision.
         branch: new target branch number (must not exist yet)
@@ -189,6 +197,7 @@ class Metadata:
         full: always create full branch copy, don't use a parent reference
         _.branch: current branch
     '''
+    remotes:List[str] = _._extractRemotesFromArguments(options)
     if verbose: info("Duplicating branch '%s' to '%s'..." % (_.branches[_.branch].name ?? ("b%d" % _.branch), (name ?? "b%d" % branch)))
     now:int = int(time.time() * 1000)
     _.loadBranch(_.branch)  # load commits for current (originating) branch
@@ -199,17 +208,17 @@ class Metadata:
         tracked = [t for t in _.branches[_.branch].tracked], untracked = [u for u in _.branches[_.branch].untracked],
         parent = None if full else _.branch, revision = None if full else revision
       )
-    for remote in [None] + _.remotes:
+    for remote in [None] + remotes:
       tryOrDefault(() -> os.makedirs(encode(revisionFolder(branch, 0, base = remote ?? _.root) if full else branchFolder(branch, base = remote ?? _.root))), (e) -> error("Duplicating remote branch folder %r" % remote))
     if full:  # not fast branching via reference - copy all current files to new branch
       _.computeSequentialPathSet(_.branch, revision)  # full set of files in latest revision in _.paths
       for path, pinfo in _.paths.items(): _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)  # copy into initial branch revision
       _.commits[0] = CommitInfo(number = 0, ctime = now, message = initialMessage ?? "Branched from '%s'" % (_.branches[_.branch].name ?? "b%d" % _.branch))  # store initial commit
-      _.saveCommit(branch, 0)  # save commit meta data to revision folder
-    _.saveBranch(branch)  # save branch meta data to branch folder - for fast branching, only empty dict
+      _.saveCommit(branch, 0, remotes)  # save commit meta data to revision folder
+    _.saveBranch(branch, options)  # save branch meta data to branch folder - for fast branching, only empty dict
     _.branches[branch] = newBranch  # save branches meta data, needs to be saved in caller code
 
-  def createBranch(_, branch:int, name:str? = None, initialMessage:str? = None):
+  def createBranch(_, branch:int, options:List[str] = [], name:str? = None, initialMessage:str? = None):
     ''' Create a new branch from the current file tree. This clears all known commits and modifies the file system.
         branch: target branch number (must not exist yet)
         name: optional name of new branch
@@ -217,18 +226,19 @@ class Metadata:
         _.branch: current branch, must exist already
     '''
     now:int = int(time.time() * 1000)
+    remotes:List[str] = _._extractRemotesFromArguments(options)
     simpleMode = not (_.track or _.picky)
     tracked:List[str] =  [t for t in _.branches[_.branch].tracked]   if _.track and len(_.branches) > 0 else []  # in case of initial branch creation
     untracked:List[str] = [t for t in _.branches[_.branch].untracked] if _.track and len(_.branches) > 0 else []
     if verbose: info("Creating branch '%s'..." % name ?? "b%d" % branch)
     _.paths:Dict[str, PathInfo] = {}
     if simpleMode:  # branches from file system state. not necessary to create branch folder, as it is done in findChanges below anyway
-      changed, msg = _.findChanges(branch, 0, progress = simpleMode)  # HINT creates revision folder and versioned files!
+      changed, msg = _.findChanges(branch, 0, progress = simpleMode, remotes = remotes)  # HINT creates revision folder and versioned files!
       _.listChanges(changed)
       if msg: printo(msg)  # display compression factor and time taken
       _.paths.update(changed.additions.items())
     else:  # tracking or picky mode: branch from latest revision
-      for remote in [None] + _.remotes:
+      for remote in [None] + remotes:
         tryOrDefault(() -> os.makedirs(encode(revisionFolder(branch, 0, base = remote ?? _.root))), (e) -> error("Creating remote branch folder %r" % remote))
       if _.branch is not None:  # not immediately after "offline" - copy files from current branch
         _.loadBranch(_.branch)
@@ -236,16 +246,17 @@ class Metadata:
         _.computeSequentialPathSet(_.branch, revision)  # full set of files in revision to _.paths
         for path, pinfo in _.paths.items(): _.copyVersionedFile(_.branch, revision, branch, 0, pinfo)
     _.commits = {0: CommitInfo(number = 0, ctime = now, message = initialMessage ?? "Branched on %s" % strftime(now))}  # store initial commit for new branch
-    _.saveBranch(branch)  # save branch meta data (revisions) to branch folder
-    _.saveCommit(branch, 0)  # save commit meta data to revision folder
+    _.saveBranch(branch, remotes)  # save branch meta data (revisions) to branch folder
+    _.saveCommit(branch, 0, remotes)  # save commit meta data to revision folder
     _.branches[branch] = BranchInfo(branch, _.commits[0].ctime, name, True if len(_.branches) == 0 else _.branches[_.branch].inSync, tracked, untracked)  # save branch info, in case it is needed
 
-  def removeBranch(_, branch:int) -> BranchInfo =
+  def removeBranch(_, branch:int, options:List[str] = []) -> BranchInfo =
     ''' Entirely remove a branch and all its revisions from the file system.
         We currently implement a simplified logic that fully re-creates all revisions for all transitively depending branches instead of only removing the one parent branch.
     '''
     import collections  # used almost only here
     binfo:BranchInfo  # typing info
+    remotes:List[str] = _._extractRemotesFromArguments(options)
     deps:List[Tuple[int,int]] = [(binfo.number, binfo.revision) for binfo in _.branches.values() if binfo.parent is not None and branch in _.getParentBranches(binfo.number, 0)]  # all transitively depending branches
     newcommits:Dict[int,Dict[int,CommitInfo]] = collections.defaultdict(dict)  # gathers commit info of re-created branches (branch -> revision -> info)
     if deps:  # need to copy all parent revisions to dependent branches first
@@ -257,25 +268,28 @@ class Metadata:
           _.loadBranch(_.getParentBranch(branch, rev))  # load commits and set _.branch (in case branch to remove was also fast-branched)
 #          if rev in _.commits:  # TODO #247 uncomment? - if not, it was an empty commit? because on non-commit branches there's no revision 0?
           newcommits[dep][rev] = _.commits[rev]
-          shutil.copytree(encode(revisionFolder(_.branch, rev, base = _.root)), encode(revisionFolder(dep, rev, base = _.root)))
+          for remote in [None] + remotes:
+            shutil.copytree(encode(revisionFolder(_.branch, rev, base = remote ?? _.root)), encode(revisionFolder(dep, rev, base = remote ?? _.root)))
       for dep, _rev in deps:  # copy remaining revisions by branch instead by revision
         for rev in range(minrev + 1, _rev + 1):
           printo("\rIntegrating revision %02d into dependant branch %02d %s" % (rev, dep, progress.getIndicator()))
           _.loadBranch(_.getParentBranch(dep, rev))  # WARN using dep intead of branch here!
           if rev in _.commits:  # false only if no added or modified files during fast-branch?
             newcommits[dep][rev] = _.commits[rev]
-            shutil.copytree(encode(revisionFolder(_.branch, rev, base = _.root)), encode(revisionFolder(dep, rev, base = _.root)))
+            for remote in [None] + remotes:
+              shutil.copytree(encode(revisionFolder(_.branch, rev, base = remote ?? _.root)), encode(revisionFolder(dep, rev, base = remote ?? _.root)))
         _.branches[dep] = dataCopy(BranchInfo, _.branches[dep], parent = None, revision = None)  # delete fast-branching reference information
     printo(pure.ljust() + "\r")  # clean line output
-    tryOrIgnore(() -> shutil.rmtree(encode(branchFolder(branch) + BACKUP_SUFFIX)))  # remove previous backup first
-    tryOrIgnore(() -> os.rename(encode(branchFolder(branch)), encode(branchFolder(branch) + BACKUP_SUFFIX)), (E) -> Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", exception = E))
+    for remote in [None] + remotes:
+      tryOrIgnore(() -> shutil.rmtree(encode(branchFolder(branch, base = remote) + BACKUP_SUFFIX)))  # remove previous backup first
+      tryOrIgnore(() -> os.rename(encode(branchFolder(branch, base = remote)), encode(branchFolder(branch, base = remote) + BACKUP_SUFFIX)), (E) -> Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", exception = E))
     binfo = _.branches[branch]  # keep reference to removed branch info for caller
     del _.branches[branch]
     _.branch = (branch + 1) if (branch + 1) in _.branches else max(_.branches)  # switch to another valid branch
-    _.saveBranches()  # persist modified branches list
+    _.saveBranches(remotes)  # persist modified branches list
     for branch, commits in newcommits.items():  # now store aggregated commit infos
       _.commits = commits
-      _.saveBranch(branch)
+      _.saveBranch(branch, remotes)
     _.commits.clear()  # clean memory
     binfo
 
@@ -286,9 +300,9 @@ class Metadata:
     _.paths = {path: PathInfo(*item) for path, item in _.paths.items()}  # re-create type info
     _.branch = branch  # store current branch information = "switch" to loaded branch/commit
 
-  def saveCommit(_, branch:int, revision:int):
+  def saveCommit(_, branch:int, revision:int, remotes:List[str] = []):
     ''' Save all file information to a commit meta data file. '''
-    for remote in [None] + _.remotes:
+    for remote in [None] + remotes:
       try:
         target:str = revisionFolder(branch, revision, base = remote ?? _.root)
         tryOrIgnore(-> os.makedirs(encode(target)))
@@ -296,19 +310,23 @@ class Metadata:
         with codecs.open(encode(os.path.join(target, metaFile)), "w", encoding = UTF8) as fd: json.dump(_.paths, fd, ensure_ascii = False)
       except Exception as E: debug("Error saving commit%s" % ((" to remote path " + remote) if remote else ""))
 
-  def findChanges(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None, dontConsider:FrozenSet[str]? = None, progress:bool = False) -> Tuple[ChangeSet,str?] =
+  def findChanges(_, branch:int? = None, revision:int? = None, checkContent:bool = False, inverse:bool = False, considerOnly:FrozenSet[str]? = None, dontConsider:FrozenSet[str]? = None, progress:bool = False, remotes:List[str]? = None) -> Tuple[ChangeSet,str?] =
     ''' Find changes on the file system vs. in-memory paths (which should reflect the latest commit state).
         Only if both branch and revision are *not* None, write modified/added files to the specified revision folder (thus creating a new revision)
+        branch: branch to write to
+        revision: revision to write to
         checkContent: also computes file content hashes
         inverse: retain original state (size, mtime, hash) instead of updated one
         considerOnly: set of tracking patterns. None for all (in simple mode). For update operation, consider union of other and current branch
         dontConsider: set of tracking patterns to not consider in changes (always overrides considerOnly!)
         progress: Show file names during processing
+        remotes: all remote locations to write to
         returns: (ChangeSet = the state of file tree *differences*, unless "inverse" is True -> then return original data, message)
+        WARN: when changing this function's signature, remember to change the patched() function in the test suite
     '''
     import collections  # used almost only here
     write = branch is not None and revision is not None  # used for writing commits
-    if write: for remote in [None] + _.remotes:
+    if write: for remote in [None] + (remotes ?? _.remotes):  # TODO ?? should not be necessary, as write is only true when committing, where remotes is provided externally anyway
       tryOrIgnore(() -> os.makedirs(encode(revisionFolder(branch, revision, base = remote ?? _.root))))
     changed:ChangeSet = ChangeSet({}, {}, {}, {})  # WARN this code needs explicity argument passing for initialization due to mypy problems with default arguments
     indicator:ProgressIndicator? = ProgressIndicator(PROGRESS_MARKER[1 if _.c.useUnicodeFont else 0]) if progress else None  # optional file list progress indicator
@@ -364,7 +382,7 @@ class Metadata:
         last = _.paths[filename]  # filename is known - check for modifications
         if last.size is None:  # was removed before but is now added back - does not apply for tracking mode (which never marks files for removal in the history)
           try:
-            hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = [revisionFolder(branch, revision, base = remote ?? _.root, file = last.nameHash) for remote in [None] + _.remotes] if write else None, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")) if size > 0 else (None, 0)
+            hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols, saveTo = [revisionFolder(branch, revision, base = remote ?? _.root, file = last.nameHash) for remote in [None] + _.remotes] if write else None, callback = None if not (progress and show) else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")) if size > 0 else (None, 0)
             changed.additions[filename] = PathInfo(last.nameHash, size, mtime, hashed); continue
             compressed += written; original += last.size if inverse else size
           except Exception as E: printo(exception(E))
@@ -375,7 +393,7 @@ class Metadata:
           try:
             hashed, written = hashFile(filepath, _.compress, symbols = progressSymbols,
               saveTo = [revisionFolder(branch, revision, base = remote ?? _.root, file = last.nameHash) for remote in [None] + _.remotes] if write else None,
-              callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")
+              callback = None if not (progress and show) else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = "")
             ) if (last.size if inverse else size) > 0 else (last.hash if inverse else hashFile(filepath, _.compress, symbols = progressSymbols, callback = None if not progress else (sign) -> printo(pure.ljust(outstring + " " + sign), nl = ""))[0], 0)
             changed.modifications[filename] = PathInfo(last.nameHash, last.size if inverse else size, last.mtime if inverse else mtime, hashed)
             compressed += written; original += last.size if inverse else size
@@ -539,9 +557,9 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = [], re
   title:str? = usage.getTitle()
   if title: printo(title)
   if verbose: info(MARKER + "Going offline...")
-  m.createBranch(0, name ?? defaults["defaultbranch"], initialMessage ?? "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
+  m.createBranch(0, remotes, name ?? defaults["defaultbranch"], initialMessage ?? "Offline repository created on %s" % strftime())  # main branch's name may be None (e.g. for fossil)
   m.branch = 0
-  m.saveBranches(also = {"version": version.__version__})  # stores version info only once. no change immediately after going offline, going back online won't issue a warning
+  m.saveBranches(remotes = remotes, also = {"version": version.__version__})  # stores version info only once. no change immediately after going offline, going back online won't issue a warning
   if verbose or '--verbose' in options: info("%d file%s added to initial branch %r" % (len(m.paths), "s" if len(m.paths) > 1 else "", m.branches[m.branch].name))
   info(MARKER + "Offline repository prepared. Use 'sos online' to finish offline work")
 
@@ -550,9 +568,10 @@ def online(options:str[] = []):
   if verbose: info(MARKER + "Going back online...")
   force:bool = '--force' in options
   m:Metadata = Metadata()
+  remotes:List[str] = m._extractRemotesFromArguments(options)
   strict:bool = '--strict' in options or m.strict
   m.loadBranches()
-  if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (modified) branches\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions.")
+  if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (modified) branches\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions without further action.")
   m.loadBranch(m.branch)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
   if options.count("--force") < 2:
@@ -563,7 +582,7 @@ def online(options:str[] = []):
       dontConsider = None if not (m.track or m.picky) else m.getTrackingPatterns(negative = True),
       progress = '--progress' in options)  # HINT no option for --only/--except here on purpose. No check for picky here, because online is not a command that considers staged files (but we could use --only here, alternatively)
     if modified(changed): Exit("File tree is modified vs. current branch\nUse 'sos online --force --force' to continue with removing the offline repository")
-  try: shutil.rmtree(encode(metaFolder)); info("Exited offline mode. Continue working with your traditional VCS.")
+  try: shutil.rmtree(encode(metaFolder)); info("Exited offline mode. Continue working with your traditional VCS." + (" Remote copies have to be removed manually." if remotes else ""))
   except Exception as E: Exit("Error removing offline repository.", exception = E)
   info(MARKER + "Offline repository removed, you're back online")
 
@@ -575,15 +594,16 @@ def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
   stay:bool = '--stay' in options  # continue on current branch after branching (don't switch)
   fast:bool = '--fast' in options  # branch by referencing TODO #252 move to default and use --full instead for old behavior
   m:Metadata = Metadata()
+  remotes = m._extractRemotesFromArguments(options)
   m.loadBranch(m.branch)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision
   if name and m.getBranchByName(name) is not None: Exit("Branch '%s' already exists. Cannot proceed" % name)  # attempted to create a named branch
   branch = max(m.branches.keys()) + 1  # next branch's key - this isn't atomic but we assume single-user non-concurrent use here
   if verbose: info(MARKER + "Branching to %sbranch b%d%s%s..." % ("unnamed " if name is None else "", branch, " '%s'" % name if name is not None else "", " from last revision" if last else ""))
-  if last: m.duplicateBranch(branch, name, (initialMessage + " " if initialMessage else "") + "(Branched from b%d/r%02d)" % (m.branch, maxi), not fast)  # branch from last revision
-  else: m.createBranch(branch, name, initialMessage ?? "Branched from file tree after b%d/r%02d" % (m.branch, maxi))  # branch from current file tree state
+  if last: m.duplicateBranch(branch, remotes, name, (initialMessage + " " if initialMessage else "") + "(Branched from b%d/r%02d)" % (m.branch, maxi), not fast)  # branch from last revision
+  else: m.createBranch(branch, remotes, name, initialMessage ?? "Branched from file tree after b%d/r%02d" % (m.branch, maxi))  # branch from current file tree state
   if not stay: m.branch = branch
-  m.saveBranches()  # TODO #253 or indent again?
+  m.saveBranches(remotes)  # TODO #253 or indent again?
   info(MARKER + "%s new %sbranch b%d%s" % ("Continue work after branching" if stay else "Switched to", "unnamed " if name is None else "", branch, " '%s'" % name if name else ""))
 
 def changes(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None, cwd:str? = None) -> ChangeSet =
@@ -660,19 +680,20 @@ def commit(argument:str? = None, options:str[] = [], onlys:FrozenSet[str]? = Non
   # No untracking patterns needed here
   if m.picky and not trackingPatterns: Exit("No file patterns staged for commit in picky mode")
   if verbose: info(MARKER + "Committing changes to branch '%s'..." % m.branches[m.branch].name ?? "b%d" % m.branch)
+  remotes = m._extractRemotesFromArguments(options)
   m, branch, revision, changed, strict, force, trackingPatterns, untrackingPatterns = exitOnChanges(None, options, check = False, commit = True, onlys = onlys, excps = excps)  # special flag creates new revision for detected changes, but aborts if no changes
   changed = dataCopy(ChangeSet, changed, moves = detectMoves(changed, strict))
   m.paths = {k: v for k, v in changed.additions.items()}  # copy to avoid wrong file numbers report below
   m.paths.update(changed.modifications)  # update pathset to changeset only
   m.paths.update <| {k: dataCopy(PathInfo, v, size = None, hash = None) for k, v in changed.deletions.items()}
-  m.saveCommit(m.branch, revision)  # revision has already been incremented
+  m.saveCommit(m.branch, revision, remotes)  # revision has already been incremented
   m.commits[revision] = CommitInfo(number = revision, ctime = int(time.time() * 1000), message = argument)  # comment can be None
-  m.saveBranch(m.branch)
+  m.saveBranch(m.branch, remotes)
   m.loadBranches()  # TODO #258 is it necessary to load again?
   if m.picky: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = [], inSync = False)  # remove tracked patterns
   else: m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = False)  # track or simple mode: set branch modified
   if "--tag" in options and argument is not None: m.tags.append(argument); info("Version was tagged with %s" % argument)  # memorize unique tag
-  m.saveBranches()
+  m.saveBranches(remotes)
   stored:int = 0; overhead:int = 0; count:int = 0  # now determine new commit size on file system
   commitFolder:str = revisionFolder(m.branch, revision)
   for file in os.listdir(commitFolder):
@@ -711,6 +732,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
   printo("Data compression:    %sactivated%s" % (Fore.CYAN if m.compress else Fore.BLUE + "de", Fore.RESET))
   printo("Repository mode:     %s%s" % (Fore.CYAN + "track" if m.track else (Fore.MAGENTA + "picky" if m.picky else Fore.GREEN + "simple"), Fore.RESET))
   printo("Number of branches:  %d" % len(m.branches))
+  if m.remotes: printo("Remote duplicates:   %s" % ", ".join(m.remotes))  # HINT #290
   trackingPatterns:FrozenSet[str] = m.getTrackingPatterns()
   untrackingPatterns:FrozenSet[str] = m.getTrackingPatterns(negative = True)
   m.loadBranch(current)
@@ -766,6 +788,7 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
   '''
   assert not (check and commit)
   m:Metadata = Metadata()
+  remotes:List[str] = m._extractRemotesFromArguments(options)
   force:bool = '--force' in options
   strict:bool = '--strict' in options or m.strict
   if argument is not None:
@@ -782,7 +805,8 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
     m.branch if commit else None, maxi + 1 if commit else None, checkContent = strict,
     considerOnly = onlys if not (m.track or m.picky) else pure.conditionalIntersection(onlys, trackingPatterns),
     dontConsider = excps if not (m.track or m.picky) else excps ?? untrackingPatterns,
-    progress = '--progress' in options)
+    progress = '--progress' in options,
+    remotes = remotes)
   if check and modified(changed) and not force:
     m.listChanges(changed, commitTime = m.commits[max(m.commits)].ctime if m.commits else 0)
     Exit("File tree contains changes. Use --force to proceed")
@@ -800,11 +824,11 @@ def exitOnChanges(argument:str? = None, options:str[] = [], check:bool = True, c
 
 def switch(argument:str, options:List[str] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None, cwd:str? = None):
   ''' Continue work on another branch, replacing file tree changes. '''
-  m, branch, revision, changed, strict, _force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, ["--force"] + options)  # force continuation to delay check to this function
+  m, branch, revision, changed, strict, _force, trackingPatterns, untrackingPatterns = exitOnChanges(argument, ["--force"] + options)  # --force continuation to delay check to this function
   force:bool = '--force' in options  # needed as we fake force in above access
 
   # Determine file changes from other branch to current file tree
-  if '--meta' in options:  # only switch meta data
+  if '--meta' in options:  # only switch meta data (tracking patterns only)
     m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], tracked = m.branches[branch].tracked, untracked = m.branches[branch].untracked)
   else:  # full file switch
     m.computeSequentialPathSet(branch, revision)  # load all commits up to specified revision for target branch into memory
@@ -835,7 +859,7 @@ def switch(argument:str, options:List[str] = [], onlys:FrozenSet[str]? = None, e
         m.restoreFile(path, branch, revision, pinfo)  # is modified in current file tree: restore from branch to reach target
         printo("MOD " + path, color = Fore.YELLOW)
   m.branch = branch
-  m.saveBranches()  # store switched path info
+  m.saveBranches(m._extractRemotesFromArguments(options))  # store switched path info
   info(MARKER + "Switched to branch %sb%d/r%02d" % ("'%s' " % (m.branches[branch].name if m.branches[branch].name else ""), branch, revision))
 
 def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps:FrozenSet[str]? = None):
@@ -910,7 +934,7 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
   info(MARKER + "Integrated changes from '%s/r%02d' into file tree" % (m.branches[branch].name ?? "b%d" % branch, revision))
   m.branches[currentBranch] = dataCopy(BranchInfo, m.branches[currentBranch], inSync = False, tracked = list(trackingUnion))
   m.branch = currentBranch  # need to restore setting before saving TODO operate on different objects instead
-  m.saveBranches()
+  m.saveBranches(m._extractRemotesFromArguments(options))
 
 def destroy(argument:str, options:str[] = []):
   ''' Remove a branch entirely. '''
@@ -919,7 +943,7 @@ def destroy(argument:str, options:str[] = []):
   branch, revision = m.parseRevisionString(argument)  # not from exitOnChanges, because we have to set argument to None there
   if branch is None or branch not in m.branches: Exit("Cannot delete unknown branch %r" % branch)
   if verbose: info(MARKER + "Removing branch b%d%s..." % (branch, " '%s'" % (m.branches[branch].name ?? "")))
-  binfo = m.removeBranch(branch)  # need to keep a reference to removed entry for output below
+  binfo = m.removeBranch(branch, options)  # need to keep a reference to removed entry for output below
   info(MARKER + "Branch b%d%s removed" % (branch, " '%s'" % (binfo.name ?? "")))
 
 def add(relPaths:str[], patterns:str[], options:str[] = [], negative:bool = False):
@@ -937,7 +961,7 @@ def add(relPaths:str[], patterns:str[], options:str[] = [], negative:bool = Fals
     if not force and len(fnmatch.filter(os.listdir(os.path.abspath(relPath.replace(SLASH, os.sep))), os.path.basename(pattern.replace(SLASH, os.sep)))) == 0:  # doesn't match any current file
       Exit("Pattern doesn't match any file in specified folder. Use --force to add it anyway")
     knownpatterns.append(pattern)
-  m.saveBranches()
+  m.saveBranches(m._extractRemotesFromArguments(options))
   info(MARKER + "Added tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern.replace(SLASH, os.sep)), relPath if '--relative' in options else os.path.abspath(relPath)))
 
 def remove(relPaths:str[], patterns:str[], options:str[] = [], negative:bool = False):
@@ -953,7 +977,7 @@ def remove(relPaths:str[], patterns:str[], options:str[] = [], negative:bool = F
       if suggestion: printo("Do you mean any of the following tracked file patterns? '%s'" % (", ".join(sorted(suggestion))))
       Exit("Tracked pattern '%s' not found" % pattern)
   knownpatterns.remove(pattern)
-  m.saveBranches()
+  m.saveBranches(m._extractRemotesFromArguments(options))
   info(MARKER + "Removed tracking pattern '%s' for folder '%s'" % (os.path.basename(pattern), relPath if '--relative' in options else os.path.abspath(relPath.replace(SLASH, os.sep))))
 
 def ls(folder:str? = None, options:str[] = []):
@@ -1116,6 +1140,8 @@ def publish(message:str?, cmd:str, options:str[] = [], onlys:FrozenSet[str]? = N
 #  debug(('%s commit -m "%s" %s' % (cmd, message ?? ("Committed from SOS %s/r%02d on %s" % (m.branches[branch].name ?? ("b%d" % m.branch), revision, strftime())).replace("\"", "\\\""), commitArgs ?? "")))
   if returncode != 0: Exit("Error committing files from SOS revision to underlying VCS. Please check current %s state" % cmd)
   if tracked: warn("Please note that all the files added in this commit will continue to be tracked by the underlying VCS")
+  m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = True)  # mark as committed to underlying
+  m.saveBranches()
 
 def config(arguments:List[str?], options:List[str] = []):
   command:str; key:str; value:str; v:str
@@ -1174,7 +1200,7 @@ def config(arguments:List[str?], options:List[str] = []):
         if len(c.keys()) == 0: info("No local configuration stored.")
         if len(c.__defaults.keys()) == 0: info("No global configuration stored.")
     return  # in case of list, no need to store anything
-  if local: m.repoConf = c.__map; m.saveBranches(); Exit("OK", code = 0)  # saves changes of repoConfig
+  if local: m.repoConf = c.__map; m.saveBranches(m._extractRemotesFromArguments(options)); Exit("OK", code = 0)  # saves changes of repoConfig
   else:  # global config
     f, h = saveConfig(c)  # only saves c.__defaults (nested Configr)
     if f is None: Exit("Error saving user configuration: %r" % h)
@@ -1220,14 +1246,14 @@ def move(relPath:str, pattern:str, newRelPath:str, newPattern:str, options:List[
       try: shutil.move(encode(os.path.abspath(os.path.join(relPath, source).replace(SLASH, os.sep))), encode(os.path.abspath(os.path.join(newRelPath, target).replace(SLASH, os.sep))))
       except Exception as E: error("Cannot move/rename file '%s' to '%s'" % (source, os.path.join(newRelPath, target)))  # one error can lead to another in case of delicate renaming order
   patterns[patterns.index(pattern)] = newPattern
-  m.saveBranches()
+  m.saveBranches(m._extractRemotesFromArguments(options))
 
 def parse(vcs:str, cwd:str, cmd:str):
   ''' Main operation. root is underlying VCS base dir. main() has already chdir'ed into SOS root folder, cwd is original working directory for add, rm, mv. '''
   debug("Parsing command-line arguments...")
   root = os.getcwd()
   try:
-    onlys, excps, remotes = parseArgumentOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)
+    onlys, excps, remotes, noremotes = parseArgumentOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)
     command = sys.argv[1].strip() if len(sys.argv) > 1 else ""
     arguments:List[str] = [c.strip() for c in sys.argv[2:] if not ((len(c) == 2 and c.startswith("-")) or (len(c) > 2 and c[1] == "-"))]
     options:List[str] = [c.strip() for c in sys.argv[2:] if ((len(c) == 2 and c.startswith("-")) or (len(c) > 2 and c[1] == "-"))]  # options *with* arguments have to be parsed directly from sys.argv inside using functions
@@ -1244,9 +1270,9 @@ def parse(vcs:str, cwd:str, cmd:str):
     if command == "raise": raise Exception("provoked exception")
     elif command[:1] == "a":   add(relPaths, patterns, options, negative = "n" in command)  # e.g. addnot
     elif command[:1] == "b":   branch(arguments[0], arguments[1], options)
-    elif command[:3] == "com": commit(arguments[0], options, onlys, excps)
     elif command[:2] == "ch":  changes(arguments[0], options, onlys, excps, cwd)  # "changes" (legacy)
     elif command[:2] == "ci":  commit(arguments[0], options, onlys, excps)
+    elif command[:3] == "com": commit(arguments[0], options, onlys, excps)
     elif command[:3] == 'con': config(arguments, options)
     elif command[:2] == "de":  destroy(arguments[0] ?? "", options)
     elif command[:2] == "di":  diff(arguments[2 if arguments[0] == '-n' else 0] ?? "/", options, onlys, excps)  # TODO no consistent handling of single dash/characters argument-options
@@ -1276,7 +1302,7 @@ def main():
   for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv): sys.argv.remove(option)  # clean up program arguments
   if '--help' in sys.argv or len(sys.argv) < 2: usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose = verbose)
   command:str? = sys.argv[1] if len(sys.argv) > 1 else None
-  root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (still working online); vcs is checkout/repo root folder; cmd is the VCS base command
+  root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (=still working online); vcs is checkout/repo root folder; cmd is the VCS base command
   debug("Detected SOS root folder: %s" % (root ?? "-"))
   debug("Detected VCS root folder: %s" % (vcs ?? "-"))
   defaults["defaultbranch"] = vcsBranches.get(cmd, vcsBranches[SVN]) ?? "default"  # sets dynamic default with SVN fallback
@@ -1294,8 +1320,8 @@ def main():
       so, se = process.communicate(input = inp)
       if process.returncode is not None: break
       inp = sys.stdin.read()
-    if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")
-      if root is None: Exit("Cannot determine VCS root folder: Unable to mark repository as synchronized and will show a warning when leaving offline mode")
+    if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit to underlying VCS - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")
+      if root is None: Exit("Cannot determine SOS root folder: Not working offline, thus unable to mark offline repository as synchronized")
       m:Metadata = Metadata(root)
       m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = True)  # mark as committed
       m.saveBranches()

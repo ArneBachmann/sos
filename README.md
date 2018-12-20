@@ -64,11 +64,13 @@ See the [tutorial](https://arnebachmann.github.io/sos/docs/TUTORIAL.html) to mak
 
 
 ## Latest Changes ##
-- **Version 1.7**, not yet released:
+- **Version 1.7**, soon to be released:
     Hint: The fast branching features is still experimental.
 
     - [Feature 265](https://github.com/ArneBachmann/sos/issues/265) Experimental support for remote (secondary, backup, storage) repository locations. This feature allows replicating all operations (i.e. commits) into (passive, read-only) secondary repository locations. To enable this feature, either go offline with one or more additional `--remote <file system path>` arguments, or manually put a copy of your repository metadata folder (`.sos`) somewhere else, set the metadata flag `"remote": true` inside its `.sos/.meta` and put the just created remote copy's parent folder into the `remotes` list inside the `.sos/.meta` file of your primary repository. To restore a remote backup, make a copy of it and set the `remote` flag in `.sos/.meta` to `false`
-    - [Feature 265, 269](https://github.com/ArneBachmann/sos/issues/265) Added remote copies feature; remote copies are marked as read-only to avoid accidental conflicts
+    - [Feature 265, 269, 289, 290](https://github.com/ArneBachmann/sos/issues/265) Added remote copies feature; remote copies are marked as read-only to avoid accidental conflicts.
+      All write operations will also perform actions on all remote repository copies.
+      To limit the affected remotes in a command, use either `--no-remotes` or `--exclude-remote[s]` and `--include-remote[s]` with paths that match configured remote paths
     - [Feature 256](https://github.com/ArneBachmann/sos/issues/256) Added colorful console output for `diff`, `changes`, `config`, `status` and `log` comands
     - [Feature 238, 262, 264](https://github.com/ArneBachmann/sos/issues/262) Optional relative path output
     - [Enhancement 285](https://github.com/ArneBachmann/sos/issues/285) Allow both `--exclude` for `--except` and `--include` for `--only`
@@ -268,7 +270,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 
 
 ## Development and Contribution ##
-See the [contribution guideline](https://arnebachmann.github.io/sos/docs/CONTRIBUTING.html) for further information.
+See the [contribution guideline]([CONTRIBUTING.md](https://github.com/ArneBachmann/sos/blob/master/docs/CONTRIBUTING.md) for further information.
 
 Ideas for future developments:
 - [Issue 158](https://github.com/ArneBachmann/sos/issues/158) Remote metadata folder would allow separating the repository from the checkout, and - in combination with a locking library like `fasteners` could even be used as a multi-user repository. Estimated development effort is 3+3 hours.
