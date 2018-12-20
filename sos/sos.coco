@@ -254,6 +254,7 @@ class Metadata:
     ''' Entirely remove a branch and all its revisions from the file system.
         We currently implement a simplified logic that fully re-creates all revisions for all transitively depending branches instead of only removing the one parent branch.
     '''
+    remotes:List[str] = _._extractRemotesFromArguments(options)
     import collections  # used almost only here
     binfo:BranchInfo  # typing info
     remotes:List[str] = _._extractRemotesFromArguments(options)
