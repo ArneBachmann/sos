@@ -351,7 +351,7 @@ def mergeClassic(file:bytes, intofile:str, fromname:str, intoname:str, totimesta
   try:
     encoding, othreol, othr = detectAndLoad(content = file, ignoreWhitespace = ignoreWhitespace)
     encoding, curreol, curr = detectAndLoad(filename = intofile, ignoreWhitespace = ignoreWhitespace)
-  except Exception as E: Exit("Cannot diff '%s' vs '%s': %r" % (fromname ?? "<bytes>", intoname ?? "<bytes>"), exception = E)  # in case of binary files
+  except Exception as E: Exit("Cannot diff '%s' vs '%s': %r" % (fromname ?? "<bytes>", intoname ?? "<bytes>"), excp = E)  # in case of binary files
   for line in difflib.context_diff(othr, curr, fromname, intoname, time.ctime(int(totimestamp / 1000))): printo(line)  # from generator expression
 
 def merge(
@@ -374,7 +374,7 @@ def merge(
   try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document
     encoding, othreol, othr = detectAndLoad(filename = filename, content = file, ignoreWhitespace = ignoreWhitespace)
     encoding, curreol, curr = detectAndLoad(filename = intoname, content = into, ignoreWhitespace = ignoreWhitespace)
-  except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename ?? "<bytes>", intoname ?? "<bytes>"), exception = E)
+  except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename ?? "<bytes>", intoname ?? "<bytes>"), excp = E)
   if None not in [othreol, curreol] and othreol != curreol: warn("Differing EOL-styles detected during merge. Using current file's style for merged output")
   output:List[str] = list(difflib.Differ().compare(othr, curr))  # from generator expression
   blocks:List[MergeBlock] = []  # merged result in blocks
@@ -413,9 +413,10 @@ def merge(
       or (block.tipe == MergeBlockType.REMOVE and    (mergeOperation.value & MergeOperation.INSERT.value)):  # will add line despite remove if --add-line was selected
       output.extend(block.lines)
     elif block.tipe == MergeBlockType.REPLACE:  # complete block replacement
-      if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner
-        output.append(lineMerge(block.lines[0], block.replaces.lines[0], mergeOperation = charMergeOperation))
-      elif mergeOperation == MergeOperation.ASK:  # more than one line: needs user input
+#      if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner
+#        output.append(lineMerge(block.lines[0], block.replaces.lines[0], mergeOperation = charMergeOperation))
+#      elif mergeOperation == MergeOperation.ASK:  # more than one line: needs user input
+      if mergeOperation == MergeOperation.ASK:  # more than one line: needs user input
         printo(pure.ajoin("- ", block.lines, nl = "\n"))  # TODO check +/- in update mode, could be swapped
         printo(pure.ajoin("+ ", block.replaces.lines, nl = "\n"))
         while True:
@@ -438,7 +439,7 @@ def merge(
       if (block.tipe == MergeBlockType.INSERT and "y" in (add_all, selection))\
       or (                                        "n" in (del_all, selection)):  # REMOVE case
         output.extend(block.lines)
-  debug("Merge output: " + "; ".join(output))
+  debug("Merge output: " + "\n".join(output))
   ((nl ?? b"\n").join([line.encode(encoding) for line in output]), nl)  # returning bytes
   # TODO handle check for more/less lines in found -/+ blocks to find common section and splitting prefix/suffix out
 

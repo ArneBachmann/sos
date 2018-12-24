@@ -283,7 +283,7 @@ class Metadata:
     printo(pure.ljust() + "\r")  # clean line output
     for remote in [None] + remotes:
       tryOrIgnore(() -> shutil.rmtree(encode(branchFolder(branch, base = remote) + BACKUP_SUFFIX)))  # remove previous backup first
-      tryOrIgnore(() -> os.rename(encode(branchFolder(branch, base = remote)), encode(branchFolder(branch, base = remote) + BACKUP_SUFFIX)), (E) -> Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", exception = E))
+      tryOrIgnore(() -> os.rename(encode(branchFolder(branch, base = remote)), encode(branchFolder(branch, base = remote) + BACKUP_SUFFIX)), (E) -> Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", excp = E))
     binfo = _.branches[branch]  # keep reference to removed branch info for caller
     del _.branches[branch]
     _.branch = (branch + 1) if (branch + 1) in _.branches else max(_.branches)  # switch to another valid branch
@@ -449,15 +449,15 @@ class Metadata:
     if argument.startswith(SLASH): return (_.branch, _.getRevisionByName(argument[1:]))  # current branch
     if argument.endswith(SLASH):
       try: return (_.getBranchByName(argument[:-1]), -1)
-      except ValueError as E: Exit("Unknown branch label '%s'" % argument, exception = E)
+      except ValueError as E: Exit("Unknown branch label '%s'" % argument, excp = E)
     if SLASH in argument:
       b, r = argument.split(SLASH)[:2]
       try: return (_.getBranchByName(b), _.getRevisionByName(r))
-      except ValueError as E: Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r), exception = E)
+      except ValueError as E: Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r), excp = E)
     branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
     try: return (branch ?? _.branch, int(argument if argument else "-1") if branch is None else -1)  # either branch name/number or reverse/absolute revision number
-    except Exception as E: Exit("Unknown branch label or wrong number format", exception = E)
+    except Exception as E: Exit("Unknown branch label or wrong number format", excp = E)
     Exit("This should never happen. Please create an issue report")
 
   def findRevision(_, branch:int, revision:int, nameHash:str) -> Tuple[int,str] =
@@ -546,7 +546,7 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = [], re
         resource = metaFolder + os.sep + entry
         if os.path.isdir(resource): shutil.rmtree(encode(resource))
         else: os.unlink(encode(resource))
-    except Exception as E: Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder, exception = E)
+    except Exception as E: Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder, excp = E)
   for remote in remotes:
     try: os.makedirs(os.path.join(remote, metaFolder))
     except Exception as E: error("Creating remote repository metadata in %s" % remote)
@@ -584,7 +584,7 @@ def online(options:str[] = []):
       progress = '--progress' in options)  # HINT no option for --only/--except here on purpose. No check for picky here, because online is not a command that considers staged files (but we could use --only here, alternatively)
     if modified(changed): Exit("File tree is modified vs. current branch\nUse 'sos online --force --force' to continue with removing the offline repository")
   try: shutil.rmtree(encode(metaFolder)); info("Exited offline mode. Continue working with your traditional VCS." + (" Remote copies have to be removed manually." if remotes else ""))
-  except Exception as E: Exit("Error removing offline repository.", exception = E)
+  except Exception as E: Exit("Error removing offline repository.", excp = E)
   info(MARKER + "Offline repository removed, you're back online")
 
 def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
@@ -1090,7 +1090,7 @@ def dump(argument:str, options:str[] = []):
       if verbose: info("Creating backup...")
       shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))
       if delta: with zipfile.ZipFile(argument, "r") as _zip: entries = _zip.namelist()  # list of pure relative paths without leading dot, normal slashes
-    except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry.", exception = E)
+    except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry.", excp = E)
   if verbose: info("Dumping revisions...")
   if delta: warnings.filterwarnings('ignore', 'Duplicate name.*')  # , UserWarning, "zipfile", 0)  # don't show duplicate entries warnings
   with zipfile.ZipFile(argument, "a" if delta else "w", compression) as _zip:  # create
@@ -1294,7 +1294,7 @@ def parse(vcs:str, cwd:str, cmd:str):
     else: Exit("Unknown command '%s'" % command)
     Exit(code = 0)  # regular exit
   except Exception, RuntimeError as E:
-    Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", exception = E)
+    Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", excp = E)
 
 def main():
   global debug, info, warn, error  # to modify logger

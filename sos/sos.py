@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x58725883
+# __coconut_hash__ = 0x6f8f6cbb
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -337,7 +337,7 @@ class Metadata:  # line 46
         printo(pure.ljust() + "\r")  # clean line output  # line 283
         for remote in [None] + remotes:  # line 284
             tryOrIgnore(lambda: shutil.rmtree(encode(branchFolder(branch, base=remote) + BACKUP_SUFFIX)))  # remove previous backup first  # line 285
-            tryOrIgnore(lambda: os.rename(encode(branchFolder(branch, base=remote)), encode(branchFolder(branch, base=remote) + BACKUP_SUFFIX)), lambda E: Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", exception=E))  # line 286
+            tryOrIgnore(lambda: os.rename(encode(branchFolder(branch, base=remote)), encode(branchFolder(branch, base=remote) + BACKUP_SUFFIX)), lambda E: Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", excp=E))  # line 286
         binfo = _.branches[branch]  # keep reference to removed branch info for caller  # line 287
         del _.branches[branch]  # line 288
         _.branch = (branch + 1) if (branch + 1) in _.branches else max(_.branches)  # switch to another valid branch  # line 289
@@ -540,20 +540,20 @@ class Metadata:  # line 46
             try:  # line 451
                 return (_.getBranchByName(argument[:-1]), -1)  # line 451
             except ValueError as E:  # line 452
-                Exit("Unknown branch label '%s'" % argument, exception=E)  # line 452
+                Exit("Unknown branch label '%s'" % argument, excp=E)  # line 452
         if SLASH in argument:  # line 453
             b, r = argument.split(SLASH)[:2]  # line 454
             try:  # line 455
                 return (_.getBranchByName(b), _.getRevisionByName(r))  # line 455
             except ValueError as E:  # line 456
-                Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r), exception=E)  # line 456
+                Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r), excp=E)  # line 456
         branch = _.getBranchByName(argument)  # type: int  # returns number if given (revision) integer  # line 457
         if branch not in _.branches:  # line 458
             branch = None  # line 458
         try:  # either branch name/number or reverse/absolute revision number  # line 459
             return ((_.branch if branch is None else branch), int(argument if argument else "-1") if branch is None else -1)  # either branch name/number or reverse/absolute revision number  # line 459
         except Exception as E:  # line 460
-            Exit("Unknown branch label or wrong number format", exception=E)  # line 460
+            Exit("Unknown branch label or wrong number format", excp=E)  # line 460
         Exit("This should never happen. Please create an issue report")  # line 461
 
     def findRevision(_, branch: 'int', revision: 'int', nameHash: 'str') -> 'Tuple[int, str]':  # line 463
@@ -664,7 +664,7 @@ def offline(name: '_coconut.typing.Optional[str]'=None, initialMessage: '_coconu
                 else:  # line 548
                     os.unlink(encode(resource))  # line 548
         except Exception as E:  # line 549
-            Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder, exception=E)  # line 549
+            Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder, excp=E)  # line 549
     for remote in remotes:  # line 550
         try:  # line 551
             os.makedirs(os.path.join(remote, metaFolder))  # line 551
@@ -713,7 +713,7 @@ def online(options: '_coconut.typing.Sequence[str]'=[]):  # line 567
         shutil.rmtree(encode(metaFolder))  # line 586
         info("Exited offline mode. Continue working with your traditional VCS." + (" Remote copies have to be removed manually." if remotes else ""))  # line 586
     except Exception as E:  # line 587
-        Exit("Error removing offline repository.", exception=E)  # line 587
+        Exit("Error removing offline repository.", excp=E)  # line 587
     info(MARKER + "Offline repository removed, you're back online")  # line 588
 
 def branch(name: '_coconut.typing.Optional[str]'=None, initialMessage: '_coconut.typing.Optional[str]'=None, options: '_coconut.typing.Sequence[str]'=[]):  # line 590
@@ -1273,7 +1273,7 @@ def dump(argument: 'str', options: '_coconut.typing.Sequence[str]'=[]):  # line 
                 with zipfile.ZipFile(argument, "r") as _zip:  # list of pure relative paths without leading dot, normal slashes  # line 1092
                     entries = _zip.namelist()  # list of pure relative paths without leading dot, normal slashes  # line 1092
         except Exception as E:  # line 1093
-            Exit("Error creating backup copy before dumping. Please resolve and retry.", exception=E)  # line 1093
+            Exit("Error creating backup copy before dumping. Please resolve and retry.", excp=E)  # line 1093
     if verbose:  # line 1094
         info("Dumping revisions...")  # line 1094
     if delta:  # , UserWarning, "zipfile", 0)  # don't show duplicate entries warnings  # line 1095
@@ -1555,7 +1555,7 @@ def parse(vcs: 'str', cwd: 'str', cmd: 'str'):  # line 1252
             Exit("Unknown command '%s'" % command)  # line 1294
         Exit(code=0)  # regular exit  # line 1295
     except (Exception, RuntimeError) as E:  # line 1296
-        Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", exception=E)  # line 1297
+        Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", excp=E)  # line 1297
 
 def main():  # line 1299
     global debug, info, warn, error  # to modify logger  # line 1300

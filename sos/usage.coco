@@ -135,10 +135,10 @@ COMMANDS:Dict[str,Command] = {
     [
       Argument("[<branch>][/<revision>]", "Branch and/or revision")
     ],
-    "Integrate work from another branch into the file tree",
-    """Similarly to switch, this command updates the current file tree to the state of another revision, usually from another branch."
+    "Integrate work from another branch into the file tree without switching the branch",
+    """Similarly to switch, this command updates the current file tree to the state of another revision, usually from another branch.
        In addition, it allows merging differing contents interactively or by rules specified through command-line switches.
-       Default operation for files, lines and characters is add and remove"""
+       Default operation for files, lines and characters is add and remove (recreate other branch in file tree)"""
   ),
   "changes": Command(Category.Working_with_files,
     [
@@ -372,34 +372,34 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
     ("commit",): "Store the commit message as a tag that can be used instead of numeric revisions"
   },
   "add": {
-    ("switch",): "Only add new files"
+    ("update",): "Only add new files (won't remove)"
   },
   "add-lines": {
-    ("switch",): "Only add inserted lines"
+    ("update",): "Only add inserted lines"
   },
-  "add-chars": {
-    ("switch",): "Only add new characters"
-  },
+#  "add-chars": {
+#    ("update",): "Only add new characters"
+#  },
   "rm": {
-    ("switch",): "Only remove vanished files"
+    ("update",): "Only remove vanished files (won't add)"
   },
   "rm-lines": {
-    ("switch",): "Only remove deleted lines"
+    ("update",): "Only remove deleted lines"
   },
-  "rm-chars": {
-    ("switch",): "Only remove vanished characters"
-  },
+#  "rm-chars": {
+#    ("update",): "Only remove vanished characters"
+#  },
   "ask": {
-    ("switch",): "Ask how to proceed with modified files"
+    ("update",): "Ask how to proceed with modified files"
   },
   "ask-lines": {
-    ("switch",): "Ask how to proceed with modified lines"
+    ("update",): "Ask how to proceed with modified lines"
   },
-  "ask-chars": {
-    ("switch",): "Ask how to proceed with modified characters"
-  },
+#  "ask-chars": {
+#    ("update",): "Ask how to proceed with modified characters"
+#  },
   "eol": {
-    ("switch",): "Use EOL style from the integrated file instead. Default: EOL style of current file"
+    ("update",): "Use EOL style from the integrated file instead. Default: EOL style of current file"
   },
 #  "to": {  # or --from?
 #    "diff": """Take "to" revision as target to compare against (instead of current file tree state,)"""
