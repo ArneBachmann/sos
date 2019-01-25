@@ -438,7 +438,6 @@ We continue and commit:
 
 ```bash
 sos commit "Added import statement"
-
 sos log
 ```
 
@@ -554,4 +553,4 @@ DIF ./make.bat  <LF>
 [EXIT]
 ```
 
-Which shows that the existing `echo Compiling` was augmented by the modified version from the other branch:
+Which shows that the existing `echo Compiling` was augmented by the modified version `echo Compiling...` from the other branch.

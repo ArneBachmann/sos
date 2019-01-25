@@ -154,7 +154,7 @@ class Metadata:
     ''' Common behavior to parse and extract the remotes options from command line-arguments. '''
     _a:Any; remotes:List[str]; noremotes:List[str]
     _a, _a, remotes, noremotes = parseArgumentOptions("", options)  # re-parse options for the --(only-)remotes and --exlude-remotes options
-    [] if "--no-remotes" in options else list(set(remotes if remotes else _.remotes) - set(noremotes))
+    [] if "--no-remotes" in options or "--no-remote" in options else list(set(remotes if remotes else _.remotes) - set(noremotes))
 
   def getRevisionByName(_, name:str) -> int? =
     ''' Convenience accessor for named revisions (using commit message as tag name by convention). '''
@@ -750,7 +750,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     Fore.RESET))  # TODO #259 bad choice of unicode symbols for changed vs. unchanged
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
-    payload:int = 0; overhead:int = 0; original:int = 0  # count used storage per branch
+    payload:int = 0; overhead:int = 0
     for dn, ds, fs in os.walk(branchFolder(branch.number)):
       for f in fs:  # TODO #260 count all backup folders as overhead instead? check "onlydeveloped" code for that logic
         if f == metaFile or f.endswith(BACKUP_SUFFIX): overhead += tryOrDefault(-> os.stat(encode(os.path.join(dn, f))).st_size, 0)
@@ -758,11 +758,13 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     pl_amount:float = float(payload) / MEBI; oh_amount:float = float(overhead) / MEBI
     # if pl_amount >= 1100.:   convert to string
     m.loadBranch(branch.number)  # knows commit history
+    original:int = 0; updates:int[] = []  # compute occupied storage per branch
     for commit_ in range(1 + max(m.commits) if m.commits else 0):
       m.loadCommit(m.branch, commit_)
       for pinfo in m.paths.values(): original += pinfo.size ?? 0
+      updates.append(len(m.paths))  # number of additions or removals TODO count moves as 1 instead of 2
     maxi = max(m.commits) if m.commits else m.branches[branch.number].revision
-    printo("  %s b%d%s @%s (%s%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % (
+    printo("  %s b%d%s @%s (%s%s) with %d commits (median %d each), using %.2f MiB (+%.3f%% SOS overhead%s)%s" % (
       "*" if current == branch.number else " ",
       branch.number,
       ((" %%%ds" % (sl + 2)) % (("'%s'" % branch.name) if branch.name else "")),
@@ -770,7 +772,9 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
       (Fore.GREEN + "in sync") if branch.inSync else (Fore.YELLOW + "modified"),
       Fore.RESET,
       len(m.commits),
-      pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount),
+      median(updates) if updates else 0.0,
+      pl_amount + oh_amount,
+      oh_amount * 100. / (pl_amount + oh_amount),
       ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "",
       (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
   if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):
@@ -1151,7 +1155,7 @@ def config(arguments:List[str?], options:List[str] = []):
   if command not in ("set", "unset", "show", "list", "add", "rm"): Exit("Unknown config command %r" % command)
   local:bool = "--local" in options
   m:Metadata = Metadata()  # loads nested configuration (local - global - defaults)
-  c:configr.Configr = m.c if local else m.c.__defaults
+  c:configr.Configr = m.c if local else m.c.__defaults  # only modify the selected parameter set
   if command == "set":
     if None in (key, value): Exit("Key or value not specified")
     if key not in ((([] if local else ONLY_GLOBAL_FLAGS) + CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % ("local" if local else "global", key))  # TODO move defaultbranch to configurable_texts?

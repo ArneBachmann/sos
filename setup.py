@@ -89,7 +89,7 @@ setup(
   install_requires = ["chardet >= 3.0.4", "wcwidth", "configr >= 2018.2004.2239", "termwidth >= 2017.2204.2811", "PyFiglet >= 0.7.5", 'colorama >= 0.3.9;sys_platform=="win32"', 'enum34;python_version<"3.4"'],  # most of them are optional dependencies
   python_requires = '>=%s' % COMPATIBILITY_LEVEL,  # https://www.python.org/dev/peps/pep-0508/#environment-markers
   setup_requires = "setuptools >= 39",
-#  requires = ["coconut-develop[jobs,mypy]"],  # doesn't work
+#  requires = ["coconut-develop[jobs,mypy-mypyc]"],  # doesn't work
   test_suite = "sos.tests",
   description = "Subversion Offline Solution (SOS)",
   long_description = README,

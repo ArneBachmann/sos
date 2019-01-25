@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x46b9b159
+# __coconut_hash__ = 0x19c63b0a
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -91,3 +91,21 @@ def siSize(size: 'int') -> 'str':  # line 55
 def timeString(timeMs: 'int') -> 'str':  # line 59
     ''' Returns formatted time with unit. '''  # line 60
     return "%.1f weeks" % (float(timeMs) / _WEEK) if timeMs > 8. * _WEEK / 7 else ("%.1f days" % (float(timeMs) / _DAY) if timeMs > 1.125 * _DAY else ("%.1f hours" % (float(timeMs) / _HOUR) if timeMs > 1.5 * _HOUR else ("%.1f minutes" % (float(timeMs) / _MINUTE) if timeMs > 1.5 * _MINUTE else ("%.1f seconds" % (float(timeMs) / _SECOND) if timeMs > 1.5 * _SECOND else ("%d ms" % timeMs)))))  # line 61
+
+def median(values: 'List[Union[int, float]]', inplace: 'bool'=False):  # line 68
+    ''' TODO Use doctest here.
+  >>> print(median([1, 2, 3]))
+  2
+  >>> print(median([1, 2]))
+  1.5
+  '''  # line 74
+    assert isinstance(values, list)  # line 75
+    n = len(values)  # type: int  # line 76
+    assert n > 0  # line 77
+    if n == 1:  # line 78
+        return values[0]  # line 78
+    if inplace:  # line 79
+        values.sort()  # line 79
+    else:  # get copy  # line 80
+        values = list(sorted(values))  # get copy  # line 80
+    return values[n >> 1] if (n >> 1) << 1 != n else (values[(n >> 1) - 1] + values[(n >> 1)]) / 2.0  # line 81

@@ -234,14 +234,16 @@ def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.pat
 def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None) -> str = os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")
 
 def Exit(message:str = "", code:int = 1, excp:Any = None):
-  lines:List[str] = (message + ("" if excp is None else ("\n" + exception(excp)))).replace("\r", "\n").split("\n")
-  printe("[", nl = "")
-  printe("EXIT", color = Fore.YELLOW if code else Fore.GREEN, nl ="")
-  printe("%s%s]" % (
-    " %.1fs" % (time.time() - START_TIME) if verbose else "",
-    (" " +lines[0] + ".") if lines[0] != "" else "")
-  )
-  if len(lines) > 1: printe("\n".join(lines[1:]))
+  if not '--quiet' in sys.argv:
+    lines:List[str] = (message + ("" if excp is None else ("\n" + exception(excp)))).replace("\r", "\n").split("\n")
+    printe("[", nl = "")
+    printe("EXIT", color = Fore.YELLOW if code else Fore.GREEN, nl ="")
+    printe("%s%s]" % (
+      " %.1fs" % (time.time() - START_TIME) if verbose else "",
+      (" " +lines[0] + ".") if lines[0] != "" else "")
+    )
+    if len(lines) > 1: printe("\n".join(lines[1:]))
+  if '--wait' in sys.argv: input("Hit Enter to finish." if not '--quiet' in sys.argv else "")
   sys.exit(code)
 
 def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator:str = " ", process: -> str = -> '"%s"' % _) -> str =
@@ -626,5 +628,5 @@ def parseArgumentOptions(cwd:str, options:List[str]) -> Tuple[FrozenSet[str]?, F
       del options[i]  # reverse removal
   ( frozenset(oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(PARENT + SLASH)) if onlys else None,
     frozenset(ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(PARENT + SLASH)) if excps else None,  # avoids out-of-repo paths
-    remotes,
-    noremotes)
+    [os.path.abspath(os.path.normpath(_)) for _ in remotes],
+    [os.path.abspath(os.path.normpath(_)) for _ in noremotes])
