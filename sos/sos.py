@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x2ac7e88
+# __coconut_hash__ = 0x9e59dc9b
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -1343,268 +1343,270 @@ def publish(message: '_coconut.typing.Optional[str]', cmd: 'str', options: '_coc
     m.saveBranches()  # line 1149
 
 def config(arguments: 'List[_coconut.typing.Optional[str]]', options: 'List[str]'=[]):  # line 1151
-    command = None  # type: str  # line 1152
-    key = None  # type: str  # line 1152
-    value = None  # type: str  # line 1152
-    v = None  # type: str  # line 1152
-    command, key, value = (arguments + [None] * 2)[:3]  # line 1153
-    if command is None:  # line 1154
-        usage.usage("help", verbose=True)  # line 1154
-    if command not in ("set", "unset", "show", "list", "add", "rm"):  # line 1155
-        Exit("Unknown config command %r" % command)  # line 1155
-    local = "--local" in options  # type: bool  # line 1156
-    m = Metadata()  # type: Metadata  # loads nested configuration (local - global - defaults)  # line 1157
-    c = m.c if local else m.c.__defaults  # type: configr.Configr  # only modify the selected parameter set  # line 1158
-    if command == "set":  # line 1159
-        if None in (key, value):  # line 1160
-            Exit("Key or value not specified")  # line 1160
-        if key not in ((([] if local else ONLY_GLOBAL_FLAGS) + CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS):  # TODO move defaultbranch to configurable_texts?  # line 1161
-            Exit("Unsupported key for %s configuration %r" % ("local" if local else "global", key))  # TODO move defaultbranch to configurable_texts?  # line 1161
-        if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) and value.lower() not in TRUTH_VALUES + FALSE_VALUES:  # line 1162
-            Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())  # line 1162
-        c[key] = value.lower() in TRUTH_VALUES if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) else (tryOrIgnore(lambda _=None: int(value), lambda E: error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?  # line 1163
-    elif command == "unset":  # line 1164
-        if key is None:  # line 1165
-            Exit("No key specified")  # line 1165
-        if key not in c.keys(with_nested=False):  # line 1166
-            Exit(("Unknown key %r" % key) if not key in c.keys(with_nested=local, with_defaults=True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))  # line 1167
-        del c[key]  # line 1168
-    elif command == "add":  # TODO copy list from defaults if not local/global  # line 1169
-        if None in (key, value):  # line 1170
-            Exit("Key or value not specified")  # line 1170
-        if key not in CONFIGURABLE_LISTS:  # line 1171
-            Exit("Unsupported key %r for list addition" % key)  # line 1171
-        if key not in c.keys():  # prepare empty list, or copy from underlying, add new value below TODO also allow one more level of underlying?  # line 1172
-            c[key] = [_ for _ in c.__defaults[key]] if key in c.__defaults[key] else []  # prepare empty list, or copy from underlying, add new value below TODO also allow one more level of underlying?  # line 1172
-        elif value in c[key]:  # line 1173
-            Exit("Value already contained, nothing to do")  # line 1173
-        if ";" not in value:  # line 1174
-            c[key].append(removePath(key, value.strip()))  # line 1174
-        else:  # line 1175
-            c[key].extend([removePath(key, v) for v in safeSplit(value, ";")])  # line 1175
-    elif command == "rm":  # line 1176
-        if None in (key, value):  # line 1177
-            Exit("Key or value not specified")  # line 1177
-        if key not in c.keys(with_nested=False):  # line 1178
-            Exit(("Unknown key %r" % key) if not key in c.keys(with_nested=local, with_defaults=True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))  # line 1179
-        if value not in c[key]:  # line 1180
-            Exit("Unknown value %r" % value)  # line 1180
-        c[key].remove(value)  # line 1181
-        if local and len(c[key]) == 0 and "--prune" in options:  # remove local entry, to fallback to global  # line 1182
-            del c[key]  # remove local entry, to fallback to global  # line 1182
-    else:  # Show or list  # line 1183
-        if key == "ints":  # list valid configuration items  # line 1184
-            printo(", ".join(CONFIGURABLE_INTS))  # list valid configuration items  # line 1184
-        elif key == "flags":  # line 1185
-            printo(", ".join(ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS))  # line 1185
-        elif key == "lists":  # line 1186
-            printo(", ".join(CONFIGURABLE_LISTS))  # line 1186
-        elif key == "texts":  # line 1187
-            printo(", ".join([_ for _ in defaults.keys() if _ not in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS + CONFIGURABLE_INTS + CONFIGURABLE_LISTS)]))  # line 1187
-        else:  # no key: list all  # line 1188
-            out = {3: "[default]", 2: "[global] ", 1: "[local]  "}  # type: Dict[int, str]  # in contrast to Git, we don't need (nor want) to support a "system" config scope  # line 1189
-            c = m.c  # always use full configuration chain  # line 1190
-            try:  # attempt single key  # line 1191
-                assert key is not None  # force exception if no key specified  # line 1192
-                c[key]  # force exception if no key specified  # line 1192
-                l = key in c.keys(with_nested=False)  # type: bool  # line 1193
-                g = key in c.__defaults.keys(with_nested=False)  # type: bool  # line 1193
-                printo(key.rjust(20), color=Fore.WHITE, nl="")  # line 1194
-                printo(" " + (out[3] if not (l or g) else (out[1] if l else out[2])) + " ", color=Fore.CYAN, nl="")  # line 1195
-                printo(repr(c[key]))  # line 1196
-            except:  # normal value listing  # line 1197
-                vals = {k: (repr(v), 3) for k, v in defaults.items()}  # type: Dict[str, Tuple[str, int]]  # copy-by-value  # line 1198
-                vals.update({k: (repr(v), 2) for k, v in c.__defaults.items()})  # line 1199
-                vals.update({k: (repr(v), 1) for k, v in c.__map.items()})  # line 1200
-                for k, vt in sorted(vals.items()):  # line 1201
-                    printo(k.rjust(20), color=Fore.WHITE, nl="")  # line 1202
-                    printo(" " + out[vt[1]] + " ", color=Fore.CYAN, nl="")  # line 1203
-                    printo(vt[0])  # line 1204
-                if len(c.keys()) == 0:  # line 1205
-                    info("No local configuration stored.")  # line 1205
-                if len(c.__defaults.keys()) == 0:  # line 1206
-                    info("No global configuration stored.")  # line 1206
-        return  # in case of list, no need to store anything  # line 1207
-    if local:  # saves changes of repoConfig  # line 1208
-        m.repoConf = c.__map  # saves changes of repoConfig  # line 1208
-        m.saveBranches(m._extractRemotesFromArguments(options))  # saves changes of repoConfig  # line 1208
-        Exit("OK", code=0)  # saves changes of repoConfig  # line 1208
-    else:  # global config  # line 1209
-        f, h = saveConfig(c)  # only saves c.__defaults (nested Configr)  # line 1210
-        if f is None:  # line 1211
-            Exit("Error saving user configuration: %r" % h)  # line 1211
+    ''' Configure command: manage configuration settings. '''  # line 1152
+    command = None  # type: str  # line 1153
+    key = None  # type: str  # line 1153
+    value = None  # type: str  # line 1153
+    v = None  # type: str  # line 1153
+    command, key, value = (arguments + [None] * 2)[:3]  # line 1154
+    if command is None:  # line 1155
+        usage.usage("help", verbose=True)  # line 1155
+    if command not in ("set", "unset", "show", "list", "add", "rm"):  # line 1156
+        Exit("Unknown config command %r" % command)  # line 1156
+    local = "--local" in options  # type: bool  # otherwise user-global by default  # line 1157
+    m = Metadata()  # type: Metadata  # loads nested configuration (local - global - defaults)  # line 1158
+    c = m.c if local else m.c.__defaults  # type: configr.Configr  # will only modify the selected parameter set  # line 1159
+    location = "local" if local else "global"  # type: str  # line 1160
+    if command == "set":  # line 1161
+        if None in (key, value):  # line 1162
+            Exit("Key or value not specified")  # line 1162
+        if key not in ((([] if local else ONLY_GLOBAL_FLAGS) + CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS):  # TODO move defaultbranch to configurable_texts?  # line 1163
+            Exit("Unsupported key for %s configuration %r" % (location, key))  # TODO move defaultbranch to configurable_texts?  # line 1163
+        if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) and value.lower() not in TRUTH_VALUES + FALSE_VALUES:  # line 1164
+            Exit("Cannot set flag to %r. Try 'on' or 'off' instead" % value.lower())  # line 1164
+        c[key] = value.lower() in TRUTH_VALUES if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) else (tryOrIgnore(lambda _=None: int(value), lambda E: error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?  # line 1165
+    elif command == "unset":  # line 1166
+        if key is None:  # line 1167
+            Exit("No key specified")  # line 1167
+        if key not in c.keys(with_nested=False):  # line 1168
+            Exit(("Unknown key %r" % key) if not key in c.keys(with_nested=local, with_defaults=True) else "Key %r not defined in %s scope" % (key, location))  # line 1169
+        del c[key]  # line 1170
+    elif command == "add":  # TODO copy list from defaults if not local/global  # line 1171
+        if None in (key, value):  # line 1172
+            Exit("Key or value not specified")  # line 1172
+        if key not in CONFIGURABLE_LISTS:  # line 1173
+            Exit("Unsupported key %r for list addition" % key)  # line 1173
+        if key not in c.keys():  # prepare empty list, or copy from underlying, add new value below TODO also allow one more level of underlying?  # line 1174
+            c[key] = [_ for _ in c.__defaults[key]] if key in c.__defaults[key] else []  # prepare empty list, or copy from underlying, add new value below TODO also allow one more level of underlying?  # line 1174
+        elif value in c[key]:  # line 1175
+            Exit("Value already contained, nothing to do")  # line 1175
+        if ";" not in value:  # line 1176
+            c[key].append(removePath(key, value.strip()))  # line 1176
+        else:  # line 1177
+            c[key].extend([removePath(key, v) for v in safeSplit(value, ";")])  # line 1177
+    elif command == "rm":  # line 1178
+        if None in (key, value):  # line 1179
+            Exit("Key or value not specified")  # line 1179
+        if key not in c.keys(with_nested=False):  # line 1180
+            Exit(("Unknown key %r" % key) if not key in c.keys(with_nested=local, with_defaults=True) else "Key %r not defined in %s scope" % (key, location))  # line 1181
+        if value not in c[key]:  # line 1182
+            Exit("Unknown value %r" % value)  # line 1182
+        c[key].remove(value)  # line 1183
+        if local and len(c[key]) == 0 and "--prune" in options:  # remove local entry, to fallback to global  # line 1184
+            del c[key]  # remove local entry, to fallback to global  # line 1184
+    else:  # Show or list  # line 1185
+        if key == "ints":  # list valid configuration items  # line 1186
+            printo(", ".join(CONFIGURABLE_INTS))  # list valid configuration items  # line 1186
+        elif key == "flags":  # line 1187
+            printo(", ".join(ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS))  # line 1187
+        elif key == "lists":  # line 1188
+            printo(", ".join(CONFIGURABLE_LISTS))  # line 1188
+        elif key == "texts":  # line 1189
+            printo(", ".join([_ for _ in defaults.keys() if _ not in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS + CONFIGURABLE_INTS + CONFIGURABLE_LISTS)]))  # line 1189
+        else:  # no key: list all  # line 1190
+            out = {3: "[default]", 2: "[global] ", 1: "[local]  "}  # type: Dict[int, str]  # in contrast to Git, we don't need (nor want) to support a "system" config scope  # line 1191
+            c = m.c  # always use full configuration chain  # line 1192
+            try:  # attempt single key  # line 1193
+                assert key is not None  # force exception if no key specified  # line 1194
+                c[key]  # force exception if no key specified  # line 1194
+                l = key in c.keys(with_nested=False)  # type: bool  # line 1195
+                g = key in c.__defaults.keys(with_nested=False)  # type: bool  # line 1195
+                printo(key.rjust(20), color=Fore.WHITE, nl="")  # line 1196
+                printo(" " + (out[3] if not (l or g) else (out[1] if l else out[2])) + " ", color=Fore.CYAN, nl="")  # line 1197
+                printo(repr(c[key]))  # line 1198
+            except:  # normal value listing  # line 1199
+                vals = {k: (repr(v), 3) for k, v in defaults.items()}  # type: Dict[str, Tuple[str, int]]  # copy-by-value  # line 1200
+                vals.update({k: (repr(v), 2) for k, v in c.__defaults.items()})  # line 1201
+                vals.update({k: (repr(v), 1) for k, v in c.__map.items()})  # line 1202
+                for k, vt in sorted(vals.items()):  # line 1203
+                    printo(k.rjust(20), color=Fore.WHITE, nl="")  # line 1204
+                    printo(" " + out[vt[1]] + " ", color=Fore.CYAN, nl="")  # line 1205
+                    printo(vt[0])  # line 1206
+                if len(c.keys()) == 0:  # line 1207
+                    info("No local configuration stored.")  # line 1207
+                if len(c.__defaults.keys()) == 0:  # line 1208
+                    info("No global configuration stored.")  # line 1208
+        return  # in case of list, no need to store anything  # line 1209
+    if local:  # saves changes of repoConfig  # line 1210
+        m.repoConf = c.__map  # saves changes of repoConfig  # line 1210
+        m.saveBranches(m._extractRemotesFromArguments(options))  # saves changes of repoConfig  # line 1210
+        Exit("OK", code=0)  # saves changes of repoConfig  # line 1210
+    else:  # global config  # line 1211
+        f, h = saveConfig(c)  # only saves c.__defaults (nested Configr)  # line 1212
+        if f is None:  # line 1213
+            Exit("Error saving user configuration: %r" % h)  # line 1213
 
-def move(relPath: 'str', pattern: 'str', newRelPath: 'str', newPattern: 'str', options: 'List[str]'=[], negative: 'bool'=False):  # line 1213
+def move(relPath: 'str', pattern: 'str', newRelPath: 'str', newPattern: 'str', options: 'List[str]'=[], negative: 'bool'=False):  # line 1215
     ''' Path differs: Move files, create folder if not existing. Pattern differs: Attempt to rename file, unless exists in target or not unique.
       for "mvnot" don't do any renaming (or do?)
-  '''  # line 1216
-    if verbose:  # line 1217
-        info(MARKER + "Renaming %r to %r" % (pattern, newPattern))  # line 1217
-    force = '--force' in options  # type: bool  # line 1218
-    soft = '--soft' in options  # type: bool  # line 1219
-    if not os.path.exists(encode(relPath.replace(SLASH, os.sep))) and not force:  # line 1220
-        Exit("Source folder doesn't exist. Use --force to proceed anyway")  # line 1220
-    m = Metadata()  # type: Metadata  # line 1221
-    patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 1222
-    files = os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(encode(relPath.replace(SLASH, os.sep))) else []  # type: List[str]  # line 1223
-    files[:] = [f for f in files if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]  # line 1224
-    matching = fnmatch.filter(files, os.path.basename(pattern))  # type: List[str]  # find matching files in source  # line 1225
-    if not matching and not force:  # line 1226
-        Exit("No files match the specified file pattern. Use --force to proceed anyway")  # line 1226
-    if not (m.track or m.picky):  # line 1227
-        Exit("Repository is in simple mode. Use basic file operations to modify files, then execute 'sos commit' to version any changes")  # line 1227
-    if pattern not in patterns:  # list potential alternatives and exit  # line 1228
-        for tracked in (t for t in patterns if t[:t.rindex(SLASH)] == relPath):  # for all patterns of the same source folder HINT was os.path.dirpath before  # line 1229
-            alternative = fnmatch.filter(files, os.path.basename(tracked))  # type: _coconut.typing.Sequence[str]  # find if it matches any of the files in the source folder, too  # line 1230
-            if alternative:  # line 1231
-                info("  '%s' matches %d file%s" % (tracked, len(alternative), "s" if len(alternative) > 1 else ""))  # line 1231
-        Exit("File pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)  # HINT removed: "if not (force or soft):""  # line 1232
-    basePattern = os.path.basename(pattern)  # type: str  # pure glob without folder  # line 1233
-    newBasePattern = os.path.basename(newPattern)  # type: str  # line 1234
-    if basePattern.count("*") < newBasePattern.count("*") or (basePattern.count("?") - basePattern.count("[?]")) < (newBasePattern.count("?") - newBasePattern.count("[?]")) or (basePattern.count("[") - basePattern.count("\\[")) < (newBasePattern.count("[") - newBasePattern.count("\\[")) or (basePattern.count("]") - basePattern.count("\\]")) < (newBasePattern.count("]") - newBasePattern.count("\\]")):  # line 1235
-        Exit("Glob markers from '%s' to '%s' don't match, cannot move/rename tracked matching file(s)" % (basePattern, newBasePattern))  # line 1239
+  '''  # line 1218
+    if verbose:  # line 1219
+        info(MARKER + "Renaming %r to %r" % (pattern, newPattern))  # line 1219
+    force = '--force' in options  # type: bool  # line 1220
+    soft = '--soft' in options  # type: bool  # line 1221
+    if not os.path.exists(encode(relPath.replace(SLASH, os.sep))) and not force:  # line 1222
+        Exit("Source folder doesn't exist. Use --force to proceed anyway")  # line 1222
+    m = Metadata()  # type: Metadata  # line 1223
+    patterns = m.branches[m.branch].untracked if negative else m.branches[m.branch].tracked  # type: List[str]  # line 1224
+    files = os.listdir(relPath.replace(SLASH, os.sep)) if os.path.exists(encode(relPath.replace(SLASH, os.sep))) else []  # type: List[str]  # line 1225
+    files[:] = [f for f in files if len([n for n in m.c.ignores if fnmatch.fnmatch(f, n)]) == 0 or len([p for p in m.c.ignoresWhitelist if fnmatch.fnmatch(f, p)]) > 0]  # line 1226
+    matching = fnmatch.filter(files, os.path.basename(pattern))  # type: List[str]  # find matching files in source  # line 1227
+    if not matching and not force:  # line 1228
+        Exit("No files match the specified file pattern. Use --force to proceed anyway")  # line 1228
+    if not (m.track or m.picky):  # line 1229
+        Exit("Repository is in simple mode. Use basic file operations to modify files, then execute 'sos commit' to version any changes")  # line 1229
+    if pattern not in patterns:  # list potential alternatives and exit  # line 1230
+        for tracked in (t for t in patterns if t[:t.rindex(SLASH)] == relPath):  # for all patterns of the same source folder HINT was os.path.dirpath before  # line 1231
+            alternative = fnmatch.filter(files, os.path.basename(tracked))  # type: _coconut.typing.Sequence[str]  # find if it matches any of the files in the source folder, too  # line 1232
+            if alternative:  # line 1233
+                info("  '%s' matches %d file%s" % (tracked, len(alternative), "s" if len(alternative) > 1 else ""))  # line 1233
+        Exit("File pattern '%s' is not tracked on current branch. 'sos move' only works on tracked patterns" % pattern)  # HINT removed: "if not (force or soft):""  # line 1234
+    basePattern = os.path.basename(pattern)  # type: str  # pure glob without folder  # line 1235
+    newBasePattern = os.path.basename(newPattern)  # type: str  # line 1236
+    if basePattern.count("*") < newBasePattern.count("*") or (basePattern.count("?") - basePattern.count("[?]")) < (newBasePattern.count("?") - newBasePattern.count("[?]")) or (basePattern.count("[") - basePattern.count("\\[")) < (newBasePattern.count("[") - newBasePattern.count("\\[")) or (basePattern.count("]") - basePattern.count("\\]")) < (newBasePattern.count("]") - newBasePattern.count("\\]")):  # line 1237
+        Exit("Glob markers from '%s' to '%s' don't match, cannot move/rename tracked matching file(s)" % (basePattern, newBasePattern))  # line 1241
 #  oldTokens:GlobBlock[]?; newToken:GlobBlock[]?  # TODO remove optional?, only here to satisfy mypy
-    oldTokens, newTokens = tokenizeGlobPatterns(os.path.basename(pattern), os.path.basename(newPattern))  # line 1241
-    matches = convertGlobFiles(matching, oldTokens, newTokens)  # type: _coconut.typing.Sequence[Tuple[str, str]]  # computes list of source - target filename pairs  # line 1242
-    if len({st[1] for st in matches}) != len(matches):  # line 1243
-        Exit("Some target filenames are not unique and different move/rename actions would point to the same target file")  # line 1243
-    matches = reorderRenameActions(matches, exitOnConflict=not soft)  # attempts to find conflict-free renaming order, or exits  # line 1244
-    if os.path.exists(encode(newRelPath)):  # line 1245
-        exists = [filename[1] for filename in matches if os.path.exists(encode(os.path.join(newRelPath, filename[1]).replace(SLASH, os.sep)))]  # type: _coconut.typing.Sequence[str]  # line 1246
-        if exists and not (force or soft):  # line 1247
-            Exit("%s files would write over existing files in %s cases. Use --force to execute it anyway" % ("Moving" if relPath != newRelPath else "Renaming", "all" if len(exists) == len(matches) else "some"))  # line 1247
-    else:  # line 1248
-        os.makedirs(encode(os.path.abspath(newRelPath.replace(SLASH, os.sep))))  # line 1248
-    if not soft:  # perform actual renaming  # line 1249
-        for (source, target) in matches:  # line 1250
-            try:  # line 1251
-                shutil.move(encode(os.path.abspath(os.path.join(relPath, source).replace(SLASH, os.sep))), encode(os.path.abspath(os.path.join(newRelPath, target).replace(SLASH, os.sep))))  # line 1251
-            except Exception as E:  # one error can lead to another in case of delicate renaming order  # line 1252
-                error("Cannot move/rename file '%s' to '%s'" % (source, os.path.join(newRelPath, target)))  # one error can lead to another in case of delicate renaming order  # line 1252
-    patterns[patterns.index(pattern)] = newPattern  # line 1253
-    m.saveBranches(m._extractRemotesFromArguments(options))  # line 1254
+    oldTokens, newTokens = tokenizeGlobPatterns(os.path.basename(pattern), os.path.basename(newPattern))  # line 1243
+    matches = convertGlobFiles(matching, oldTokens, newTokens)  # type: _coconut.typing.Sequence[Tuple[str, str]]  # computes list of source - target filename pairs  # line 1244
+    if len({st[1] for st in matches}) != len(matches):  # line 1245
+        Exit("Some target filenames are not unique and different move/rename actions would point to the same target file")  # line 1245
+    matches = reorderRenameActions(matches, exitOnConflict=not soft)  # attempts to find conflict-free renaming order, or exits  # line 1246
+    if os.path.exists(encode(newRelPath)):  # line 1247
+        exists = [filename[1] for filename in matches if os.path.exists(encode(os.path.join(newRelPath, filename[1]).replace(SLASH, os.sep)))]  # type: _coconut.typing.Sequence[str]  # line 1248
+        if exists and not (force or soft):  # line 1249
+            Exit("%s files would write over existing files in %s cases. Use --force to execute it anyway" % ("Moving" if relPath != newRelPath else "Renaming", "all" if len(exists) == len(matches) else "some"))  # line 1249
+    else:  # line 1250
+        os.makedirs(encode(os.path.abspath(newRelPath.replace(SLASH, os.sep))))  # line 1250
+    if not soft:  # perform actual renaming  # line 1251
+        for (source, target) in matches:  # line 1252
+            try:  # line 1253
+                shutil.move(encode(os.path.abspath(os.path.join(relPath, source).replace(SLASH, os.sep))), encode(os.path.abspath(os.path.join(newRelPath, target).replace(SLASH, os.sep))))  # line 1253
+            except Exception as E:  # one error can lead to another in case of delicate renaming order  # line 1254
+                error("Cannot move/rename file '%s' to '%s'" % (source, os.path.join(newRelPath, target)))  # one error can lead to another in case of delicate renaming order  # line 1254
+    patterns[patterns.index(pattern)] = newPattern  # line 1255
+    m.saveBranches(m._extractRemotesFromArguments(options))  # line 1256
 
-def parse(vcs: 'str', cwd: 'str', cmd: 'str'):  # line 1256
-    ''' Main operation. root is underlying VCS base dir. main() has already chdir'ed into SOS root folder, cwd is original working directory for add, rm, mv. '''  # line 1257
-    debug("Parsing command-line arguments...")  # line 1258
-    root = os.getcwd()  # line 1259
-    try:  # line 1260
-        onlys, excps, remotes, noremotes = parseArgumentOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)  # line 1261
-        command = sys.argv[1].strip() if len(sys.argv) > 1 else ""  # line 1262
-        arguments = [c.strip() for c in sys.argv[2:] if not ((len(c) == 2 and c.startswith("-")) or (len(c) > 2 and c[1] == "-"))]  # type: List[str]  # line 1263
-        options = [c.strip() for c in sys.argv[2:] if ((len(c) == 2 and c.startswith("-")) or (len(c) > 2 and c[1] == "-"))]  # type: List[str]  # options *with* arguments have to be parsed directly from sys.argv inside using functions  # line 1264
-        debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))  # line 1265
-        if command[:1] in "amr":  # line 1266
-            try:  # line 1267
-                relPaths, patterns = unzip([relativize(root, os.path.join(cwd, argument)) for argument in ((["."] if arguments is None else arguments))])  # line 1267
-            except:  # line 1268
-                command = "ls"  # convert command into ls --patterns  # line 1269
-                arguments[0] = None  # convert command into ls --patterns  # line 1269
-                options.extend(["--patterns", "--all"])  # convert command into ls --patterns  # line 1269
+def parse(vcs: 'str', cwd: 'str', cmd: 'str'):  # line 1258
+    ''' Main operation. root is underlying VCS base dir. main() has already chdir'ed into SOS root folder, cwd is original working directory for add, rm, mv. '''  # line 1259
+    debug("Parsing command-line arguments...")  # line 1260
+    root = os.getcwd()  # line 1261
+    try:  # line 1262
+        onlys, excps, remotes, noremotes = parseArgumentOptions(cwd, sys.argv)  # extracts folder-relative paths (used in changes, commit, diff, switch, update)  # line 1263
+        command = sys.argv[1].strip() if len(sys.argv) > 1 else ""  # line 1264
+        arguments = [c.strip() for c in sys.argv[2:] if not ((len(c) == 2 and c.startswith("-")) or (len(c) > 2 and c[1] == "-"))]  # type: List[str]  # line 1265
+        options = [c.strip() for c in sys.argv[2:] if ((len(c) == 2 and c.startswith("-")) or (len(c) > 2 and c[1] == "-"))]  # type: List[str]  # options *with* arguments have to be parsed directly from sys.argv inside using functions  # line 1266
+        debug("Processing command %r with arguments %r and options %r." % (command, [_ for _ in arguments if _ is not None], options))  # line 1267
+        if command[:1] in "amr":  # line 1268
+            try:  # line 1269
+                relPaths, patterns = unzip([relativize(root, os.path.join(cwd, argument)) for argument in ((["."] if arguments is None else arguments))])  # line 1269
+            except:  # line 1270
+                command = "ls"  # convert command into ls --patterns  # line 1271
+                arguments[0] = None  # convert command into ls --patterns  # line 1271
+                options.extend(["--patterns", "--all"])  # convert command into ls --patterns  # line 1271
 # Exit("Need one or more file patterns as argument (escape them according to your shell)")
-        if command[:1] == "m":  # line 1271
-            if len(arguments) < 2:  # line 1272
-                Exit("Need a second file pattern argument as target for move command")  # line 1272
-            newRelPath, newPattern = relativize(root, os.path.join(cwd, arguments[1]))  # line 1273
-        arguments[:] = (arguments + [None] * 3)[:3]  # line 1274
-        if command == "raise":  # line 1275
-            raise Exception("provoked exception")  # line 1275
-        elif command[:1] == "a":  # e.g. addnot  # line 1276
-            add(relPaths, patterns, options, negative="n" in command)  # e.g. addnot  # line 1276
-        elif command[:1] == "b":  # line 1277
-            branch(arguments[0], arguments[1], options)  # line 1277
-        elif command[:2] == "ch":  # "changes" (legacy)  # line 1278
-            changes(arguments[0], options, onlys, excps, cwd)  # "changes" (legacy)  # line 1278
-        elif command[:2] == "ci":  # line 1279
-            commit(arguments[0], options, onlys, excps)  # line 1279
-        elif command[:3] == "com":  # line 1280
-            commit(arguments[0], options, onlys, excps)  # line 1280
-        elif command[:3] == 'con':  # line 1281
-            config(arguments, options)  # line 1281
-        elif command[:2] == "de":  # line 1282
-            destroy((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), options)  # line 1282
-        elif command[:2] == "di":  # TODO no consistent handling of single dash/characters argument-options  # line 1283
-            diff((lambda _coconut_none_coalesce_item: "/" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[2 if arguments[0] == '-n' else 0]), options, onlys, excps)  # TODO no consistent handling of single dash/characters argument-options  # line 1283
-        elif command[:2] == "du":  # line 1284
-            dump((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), options)  # line 1284
-        elif command[:1] == "h":  # line 1285
-            usage.usage(arguments[0], verbose=verbose)  # line 1285
-        elif command[:2] == "lo":  # line 1286
-            log(options, cwd)  # line 1286
-        elif command[:2] == "li":  # line 1287
-            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1287
-        elif command[:2] == "ls":  # line 1288
-            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1288
-        elif command[:1] == "m":  # e.g. mvnot  # line 1289
-            move(relPaths[0], patterns[0], newRelPath, newPattern, options, negative="n" in command)  # e.g. mvnot  # line 1289
-        elif command[:2] == "of":  # line 1290
-            offline(arguments[0], arguments[1], options, remotes)  # line 1290
-        elif command[:2] == "on":  # line 1291
-            online(options)  # line 1291
-        elif command[:1] == "p":  # line 1292
-            publish(arguments[0], cmd, options, onlys, excps)  # line 1292
-        elif command[:1] == "r":  # e.g. rmnot  # line 1293
-            remove(relPaths, patterns, options, negative="n" in command)  # e.g. rmnot  # line 1293
-        elif command[:2] == "st":  # line 1294
-            status(arguments[0], vcs, cmd, options, onlys, excps)  # line 1294
-        elif command[:2] == "sw":  # line 1295
-            switch((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), options, onlys, excps, cwd)  # line 1295
-        elif command[:1] == "u":  # line 1296
-            update((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), options, onlys, excps)  # line 1296
-        elif command[:1] == "v":  # line 1297
-            usage.usage(arguments[0], version=True)  # line 1297
-        else:  # line 1298
-            Exit("Unknown command '%s'" % command)  # line 1298
-        Exit(code=0)  # regular exit  # line 1299
-    except (Exception, RuntimeError) as E:  # line 1300
-        Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", excp=E)  # line 1301
+        if command[:1] == "m":  # line 1273
+            if len(arguments) < 2:  # line 1274
+                Exit("Need a second file pattern argument as target for move command")  # line 1274
+            newRelPath, newPattern = relativize(root, os.path.join(cwd, arguments[1]))  # line 1275
+        arguments[:] = (arguments + [None] * 3)[:3]  # line 1276
+        if command == "raise":  # line 1277
+            raise Exception("provoked exception")  # line 1277
+        elif command[:1] == "a":  # e.g. addnot  # line 1278
+            add(relPaths, patterns, options, negative="n" in command)  # e.g. addnot  # line 1278
+        elif command[:1] == "b":  # line 1279
+            branch(arguments[0], arguments[1], options)  # line 1279
+        elif command[:2] == "ch":  # "changes" (legacy)  # line 1280
+            changes(arguments[0], options, onlys, excps, cwd)  # "changes" (legacy)  # line 1280
+        elif command[:2] == "ci":  # line 1281
+            commit(arguments[0], options, onlys, excps)  # line 1281
+        elif command[:3] == "com":  # line 1282
+            commit(arguments[0], options, onlys, excps)  # line 1282
+        elif command[:3] == 'con':  # line 1283
+            config(arguments, options)  # line 1283
+        elif command[:2] == "de":  # line 1284
+            destroy((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), options)  # line 1284
+        elif command[:2] == "di":  # TODO no consistent handling of single dash/characters argument-options  # line 1285
+            diff((lambda _coconut_none_coalesce_item: "/" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[2 if arguments[0] == '-n' else 0]), options, onlys, excps)  # TODO no consistent handling of single dash/characters argument-options  # line 1285
+        elif command[:2] == "du":  # line 1286
+            dump((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), options)  # line 1286
+        elif command[:1] == "h":  # line 1287
+            usage.usage(arguments[0], verbose=verbose)  # line 1287
+        elif command[:2] == "lo":  # line 1288
+            log(options, cwd)  # line 1288
+        elif command[:2] == "li":  # line 1289
+            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1289
+        elif command[:2] == "ls":  # line 1290
+            ls(os.path.relpath((lambda _coconut_none_coalesce_item: cwd if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), root), options)  # line 1290
+        elif command[:1] == "m":  # e.g. mvnot  # line 1291
+            move(relPaths[0], patterns[0], newRelPath, newPattern, options, negative="n" in command)  # e.g. mvnot  # line 1291
+        elif command[:2] == "of":  # line 1292
+            offline(arguments[0], arguments[1], options, remotes)  # line 1292
+        elif command[:2] == "on":  # line 1293
+            online(options)  # line 1293
+        elif command[:1] == "p":  # line 1294
+            publish(arguments[0], cmd, options, onlys, excps)  # line 1294
+        elif command[:1] == "r":  # e.g. rmnot  # line 1295
+            remove(relPaths, patterns, options, negative="n" in command)  # e.g. rmnot  # line 1295
+        elif command[:2] == "st":  # line 1296
+            status(arguments[0], vcs, cmd, options, onlys, excps)  # line 1296
+        elif command[:2] == "sw":  # line 1297
+            switch((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), options, onlys, excps, cwd)  # line 1297
+        elif command[:1] == "u":  # line 1298
+            update((lambda _coconut_none_coalesce_item: "" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(arguments[0]), options, onlys, excps)  # line 1298
+        elif command[:1] == "v":  # line 1299
+            usage.usage(arguments[0], version=True)  # line 1299
+        else:  # line 1300
+            Exit("Unknown command '%s'" % command)  # line 1300
+        Exit(code=0)  # regular exit  # line 1301
+    except (Exception, RuntimeError) as E:  # line 1302
+        Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", excp=E)  # line 1303
 
-def main():  # line 1303
-    global debug, info, warn, error  # to modify logger  # line 1304
-    logging.basicConfig(level=level, stream=sys.stderr, format=("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))  # line 1305
-    _log = Logger(logging.getLogger(__name__))  # line 1306
-    debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1306
-    for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv):  # clean up program arguments  # line 1307
-        sys.argv.remove(option)  # clean up program arguments  # line 1307
-    if '--help' in sys.argv or len(sys.argv) < 2:  # line 1308
-        usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose=verbose)  # line 1308
-    command = sys.argv[1] if len(sys.argv) > 1 else None  # type: _coconut.typing.Optional[str]  # line 1309
-    root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (=still working online); vcs is checkout/repo root folder; cmd is the VCS base command  # line 1310
-    debug("Detected SOS root folder: %s" % (("-" if root is None else root)))  # line 1311
-    debug("Detected VCS root folder: %s" % (("-" if vcs is None else vcs)))  # line 1312
-    defaults["defaultbranch"] = (lambda _coconut_none_coalesce_item: "default" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(vcsBranches.get(cmd, vcsBranches[SVN]))  # sets dynamic default with SVN fallback  # line 1313
-    defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback  # line 1314
-    if (not force_vcs or force_sos) and (root is not None or (("" if command is None else command))[:2] == "of" or (("_" if command is None else command))[:1] in "hv"):  # in offline mode or just going offline  # line 1315
-        cwd = os.getcwd()  # line 1316
-        os.chdir(cwd if command[:2] == "of" else (cwd if root is None else root))  # line 1317
-        parse(vcs, cwd, cmd)  # line 1318
-    elif force_vcs or cmd is not None:  # online mode - delegate to VCS  # line 1319
-        info("%s: Running '%s %s'" % (usage.COMMAND.upper(), cmd, " ".join(sys.argv[1:])))  # line 1320
-        import subprocess  # only required in this section  # line 1321
-        process = subprocess.Popen([cmd] + sys.argv[1:], shell=False, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)  # line 1322
-        inp = ""  # type: str  # line 1323
-        while True:  # line 1324
-            so, se = process.communicate(input=inp)  # line 1325
-            if process.returncode is not None:  # line 1326
-                break  # line 1326
-            inp = sys.stdin.read()  # line 1327
-        if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit to underlying VCS - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")  # line 1328
-            if root is None:  # line 1329
-                Exit("Cannot determine SOS root folder: Not working offline, thus unable to mark offline repository as synchronized")  # line 1329
-            m = Metadata(root)  # type: Metadata  # line 1330
-            m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync=True)  # mark as committed  # line 1331
-            m.saveBranches()  # line 1332
-    else:  # line 1333
-        Exit("No offline repository present, and unable to detect VCS file tree")  # line 1333
+def main():  # line 1305
+    global debug, info, warn, error  # to modify logger  # line 1306
+    logging.basicConfig(level=level, stream=sys.stderr, format=("%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s"))  # line 1307
+    _log = Logger(logging.getLogger(__name__))  # line 1308
+    debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1308
+    for option in (o for o in ['--log', '--debug', '--verbose', '-v', '--sos', '--vcs'] if o in sys.argv):  # clean up program arguments  # line 1309
+        sys.argv.remove(option)  # clean up program arguments  # line 1309
+    if '--help' in sys.argv or len(sys.argv) < 2:  # line 1310
+        usage.usage(sys.argv[sys.argv.index('--help') + 1] if '--help' in sys.argv and len(sys.argv) > sys.argv.index('--help') + 1 else None, verbose=verbose)  # line 1310
+    command = sys.argv[1] if len(sys.argv) > 1 else None  # type: _coconut.typing.Optional[str]  # line 1311
+    root, vcs, cmd = findSosVcsBase()  # root is None if no .sos folder exists up the folder tree (=still working online); vcs is checkout/repo root folder; cmd is the VCS base command  # line 1312
+    debug("Detected SOS root folder: %s" % (("-" if root is None else root)))  # line 1313
+    debug("Detected VCS root folder: %s" % (("-" if vcs is None else vcs)))  # line 1314
+    defaults["defaultbranch"] = (lambda _coconut_none_coalesce_item: "default" if _coconut_none_coalesce_item is None else _coconut_none_coalesce_item)(vcsBranches.get(cmd, vcsBranches[SVN]))  # sets dynamic default with SVN fallback  # line 1315
+    defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback  # line 1316
+    if (not force_vcs or force_sos) and (root is not None or (("" if command is None else command))[:2] == "of" or (("_" if command is None else command))[:1] in "hv"):  # in offline mode or just going offline  # line 1317
+        cwd = os.getcwd()  # line 1318
+        os.chdir(cwd if command[:2] == "of" else (cwd if root is None else root))  # line 1319
+        parse(vcs, cwd, cmd)  # line 1320
+    elif force_vcs or cmd is not None:  # online mode - delegate to VCS  # line 1321
+        info("%s: Running '%s %s'" % (usage.COMMAND.upper(), cmd, " ".join(sys.argv[1:])))  # line 1322
+        import subprocess  # only required in this section  # line 1323
+        process = subprocess.Popen([cmd] + sys.argv[1:], shell=False, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)  # line 1324
+        inp = ""  # type: str  # line 1325
+        while True:  # line 1326
+            so, se = process.communicate(input=inp)  # line 1327
+            if process.returncode is not None:  # line 1328
+                break  # line 1328
+            inp = sys.stdin.read()  # line 1329
+        if sys.argv[1][:2] == "co" and process.returncode == 0:  # successful commit to underlying VCS - assume now in sync again (but leave meta data folder with potential other feature branches behind until "online")  # line 1330
+            if root is None:  # line 1331
+                Exit("Cannot determine SOS root folder: Not working offline, thus unable to mark offline repository as synchronized")  # line 1331
+            m = Metadata(root)  # type: Metadata  # line 1332
+            m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync=True)  # mark as committed  # line 1333
+            m.saveBranches()  # line 1334
+    else:  # line 1335
+        Exit("No offline repository present, and unable to detect VCS file tree")  # line 1335
 
 
 # Main part
-force_sos = [None] if '--sos' in sys.argv else []  # type: List[None]  # this is a trick allowing to modify the module-level flags from the test suite  # line 1337
-force_vcs = [None] if '--vcs' in sys.argv else []  # type: List[None]  # line 1338
-level = logging.DEBUG if '--debug' in sys.argv else logging.INFO  # type: int  # line 1339
+force_sos = [None] if '--sos' in sys.argv else []  # type: List[None]  # this is a trick allowing to modify the module-level flags from the test suite  # line 1339
+force_vcs = [None] if '--vcs' in sys.argv else []  # type: List[None]  # line 1340
+level = logging.DEBUG if '--debug' in sys.argv else logging.INFO  # type: int  # line 1341
 
-_log = Logger(logging.getLogger(__name__))  # line 1341
-debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1341
+_log = Logger(logging.getLogger(__name__))  # line 1343
+debug, info, warn, error = _log.debug, _log.info, _log.warn, _log.error  # line 1343
 
-if __name__ == '__main__':  # line 1343
-    main()  # line 1343
+if __name__ == '__main__':  # line 1345
+    main()  # line 1345

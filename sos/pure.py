@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x19c63b0a
+# __coconut_hash__ = 0xd7e3dbe6
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -109,3 +109,16 @@ def median(values: 'List[Union[int, float]]', inplace: 'bool'=False):  # line 68
     else:  # get copy  # line 80
         values = list(sorted(values))  # get copy  # line 80
     return values[n >> 1] if (n >> 1) << 1 != n else (values[(n >> 1) - 1] + values[(n >> 1)]) / 2.0  # line 81
+
+def appendEndmarkerIterator(i: 'Iterable', end: 'Any'=lambda count, value: (count, value), endValue: 'Any'=None):  # line 83
+    '''
+  >>> print(list(appendEndmarkerIterator(enumerate(iter(range(3))))))
+  [(0, 0), (1, 1), (2, 2), (3, None)]
+  '''  # line 87
+    count = 0  # type: int  # line 88
+    try:  # line 89
+        while True:  # line 89
+            yield next(i)  # line 89
+            count += 1  # line 89
+    except:  # line 90
+        yield end(count, endValue)  # line 90

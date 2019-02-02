@@ -61,7 +61,7 @@ SOS supports three different file handling models that you may use to your likin
 
 ### Documents ###
 - See the [tutorial](https://arnebachmann.github.io/sos/docs/TUTORIAL.html) to make your first steps with SOS.
-- See the [integration guide](https://github.com/ArneBachmann/sos/blob/master/docs/system.integration.md) for information on integrating SOS into your Desktop environment.
+- See the [integration guide](https://github.com/ArneBachmann/sos/blob/master/docs/system-integration.md) for information on integrating SOS into your Desktop environment.
 - See the [contribution guideline](https://github.com/ArneBachmann/sos/blob/master/docs/CONTRIBUTING.md) for further information on how to help with developing SOS.
 
 
@@ -266,7 +266,7 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions, moves, or renames
 - The dirty flag is only relevant in tracking and picky mode TODO investigate - is this true, and if yes, why
 - Branching larger amounts of binary files may be expensive as all files are copied and/or compressed just like during `sos offline`. A workaround is to `sos offline` only in the folders that are relevant for a specific task
-- If you see the Windows system error `[Errno 13]` (hinting at permission problems), don't go looking for user right problems, rather check for other processes locking files in the file tree
+- If you see the Windows system error `[Errno 13]` (hinting at permission problems), don't go looking for user right problems, rather check for other processes locking files in the file tree and try again
 - For files detected as being moved or renamed, using `--only` or `--except` for just the old or new path will lead to either only remove the old file path or only add the new entry, but will not be recognized as a move action in the history, as the other half of the move action is missing
 
 

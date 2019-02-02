@@ -1149,22 +1149,24 @@ def publish(message:str?, cmd:str, options:str[] = [], onlys:FrozenSet[str]? = N
   m.saveBranches()
 
 def config(arguments:List[str?], options:List[str] = []):
+  ''' Configure command: manage configuration settings. '''
   command:str; key:str; value:str; v:str
   command, key, value = (arguments + [None] * 2)[:3]
   if command is None: usage.usage("help", verbose = True)
   if command not in ("set", "unset", "show", "list", "add", "rm"): Exit("Unknown config command %r" % command)
-  local:bool = "--local" in options
+  local:bool = "--local" in options  # otherwise user-global by default
   m:Metadata = Metadata()  # loads nested configuration (local - global - defaults)
-  c:configr.Configr = m.c if local else m.c.__defaults  # only modify the selected parameter set
+  c:configr.Configr = m.c if local else m.c.__defaults  # will only modify the selected parameter set
+  location:str = "local" if local else "global"
   if command == "set":
     if None in (key, value): Exit("Key or value not specified")
-    if key not in ((([] if local else ONLY_GLOBAL_FLAGS) + CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % ("local" if local else "global", key))  # TODO move defaultbranch to configurable_texts?
-    if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())
+    if key not in ((([] if local else ONLY_GLOBAL_FLAGS) + CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % (location, key))  # TODO move defaultbranch to configurable_texts?
+    if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to %r. Try 'on' or 'off' instead" % value.lower())
     c[key] = value.lower() in TRUTH_VALUES if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) else (tryOrIgnore(-> int(value), (E) -> error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?
   elif command == "unset":
     if key is None: Exit("No key specified")
     if key not in c.keys(with_nested = False):
-      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))
+      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, location))
     del c[key]
   elif command == "add":  # TODO copy list from defaults if not local/global
     if None in (key, value): Exit("Key or value not specified")
@@ -1176,7 +1178,7 @@ def config(arguments:List[str?], options:List[str] = []):
   elif command == "rm":
     if None in (key, value): Exit("Key or value not specified")
     if key not in c.keys(with_nested = False):
-      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))
+      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, location))
     if value not in c[key]:  Exit("Unknown value %r" % value)
     c[key].remove(value)
     if local and len(c[key]) == 0 and "--prune" in options: del c[key]  # remove local entry, to fallback to global
