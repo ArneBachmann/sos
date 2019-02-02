@@ -8,9 +8,10 @@ set PIP_NO_BUILD_ISOLATION=False
 set PIP_USE_PEP517=False
 
 if "%NOMYPY%" == "" (
-    pip install -U appdirs chardet configr termwidth "coverage == 4.0.3" python-coveralls "typing >= '3.5'; python_version < '3.5'" "enum34; python_version < '3.4'" "setuptools == 30.1.0; python_version == '3.4'" --no-use-pep517
+    pip install -U appdirs chardet configr termwidth "coverage == 4.0.3" python-coveralls "typing >= '3.5'; python_version < '3.5'" "enum34; python_version < '3.4'" "setuptools == 30.1.0; python_version == '3.4'"
     rem "setuptools >= 20.8.1" coconut-develop[mypy,cPyparsing]
 ) else (
-    pip install -U appdirs chardet configr termwidth "coverage == 4.0.3" python-coveralls "typing >= '3.5'; python_version < '3.5'" "enum34; python_version < '3.4'" "setuptools == 30.1.0; python_version == '3.4'" --no-use-pep517
+    pip install -U appdirs chardet configr termwidth "coverage == 4.0.3" python-coveralls "typing >= '3.5'; python_version < '3.5'" "enum34; python_version < '3.4'" "setuptools == 30.1.0; python_version == '3.4'"
     rem "setuptools >= 20.8.1" coconut-develop[cPyparsing]
 )
+exit /b 0
