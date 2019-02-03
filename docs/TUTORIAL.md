@@ -364,11 +364,11 @@ SOS/ Offline repository status
 sos switch 0
 ```
 
-or `sos switch trunk`:
+or `sos switch master`:
 
 ```
 MOD rese/sunamount.coco
-/SOS/ Switched to branch 'trunk' b0/r01
+/SOS/ Switched to branch 'master' b0/r01
 [EXIT]
 ```
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xf94896b2
+# __coconut_hash__ = 0xffb8c162
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -386,7 +386,7 @@ def fitStrings(strings: '_coconut.typing.Sequence[str]', prefix: 'str', length: 
 def exception(E) -> 'str':  # line 271
     ''' Report an exception to the user to allow useful bug reporting. '''  # line 272
     import traceback  # line 273
-    return str(E) + "\n" + traceback.format_exc() + "\n" + traceback.format_list(traceback.extract_stack())  # line 274
+    return str(E) + "\n" + traceback.format_exc() + "\n" + "".join(traceback.format_list(traceback.extract_stack()))  # line 274
 
 def hashFile(path: 'str', compress: 'bool', saveTo: 'List[str]'=[], callback: 'Optional[_coconut.typing.Callable[[str], None]]'=None, symbols: 'str'=PROGRESS_MARKER[0]) -> 'Tuple[str, int]':  # line 276
     ''' Calculate and return (hash of file contents, compressed sized (if writing) else 0). '''  # line 277

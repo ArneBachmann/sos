@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xe01cbc49
+# __coconut_hash__ = 0x953925d8
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -994,10 +994,10 @@ class Tests(unittest.TestCase):  # line 104
         _.assertInAny("TRK a  (a)", sos.safeSplit(wrapChannels(lambda _=None: sos.ls("sub")).replace("\r", ""), "\n"))  # line 860
 
     def testLineMerge(_):  # line 862
-        _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))  # BUG  # line 863
+        _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))  # integrate all of other into -> mine  # line 863
         _.assertEqual("xabxxc", sos.lineMerge("xabxxc", "a bd"))  # line 864
-        _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.INSERT))  # line 865
-        _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.REMOVE))  # line 866
+        _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.INSERT))  # keep old and insert new  # line 865
+        _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.REMOVE))  # remove old and no change of new  # line 866
 
     def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not  # line 868
         _.createFile(1)  # line 869

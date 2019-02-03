@@ -156,16 +156,18 @@ class Metadata:
     _a, _a, remotes, noremotes = parseArgumentOptions("", options)  # re-parse options for the --(only-)remotes and --exlude-remotes options
     [] if "--no-remotes" in options or "--no-remote" in options else list(set(remotes if remotes else _.remotes) - set(noremotes))
 
-  def getRevisionByName(_, name:str) -> int? =
+  def getRevisionByName(_, name:str?) -> int? =
     ''' Convenience accessor for named revisions (using commit message as tag name by convention). '''
-    if name == "": return -1
+    if (name ?? "") == "": return -1
     try: return int(name)  # attempt to parse integer string
     except ValueError: pass
     found = [number for number, commit in _.commits.items() if name == commit.message]  # find any revision by commit message (usually used for tags)  # HINT allows finding any message, not only tagged ones
     found[0] if found else None
 
   def getBranchByName(_, name:str) -> int? =
-    ''' Convenience accessor for named branches. '''
+    ''' Convenience accessor for named branches.
+        returns: branch index 0.. or None if not found
+    '''
     if name == "": return _.branch  # current
     try: return int(name)  # attempt to parse integer string
     except ValueError: pass
@@ -438,14 +440,15 @@ class Metadata:
     f{} if not (_.track or _.picky) else frozenset(_.branches[branch ?? _.branch].untracked if negative else _.branches[branch ?? _.branch].tracked)
 
   def parseRevisionString(_, argument:str) -> Union[Tuple[int?,int?],NoReturn]:
-    ''' Commit identifiers can be str or int for branch, and int for revision.
-        Revision identifiers can be negative, with -1 being last commit.
-        None is returned in case of error
-        Code will sys.exit in case of unknown specified branch/revision
+    ''' Parse (an optionally) combined branch and revision string, separated by a slash.
+        Commit identifiers can be str or int for branch, and int for revision.
+        Revision identifiers can be negative, with -1 being last commit (Python convention)
+        (None, None) is returned in case of illegal inputs
+        sys.exit() is called in case of unknown branch/revision
     '''
-    if argument is None or argument == SLASH: return (_.branch, -1)  # no branch/revision specified
-    if argument == "": return (None, None)  # nothing specified by user, raise error in caller
-    argument = argument.strip()
+    argument = (argument ?? "/").strip()
+    if argument == SLASH: return (_.branch, -1)  # no branch/revision specified
+    if argument == "":    return (None, None)  # nothing specified by user, raise error in caller
     if argument.startswith(SLASH): return (_.branch, _.getRevisionByName(argument[1:]))  # current branch
     if argument.endswith(SLASH):
       try: return (_.getBranchByName(argument[:-1]), -1)
@@ -454,10 +457,10 @@ class Metadata:
       b, r = argument.split(SLASH)[:2]
       try: return (_.getBranchByName(b), _.getRevisionByName(r))
       except ValueError as E: Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r), excp = E)
-    branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
+    branch:int? = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
-    try: return (branch ?? _.branch, int(argument if argument else "-1") if branch is None else -1)  # either branch name/number or reverse/absolute revision number
-    except Exception as E: Exit("Unknown branch label or wrong number format", excp = E)
+    try: return (branch ?? _.branch, (_.getRevisionByName(argument) ?? -1) if branch is None else -1)  # either branch name/number or reverse/absolute revision number
+    except Exception as E: Exit("Unknown branch label or wrong branch/revision number format", excp = E)
     Exit("This should never happen. Please create an issue report")
 
   def findRevision(_, branch:int, revision:int, nameHash:str) -> Tuple[int,str] =

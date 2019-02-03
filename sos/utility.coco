@@ -271,7 +271,7 @@ def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.
 def exception(E) -> str =
   ''' Report an exception to the user to allow useful bug reporting. '''
   import traceback
-  str(E) + "\n" + traceback.format_exc() + "\n" + traceback.format_list(traceback.extract_stack())
+  str(E) + "\n" + traceback.format_exc() + "\n" + "".join(traceback.format_list(traceback.extract_stack()))
 
 def hashFile(path:str, compress:bool, saveTo:List[str] = [], callback:Optional[(str) -> None] = None, symbols:str = PROGRESS_MARKER[0]) -> Tuple[str,int] =
   ''' Calculate and return (hash of file contents, compressed sized (if writing) else 0). '''
