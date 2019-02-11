@@ -59,8 +59,10 @@ SOS supports three different file handling models that you may use to your likin
 - SOS is compatible with above mentioned traditional VCSs: SVN, Git, gitless, Bazaar, Mercurial and Fossil
 - Filename encoding and console encoding: Full roundtrip support (on Windows) started only with Python 3.6.4 and has not been tested nor confirmed yet for SOS
 
-### Tutorial ###
-See the [tutorial](https://arnebachmann.github.io/sos/docs/TUTORIAL.html) to make your first steps with SOS.
+### Documents ###
+- See the [tutorial](https://arnebachmann.github.io/sos/docs/TUTORIAL.html) to make your first steps with SOS.
+- See the [integration guide](https://github.com/ArneBachmann/sos/blob/master/docs/system-integration.md) for information on integrating SOS into your Desktop environment.
+- See the [contribution guideline](https://github.com/ArneBachmann/sos/blob/master/docs/CONTRIBUTING.md) for further information on how to help with developing SOS.
 
 
 ## Latest Changes ##
@@ -101,7 +103,6 @@ See the [tutorial](https://arnebachmann.github.io/sos/docs/TUTORIAL.html) to mak
     - [Bug 221](https://github.com/ArneBachmann/sos/issues/221) Display of wrong number of files on `sos commit`
     - [Bug 230, 219](https://github.com/ArneBachmann/sos/issues/230) Fixed bugs in destroy that could lead to errors when removing empty branches
     - [QA 198](https://github.com/ArneBachmann/sos/issues/198) Finally made the tests run on AppVeyor. Reason was file system synchronization problems not shown on Linux
-    - Downloads so far: 0
 - **Version 1.5**, released on 2018-03-03:
     - [Bug 78](https://github.com/ArneBachmann/sos/issues/78) Long standing bug, computing wrong line numbers in diff view
     - [Bug 196](https://github.com/ArneBachmann/sos/issues/196) Ubiquitous `--only` and `--except` options not working
@@ -265,12 +266,9 @@ By means of the `sos config set <key> <value>` command, you can set these flags 
 - It might in some cases be a good idea to go offline one folder higher up in the file tree than your base working folder to care for potential deletions, moves, or renames
 - The dirty flag is only relevant in tracking and picky mode TODO investigate - is this true, and if yes, why
 - Branching larger amounts of binary files may be expensive as all files are copied and/or compressed just like during `sos offline`. A workaround is to `sos offline` only in the folders that are relevant for a specific task
-- If you see the Windows system error `[Errno 13]` (hinting at permission problems), don't go looking for user right problems, rather check for other processes locking files in the file tree
+- If you see the Windows system error `[Errno 13]` (hinting at permission problems), don't go looking for user right problems, rather check for other processes locking files in the file tree and try again
 - For files detected as being moved or renamed, using `--only` or `--except` for just the old or new path will lead to either only remove the old file path or only add the new entry, but will not be recognized as a move action in the history, as the other half of the move action is missing
 
-
-## Development and Contribution ##
-See the [contribution guideline]([CONTRIBUTING.md](https://github.com/ArneBachmann/sos/blob/master/docs/CONTRIBUTING.md) for further information.
 
 Ideas for future developments:
 - [Issue 158](https://github.com/ArneBachmann/sos/issues/158) Remote metadata folder would allow separating the repository from the checkout, and - in combination with a locking library like `fasteners` could even be used as a multi-user repository. Estimated development effort is 3+3 hours.

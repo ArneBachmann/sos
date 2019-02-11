@@ -1,7 +1,7 @@
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import hashlib, logging, os, shutil, sys, time; START_TIME = time.time()  # early time tracking
+import hashlib, itertools, logging, os, shutil, sys, time; START_TIME = time.time()  # early time tracking
 
 try: from typing import Any, AnyStr, Dict, FrozenSet, Generic, IO, Iterable, Iterator, NoReturn, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union   # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...
 except: pass  # TODO import this only when running mypy?
@@ -153,6 +153,7 @@ defaults:Accessor = Accessor({
   })
 RETRY_NUM:int = 3
 RETRY_WAIT:int = 1.5
+CODEC_FUNCTIONS:List[str] = ['utf_32_be', 'utf_32_le', 'utf_32', 'utf_16_be', 'utf_16_le', 'utf_16', 'utf_7', 'utf_8_sig', 'utf_8']
 
 
 # Functions
@@ -161,29 +162,44 @@ def printo(s:str = "", nl:str = "\n", color:str? = None):
   reset = Fore.RESET if useColor[0] and color else ""
   tryOrIgnore(( ) -> sys.stdout.write(color + s + reset + nl) and False,
               (E) -> sys.stdout.buffer.write((s + nl).encode(sys.stdout.encoding, 'backslashreplace')) and False); sys.stdout.flush()  # PEP528 compatibility
+
 def printe(s:str = "", nl:str = "\n", color:str? = None):
   color = useColor[0] and color or ""
   reset = Fore.RESET if useColor[0] and color else ""
   tryOrIgnore(( ) -> sys.stderr.write(color + s + reset + nl) and False,
               (E) -> sys.stderr.buffer.write((s + nl).encode(sys.stderr.encoding, 'backslashreplace')) and False); sys.stderr.flush()
+
 def encode(s:str) -> bytes: return os.fsencode(s)  # for py->os access of writing filenames  # PEP 529 compatibility
+
 def decode(b:bytes) -> str: return os.fsdecode(b)  # for os->py access of reading filenames
+
+def guessEncoding(binary:bytes) -> List[str] =
+  ''' If encoding cannot be determined automatically, attempt a guess. Usually it's not unambiguous, though.
+  >>> print(guessEncoding(b"abcd0234"))
+  ['ascii']
+  >>> print(guessEncoding(bytes([0b00100100, 0b11000010, 0b10100010, 0b11100010, 0b10000010, 0b10101100, 0b11110000, 0b10011010, 0b10110011, 0b10011001])))  # utf_8  1:$ 2:cent 3:€, 4:? -> gives 5 options, but it's UTF-8
+  ['utf_16_be', 'utf_16_le', 'utf_16', 'utf_8_sig', 'utf_8']
+  >>> print(guessEncoding(bytes([0b00000000, 0b00100100, 0b11011000, 0b01010010, 0b11011111, 0b01100010])))  # utf_16 $ ? -> gives 3 options, on is correct
+  ['utf_16_be', 'utf_16_le', 'utf_16']
+  >>> print(guessEncoding(bytes([0b00100100, 0b11000010, 0b10100010])))  # utf_8  1:$ 2:cent 3:€, 4:? -> gives 2 UTF-8 options
+  ['utf_8_sig', 'utf_8']
+  '''
+  if all(bite < 128 for bite in binary): return ["ascii"]  # TODO move as first detection step
+  decoded:List[str] = list(filter(-> tryOrDefault(() -> codecs.encode(codecs.decode(binary, _), _) and True, None), CODEC_FUNCTIONS))
+  if (len(binary) >> 1) << 1 != len(binary): decoded[:] = list(filter(-> "8" in _, decoded))  # only utf-8 variants possible here
+  decoded
+
+# Optional dependency: https://github.com/chardet/chardet
 try:
-  import chardet  # https://github.com/chardet/chardet
-  def detectEncoding(binary:bytes) -> str? = chardet.detect(binary)["encoding"]  # None if nothing useful detected (=binary)
-except: def detectEncoding(binary:bytes) -> str? =  # Guess the encoding
-  ''' Fallback if chardet library missing. '''
-  try: binary.decode(UTF8); return UTF8
-  except UnicodeError: pass
-  try: binary.decode("UTF-8-SIG"); return UTF8
-  except UnicodeError: pass
-  try: binary.decode("utf_16"); return "utf_16"
-  except UnicodeError: pass
-  try: binary.decode("ascii"); return "ascii"  # HINT: can still contain whitespace which is hard to diff
-  except UnicodeError: pass
-  try: binary.decode("cp1252"); return "cp1252"
-  except UnicodeError: pass
-  None
+  import chardet
+  def detectEncoding(binary:bytes) -> str? = chardet.detect(binary)["encoding"]  # returns None if nothing useful detected
+except:
+  def detectEncoding(binary:bytes) -> str? =
+    ''' Fallback function definition if no chardet library installed. '''
+    encodings:List[str] = guessEncoding(binary)
+    if len(encodings) == 1: return encodings[0]
+    if len(encodings) == 0: return None  # or cp1252 or cp850
+    encodings[-1]
 
 def tryOrDefault(func:Callable[[], Any], default:Any) -> Any:
   try: return func()
@@ -234,14 +250,16 @@ def branchFolder(branch:int, base:str? = None, file:str? = None) -> str = os.pat
 def revisionFolder(branch:int, revision:int, base:str? = None, file:str? = None) -> str = os.path.join(branchFolder(branch, base), "r%d" % revision) + ((os.sep + file) if file else "")
 
 def Exit(message:str = "", code:int = 1, excp:Any = None):
-  lines:List[str] = (message + ("" if excp is None else ("\n" + exception(excp)))).replace("\r", "\n").split("\n")
-  printe("[", nl = "")
-  printe("EXIT", color = Fore.YELLOW if code else Fore.GREEN, nl ="")
-  printe("%s%s]" % (
-    " %.1fs" % (time.time() - START_TIME) if verbose else "",
-    (" " +lines[0] + ".") if lines[0] != "" else "")
-  )
-  if len(lines) > 1: printe("\n".join(lines[1:]))
+  if not '--quiet' in sys.argv:
+    lines:List[str] = (message + ("" if excp is None else ("\n" + exception(excp)))).replace("\r", "\n").split("\n")
+    printe("[", nl = "")
+    printe("EXIT", color = Fore.YELLOW if code else Fore.GREEN, nl ="")
+    printe("%s%s]" % (
+      " %.1fs" % (time.time() - START_TIME) if verbose else "",
+      (" " +lines[0] + ".") if lines[0] != "" else "")
+    )
+    if len(lines) > 1: printe("\n".join(lines[1:]))
+  if '--wait' in sys.argv: input("Hit Enter to finish." if not '--quiet' in sys.argv else "")
   sys.exit(code)
 
 def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.platform, MAX_COMMAND_LINE[None]), separator:str = " ", process: -> str = -> '"%s"' % _) -> str =
@@ -253,7 +271,7 @@ def fitStrings(strings:str[], prefix:str, length:int = MAX_COMMAND_LINE.get(sys.
 def exception(E) -> str =
   ''' Report an exception to the user to allow useful bug reporting. '''
   import traceback
-  str(E) + "\n" + traceback.format_exc() + "\n" + traceback.format_list(traceback.extract_stack())
+  str(E) + "\n" + traceback.format_exc() + "\n" + "".join(traceback.format_list(traceback.extract_stack()))
 
 def hashFile(path:str, compress:bool, saveTo:List[str] = [], callback:Optional[(str) -> None] = None, symbols:str = PROGRESS_MARKER[0]) -> Tuple[str,int] =
   ''' Calculate and return (hash of file contents, compressed sized (if writing) else 0). '''
@@ -347,11 +365,11 @@ def user_block_input(output:List[str]):
     output.append(line)  # writes to caller-provided list reference
 
 def mergeClassic(file:bytes, intofile:str, fromname:str, intoname:str, totimestamp:int, context:int, ignoreWhitespace:bool = False):
-  encoding:str; othreol:bytes?; othr:str[]; curreol:bytes?; curr:str[]
+  encoding:str; othreol:bytes?; othr:str[]; curreol:bytes?; curr:str[]  # typing
   try:
     encoding, othreol, othr = detectAndLoad(content = file, ignoreWhitespace = ignoreWhitespace)
     encoding, curreol, curr = detectAndLoad(filename = intofile, ignoreWhitespace = ignoreWhitespace)
-  except Exception as E: Exit("Cannot diff '%s' vs '%s': %r" % (fromname ?? "<bytes>", intoname ?? "<bytes>"), exception = E)  # in case of binary files
+  except Exception as E: Exit("Cannot diff '%s' vs '%s': %r" % (fromname ?? "<bytes>", intoname ?? "<bytes>"), excp = E)  # in case of binary files
   for line in difflib.context_diff(othr, curr, fromname, intoname, time.ctime(int(totimestamp / 1000))): printo(line)  # from generator expression
 
 def merge(
@@ -363,67 +381,68 @@ def merge(
       eol:bool = False,
       ignoreWhitespace:bool = False
     ) -> Tuple[Union[bytes,List[MergeBlock]],bytes?] =
-  ''' Merges other binary text contents 'file' (or reads file 'filename') into current text contents 'into' (or reads file 'intoname'), returning merged result.
+  ''' Merges other binary text contents in 'file' (or reads from file 'filename') into current text contents 'into' (or reads from file 'intoname'), returning merged result.
       For 'sos update', the other version is assumed to be the "new/added" one, while for diff, the 'file' with changes is the one shown as "added".
       However, change direction markers are insert ("+") for elements only in into, and remove ("-") for elements only in other file (just like the diff marks +/-)
-      diffOnly: if True, return detected change blocks only, no actual text merging
-      eol: if True, will use the other file's EOL marks
-      in case of replace block and INSERT strategy, the change will be added **behind** the original. HINT could be configurable
+      diffOnly: if True, return detected change blocks only, don't perform the actual text merging
+      eol: if True, will use the other file's EOL marks instead of current file's
+      in case of a replace block and INSERT strategy, the change will be added **behind** the original. HINT this could be made configurable
   '''
-  encoding:str; othreol:bytes?; othr:str[]; curreol:bytes?; curr:str[]
+  encoding:str; othreol:bytes?; othr:str[]; curreol:bytes?; curr:str[]  # typing
   try:  # load files line-wise and normalize line endings (keep the one of the current file) TODO document
     encoding, othreol, othr = detectAndLoad(filename = filename, content = file, ignoreWhitespace = ignoreWhitespace)
     encoding, curreol, curr = detectAndLoad(filename = intoname, content = into, ignoreWhitespace = ignoreWhitespace)
-  except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename ?? "<bytes>", intoname ?? "<bytes>"), exception = E)
-  if None not in [othreol, curreol] and othreol != curreol: warn("Differing EOL-styles detected during merge. Using current file's style for merged output")
-  output:List[str] = list(difflib.Differ().compare(othr, curr))  # from generator expression
+  except Exception as E: Exit("Cannot merge '%s' into '%s': %r" % (filename ?? "<bytes>", intoname ?? "<bytes>"), excp = E)
+  if None not in (othreol, curreol) and othreol != curreol: warn("Differing EOL-styles detected during merge. Using current file's style for merged output")
+  output:Union[Iterable[str], List[str]] = difflib.Differ().compare(othr, curr)
   blocks:List[MergeBlock] = []  # merged result in blocks
-  tmp:List[str] = []  # block lines
+  tmp:List[str] = []  # block of consecutive lines
   last:str = " "; no:int; line:str; offset:int = 0  # "into"-file offset for remark lines
-  for no, line in enumerate(output + ["X"]):  # EOF marker (difflib's output will never be "X" alone)
+
+  for no, line in pure.appendEndmarkerIterator(enumerate(output), endValue = "X"):  # EOF marker (difflib's output will never be "X" alone)
     if line[0] == last: tmp.append(line[2:]); continue  # continue filling current block, no matter what type of block it is
     if line == "X" and len(tmp) == 0: break  # break if nothing left to do, otherwise perform operation for stored block
-    if last == " ":  # block is same in both files
-      if len(tmp) > 0: blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line = no - offset - len(tmp)))  # avoid adding empty keep block
-    elif last == "-":  # may be a pure deletion or part of a replacement (with next block being "+")
+    if last == " " and len(tmp) > 0: blocks.append(MergeBlock(MergeBlockType.KEEP, [line for line in tmp], line = no - offset - len(tmp)))  # same in both files. avoid adding empty keep block
+    elif last == "-":  # may be a pure deletion or part of a replacement (with previous or next block being "+")
       blocks.append(MergeBlock(MergeBlockType.REMOVE, [line for line in tmp], line = no - offset - len(tmp)))
-      if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.INSERT:
+      if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.INSERT:  # is a +/- replacement
         offset += len(blocks[-2].lines)
-        blocks[-2] = dataCopy(MergeBlock, blocks[-1], tipe = MergeBlockType.REPLACE, replaces = dataCopy(MergeBlock, blocks[-2], line = blocks[-1].line))  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
+        blocks[-2] = dataCopy(MergeBlock, blocks[-1], tipe = MergeBlockType.REPLACE, replaces = dataCopy(MergeBlock, blocks[-2], line = blocks[-1].line))  # remember replaced stuff with reference to insert merge block TODO why -1 necessary?
         blocks.pop()
-    elif last == "+":  # may be insertion or replacement (with previous - block)
-      blocks.append(MergeBlock(MergeBlockType.INSERT, [line for line in tmp], line = no - offset - len(tmp)))  # first, assume simple insertion, then check for replacement
+    elif last == "+":  # may be a pure insertion or part of a replacement (with previous or next block being "-")
+      blocks.append(MergeBlock(MergeBlockType.INSERT, [line for line in tmp], line = no - offset - len(tmp)))
       if len(blocks) >= 2 and blocks[-2].tipe == MergeBlockType.REMOVE:  #  and len(blocks[-1].lines) == len(blocks[-2].lines):  # requires previous block and same number of lines TODO allow multiple intra-line merge for same-length blocks
         offset += len(blocks[-1].lines)
         blocks[-2] = dataCopy(MergeBlock, blocks[-2], tipe = MergeBlockType.REPLACE, replaces = dataCopy(MergeBlock, blocks[-1], line = blocks[-2].line))  # remember replaced stuff with reference to other merge block TODO why -1 necessary?
         blocks.pop()  # remove TOS due to merging two blocks into replace or modify
     elif last == "?": offset += 1  # marker for intra-line change comment HINT was earlier part of the MergeBlock
-    last = line[0]
-    tmp[:] = [line[2:]]  # only keep current line for next block
-  # TODO add code to detect moved blocks here
+    last = line[0]  # remember for comparison once next block comes around
+    tmp[:] = [line[2:]]  # only remember current line as fresh next block
+  # TODO add code to detect and mark moved blocks here
   nl:bytes = othreol if eol else (curreol ?? othreol)  # no default newline, to mark "no newline"
   debug("Diff blocks: " + repr(blocks))
   if diffOnly: return (blocks, nl)
 
-  # now perform merge operations depending on detected blocks
-  output[:] = []; add_all:str?; del_all:str?; selection:str = ""  # clean list of strings
+  # now perform merge operations depending on detected blocks and selected merge options
+  output = []; add_all:str?; del_all:str?; selection:str = ""  # clean list of strings
   for block in blocks:
-    if block.tipe == MergeBlockType.KEEP: output.extend(block.lines)
+    if    block.tipe == MergeBlockType.KEEP: output.extend(block.lines)
     elif (block.tipe == MergeBlockType.INSERT and not(mergeOperation.value & MergeOperation.REMOVE.value))\
       or (block.tipe == MergeBlockType.REMOVE and    (mergeOperation.value & MergeOperation.INSERT.value)):  # will add line despite remove if --add-line was selected
       output.extend(block.lines)
     elif block.tipe == MergeBlockType.REPLACE:  # complete block replacement
-      if len(block.lines) == len(block.replaces.lines) == 1:  # one-liner
+      if len(block.lines) == len(block.replaces.lines) == 1:  # both sides are one-liners: apply next sub-level merge
         output.append(lineMerge(block.lines[0], block.replaces.lines[0], mergeOperation = charMergeOperation))
       elif mergeOperation == MergeOperation.ASK:  # more than one line: needs user input
+#      if mergeOperation == MergeOperation.ASK:  # more than one line: needs user input
         printo(pure.ajoin("- ", block.lines, nl = "\n"))  # TODO check +/- in update mode, could be swapped
         printo(pure.ajoin("+ ", block.replaces.lines, nl = "\n"))
         while True:
           op:str = input(" Line replacement: *M[I]ne (+), [T]heirs (-), [B]oth, [U]ser input: ").strip().lower()[:1]
-          if op in "tb": output.extend(block.lines)
+          if op in "tb": output.extend(block.lines)  # order for both determined here - TODO make configurable
           if op in "ib": output.extend(block.replaces.lines)
           if op == "u": user_block_input(output)
-          if op in "tbiu": break
+          if op in "tbiu": break  # was valid user input
       else:  # more than one line and not ask
         if   mergeOperation == MergeOperation.REMOVE: pass
         elif mergeOperation == MergeOperation.BOTH: output.extend(block.lines)
@@ -438,48 +457,51 @@ def merge(
       if (block.tipe == MergeBlockType.INSERT and "y" in (add_all, selection))\
       or (                                        "n" in (del_all, selection)):  # REMOVE case
         output.extend(block.lines)
-  debug("Merge output: " + "; ".join(output))
+  debug("Merge output: " + "\n".join(output))
   ((nl ?? b"\n").join([line.encode(encoding) for line in output]), nl)  # returning bytes
   # TODO handle check for more/less lines in found -/+ blocks to find common section and splitting prefix/suffix out
 
 def lineMerge(othr:str, into:str, mergeOperation:MergeOperation = MergeOperation.BOTH, diffOnly:bool = False) -> Union[str,List[MergeBlock]]:
   ''' Merges string 'othr' into current string 'into'.
       change direction mark is insert for elements only in into, and remove for elements only in file (according to diff marks +/-)
+      returns: merged line
+      raises: Exception in case of unparseable marker
   '''
   out:List[str] = list(difflib.Differ().compare(othr, into))
   blocks:List[MergeBlock] = []
-  for i, line in enumerate(out):
-    if line[0] == "+":
-      if i + 1 < len(out) and out[i + 1][0] == "+":  # block will continue
+  for i, charline in enumerate(out):
+    if charline[0] == "+":
+      if i + 1 < len(out) and out[i + 1][0] == "+":  # look-ahead: block will continue
         if i > 0 and blocks[-1].tipe == MergeBlockType.INSERT:  # middle of + block
-          blocks[-1].lines.append(line[2])  # add one more character to the accumulating list
+          blocks[-1].lines.append(charline[2])  # add one more character to the accumulating list
         else:  # first + in block
-          blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))
-      else:  # last line of + block
+          blocks.append(MergeBlock(MergeBlockType.INSERT, [charline[2]], i))
+      else:  # last charline of + block
         if i > 0 and blocks[-1].tipe == MergeBlockType.INSERT:  # end of a block
-          blocks[-1].lines.append(line[2])
-        else:  # single line
-          blocks.append(MergeBlock(MergeBlockType.INSERT, [line[2]], i))
+          blocks[-1].lines.append(charline[2])
+        else:  # single charline
+          blocks.append(MergeBlock(MergeBlockType.INSERT, [charline[2]], i))
         if i >= 1 and blocks[-2].tipe == MergeBlockType.REMOVE:  # previous - and now last in + block creates a replacement block
           blocks[-2] = MergeBlock(MergeBlockType.REPLACE, blocks[-2].lines, i, replaces = blocks[-1]); blocks.pop()
-    elif line[0] == "-":
+    elif charline[0] == "-":
       if i > 0 and blocks[-1].tipe == MergeBlockType.REMOVE:  # part of - block
-        blocks[-1].lines.append(line[2])
+        blocks[-1].lines.append(charline[2])
       else:  # first in block
-        blocks.append(MergeBlock(MergeBlockType.REMOVE, [line[2]], i))
-    elif line[0] == " ":
+        blocks.append(MergeBlock(MergeBlockType.REMOVE, [charline[2]], i))
+    elif charline[0] == " ":  # keep area
       if i > 0 and blocks[-1].tipe == MergeBlockType.KEEP:  # part of block
-        blocks[-1].lines.append(line[2])
+        blocks[-1].lines.append(charline[2])
       else:  # first in block
-        blocks.append(MergeBlock(MergeBlockType.KEEP, [line[2]], i))
-    else: raise Exception("Cannot parse diff line %r" % line)
-  blocks[:] = [dataCopy(MergeBlock, block, lines = ["".join(block.lines)], replaces = dataCopy(MergeBlock, block.replaces, lines = ["".join(block.replaces.lines)]) if block.replaces else None) for block in blocks]
-  if diffOnly: return blocks
-  out[:] = []
+        blocks.append(MergeBlock(MergeBlockType.KEEP, [charline[2]], i))
+    else: raise Exception("Cannot parse diff charline %r" % charline)
+  blocks[:] = [dataCopy(MergeBlock, block, lines = ["".join(block.lines)], replaces = dataCopy(MergeBlock, block.replaces, lines = ["".join(block.replaces.lines)]) if block.replaces else None) for block in blocks]  # update blocks
+  if diffOnly: return blocks  # debug interrupt - only return blocks
+
+  out = []
   for i, block in enumerate(blocks):
     if   block.tipe == MergeBlockType.KEEP: out.extend(block.lines)
     elif block.tipe == MergeBlockType.REPLACE:
-      if mergeOperation == MergeOperation.ASK:
+      if mergeOperation == MergeOperation.ASK:  # TODO add loop here like in merge
         printo(pure.ajoin("- ", othr))
         printo("- " + (" " * i) + block.replaces.lines[0])
         printo("+ " + (" " * i) + block.lines[0])
@@ -489,9 +511,9 @@ def lineMerge(othr:str, into:str, mergeOperation:MergeOperation = MergeOperation
         if op in "ib": out.extend(block.replaces.lines); break
         if op == "m":  user_block_input(out); break
       else:  # non-interactive
-        if   mergeOperation == MergeOperation.REMOVE: pass
-        elif mergeOperation == MergeOperation.BOTH: out.extend(block.lines)
-        elif mergeOperation == MergeOperation.INSERT: out.extend(list(block.replaces.lines) + list(block.lines))
+        if   mergeOperation == MergeOperation.REMOVE: pass  # neither keep old nor insert new
+        elif mergeOperation == MergeOperation.BOTH: out.extend(block.lines)  # remove old and insert new
+        elif mergeOperation == MergeOperation.INSERT: out.extend(block.replaces.lines + block.lines)  # keep old an insert new
     elif block.tipe == MergeBlockType.INSERT and not (mergeOperation.value & MergeOperation.REMOVE.value): out.extend(block.lines)
     elif block.tipe == MergeBlockType.REMOVE and      mergeOperation.value & MergeOperation.INSERT.value:  out.extend(block.lines)
     # TODO ask for insert or remove as well
@@ -611,19 +633,19 @@ def relativize(root:str, filepath:str) -> Tuple[str,str] =
   relpath, os.path.join(relpath, os.path.basename(filepath)).replace(os.sep, SLASH)
 
 def parseArgumentOptions(cwd:str, options:List[str]) -> Tuple[FrozenSet[str]?, FrozenSet[str]?, List[str], List[str]] =
-  ''' Returns (root-normalized) set of --only and --except arguments. '''
+  ''' Returns (root-normalized) Tuple with set of [f{--only], f{--except}, [remotes], [noremotes]] arguments. '''
   root:str = os.getcwd()
   onlys:List[str] = []; excps:List[str] = []; remotes:List[str] = []; noremotes:List[str] = []
   for keys, container in [(("--only", "--include"), onlys), (("--except", "--exclude"), excps), (("--remote", "--remotes", "--only-remote", "--only-remotes", "--include-remote", "--include-remotes"), remotes), (("--except-remote", "--except-remotes", "--exclude-remote", "--exclude-remotes"), noremotes)]:
     founds = [i for i in range(len(options)) if any([options[i].startswith(key + "=") or options[i] == key for key in keys])]  # assuming no more than one = in the string
     for i in reversed(founds):
       if "=" in options[i]:
-        container.extend(safeSplit(options[i].split("=")[1]), ";")  # TODO keep semicolon or use comma?
+        container.extend(safeSplit(options[i].split("=")[1], ";"))  # TODO keep semicolon or use comma?
       elif i + 1 < len(options):  # in case last --only has no argument
-        container.extend(safeSplit(options[i + 1], ";"))
+        container.extend(safeSplit(options[i + 1], ";"))  # TODO test this
         del options[i + 1]
       del options[i]  # reverse removal
   ( frozenset(oo for oo in (relativize(root, os.path.normpath(os.path.join(cwd, o)))[1] for o in onlys) if not oo.startswith(PARENT + SLASH)) if onlys else None,
     frozenset(ee for ee in (relativize(root, os.path.normpath(os.path.join(cwd, e)))[1] for e in excps) if not ee.startswith(PARENT + SLASH)) if excps else None,  # avoids out-of-repo paths
-    remotes,
-    noremotes)
+    [os.path.abspath(os.path.normpath(_)) for _ in remotes],
+    [os.path.abspath(os.path.normpath(_)) for _ in noremotes])

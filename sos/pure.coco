@@ -64,3 +64,27 @@ def timeString(timeMs:int) -> str =
   "%.1f minutes" % (float(timeMs) / _MINUTE) if timeMs > 1.5 * _MINUTE else (
   "%.1f seconds" % (float(timeMs) / _SECOND) if timeMs > 1.5 * _SECOND else (
   "%d ms" % timeMs)))))
+
+def median(values:List[Union[int,float]], inplace:bool = False):
+  ''' TODO Use doctest here.
+  >>> print(median([1, 2, 3]))
+  2
+  >>> print(median([1, 2]))
+  1.5
+  '''
+  assert isinstance(values, list)
+  n:int = len(values)
+  assert n > 0
+  if n == 1: return values[0]
+  if inplace: values.sort()
+  else: values = list(sorted(values))  # get copy
+  return values[n>>1] if (n>>1)<<1 != n else (values[(n>>1) - 1] + values[(n>>1)]) / 2.0
+
+def appendEndmarkerIterator(i:Iterable, end:Any = lambda count, value: (count, value), endValue:Any = None):
+  '''
+  >>> print(list(appendEndmarkerIterator(enumerate(iter(range(3))))))
+  [(0, 0), (1, 1), (2, 2), (3, None)]
+  '''
+  count:int = 0
+  try: while True: yield next(i); count += 1
+  except: yield end(count, endValue)

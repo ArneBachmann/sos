@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0x6ee11e54
+# __coconut_hash__ = 0x953925d8
 
 # Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
 
@@ -994,10 +994,10 @@ class Tests(unittest.TestCase):  # line 104
         _.assertInAny("TRK a  (a)", sos.safeSplit(wrapChannels(lambda _=None: sos.ls("sub")).replace("\r", ""), "\n"))  # line 860
 
     def testLineMerge(_):  # line 862
-        _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))  # line 863
+        _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))  # integrate all of other into -> mine  # line 863
         _.assertEqual("xabxxc", sos.lineMerge("xabxxc", "a bd"))  # line 864
-        _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.INSERT))  # line 865
-        _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.REMOVE))  # line 866
+        _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.INSERT))  # keep old and insert new  # line 865
+        _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation=sos.MergeOperation.REMOVE))  # remove old and no change of new  # line 866
 
     def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not  # line 868
         _.createFile(1)  # line 869
@@ -1280,7 +1280,7 @@ class Tests(unittest.TestCase):  # line 104
         _.assertNotIn("ADD ./b.2", out)  # line 1075
 
     def testOnly(_):  # line 1077
-        _.assertEqual((_coconut.frozenset(("./A", "x/B")), _coconut.frozenset(("./C",)), ["bla"], ["blo"]), sos.parseArgumentOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--remote", "bla", "--exclude-remote", "blo", "--only"]))  # line 1078
+        _.assertEqual((_coconut.frozenset(("./A", "x/B")), _coconut.frozenset(("./C",)), ["bla"], ["blo"]), tuple([r if i < 2 else [os.path.basename(x) for x in r] for i, r in enumerate(sos.parseArgumentOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--remote", "bla", "--exclude-remote", "blo", "--only"]))]))  # line 1078
         _.assertEqual(_coconut.frozenset(("B",)), sos.conditionalIntersection(_coconut.frozenset(("A", "B", "C")), _coconut.frozenset(("B", "D"))))  # line 1079
         _.assertEqual(_coconut.frozenset(("B", "D")), sos.conditionalIntersection(_coconut.frozenset(), _coconut.frozenset(("B", "D"))))  # line 1080
         _.assertEqual(_coconut.frozenset(("B", "D")), sos.conditionalIntersection(None, _coconut.frozenset(("B", "D"))))  # line 1081
@@ -1523,7 +1523,14 @@ class Tests(unittest.TestCase):  # line 104
 # TODO tests for loadcommit redirection
 # TODO test wrong branch/revision after fast branching, would raise exception for -1 otherwise
 
+def load_tests(loader, tests, ignore):  # line 1303
+    ''' Python unittest by-convention test definition. '''  # line 1304
+    import doctest  # line 1305
+    tests.addTests(doctest.DocTestSuite("utility", optionflags=doctest.ELLIPSIS | doctest.REPORT_NDIFF | doctest.NORMALIZE_WHITESPACE))  # line 1306
+    tests.addTests(doctest.DocTestSuite("pure", optionflags=doctest.ELLIPSIS | doctest.REPORT_NDIFF | doctest.NORMALIZE_WHITESPACE))  # line 1307
+    return tests  # line 1308
 
-if __name__ == '__main__':  # line 1304
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr, format="%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")  # line 1305
-    unittest.main(testRunner=debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")  # line 1306
+
+if __name__ == '__main__':  # line 1311
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr, format="%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")  # line 1312
+    unittest.main(testRunner=debugTestRunner() if '-v' in sys.argv and not os.getenv("CI", "false").lower() == "true" else None)  # warnings = "ignore")  # line 1313

@@ -860,10 +860,10 @@ class Tests(unittest.TestCase):
     _.assertInAny("TRK a  (a)", sos.safeSplit(wrapChannels(-> sos.ls("sub")).replace("\r", ""), "\n"))
 
   def testLineMerge(_):
-    _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))
+    _.assertEqual("xabc", sos.lineMerge("xabc", "a bd"))  # integrate all of other into -> mine
     _.assertEqual("xabxxc", sos.lineMerge("xabxxc", "a bd"))
-    _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.INSERT))
-    _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.REMOVE))
+    _.assertEqual("xa bdc", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.INSERT))  # keep old and insert new
+    _.assertEqual("ab", sos.lineMerge("xabc", "a bd", mergeOperation = sos.MergeOperation.REMOVE))  # remove old and no change of new
 
   def testCompression(_):  # TODO test output ratio/advantage, also depending on compress flag set or not
     _.createFile(1)
@@ -1075,7 +1075,7 @@ class Tests(unittest.TestCase):
     _.assertNotIn("ADD ./b.2", out)
 
   def testOnly(_):
-    _.assertEqual((f{"./A", "x/B"}, f{"./C"}, ["bla"], ["blo"]), sos.parseArgumentOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--remote", "bla", "--exclude-remote", "blo", "--only"]))
+    _.assertEqual((f{"./A", "x/B"}, f{"./C"}, ["bla"], ["blo"]), tuple([r if i < 2 else [os.path.basename(x) for x in r] for i, r in enumerate(sos.parseArgumentOptions(".", ["abc", "def", "--only", "A", "--x", "--only", "x/B", "--except", "C", "--remote", "bla", "--exclude-remote", "blo", "--only"]))]))
     _.assertEqual(f{"B"}, sos.conditionalIntersection(f{"A", "B", "C"}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(f{}, f{"B", "D"}))
     _.assertEqual(f{"B", "D"}, sos.conditionalIntersection(None, f{"B", "D"}))
@@ -1299,6 +1299,13 @@ class Tests(unittest.TestCase):
   # TODO test +01/-02/*..
   # TODO tests for loadcommit redirection
   # TODO test wrong branch/revision after fast branching, would raise exception for -1 otherwise
+
+def load_tests(loader, tests, ignore) =
+  ''' Python unittest by-convention test definition. '''
+  import doctest
+  tests.addTests(doctest.DocTestSuite("utility", optionflags = doctest.ELLIPSIS | doctest.REPORT_NDIFF | doctest.NORMALIZE_WHITESPACE))
+  tests.addTests(doctest.DocTestSuite("pure", optionflags = doctest.ELLIPSIS | doctest.REPORT_NDIFF | doctest.NORMALIZE_WHITESPACE))
+  tests
 
 
 if __name__ == '__main__':

@@ -154,18 +154,20 @@ class Metadata:
     ''' Common behavior to parse and extract the remotes options from command line-arguments. '''
     _a:Any; remotes:List[str]; noremotes:List[str]
     _a, _a, remotes, noremotes = parseArgumentOptions("", options)  # re-parse options for the --(only-)remotes and --exlude-remotes options
-    [] if "--no-remotes" in options else list(set(remotes if remotes else _.remotes) - set(noremotes))
+    [] if "--no-remotes" in options or "--no-remote" in options else list(set(remotes if remotes else _.remotes) - set(noremotes))
 
-  def getRevisionByName(_, name:str) -> int? =
+  def getRevisionByName(_, name:str?) -> int? =
     ''' Convenience accessor for named revisions (using commit message as tag name by convention). '''
-    if name == "": return -1
+    if (name ?? "") == "": return -1
     try: return int(name)  # attempt to parse integer string
     except ValueError: pass
     found = [number for number, commit in _.commits.items() if name == commit.message]  # find any revision by commit message (usually used for tags)  # HINT allows finding any message, not only tagged ones
     found[0] if found else None
 
   def getBranchByName(_, name:str) -> int? =
-    ''' Convenience accessor for named branches. '''
+    ''' Convenience accessor for named branches.
+        returns: branch index 0.. or None if not found
+    '''
     if name == "": return _.branch  # current
     try: return int(name)  # attempt to parse integer string
     except ValueError: pass
@@ -257,6 +259,7 @@ class Metadata:
     remotes:List[str] = _._extractRemotesFromArguments(options)
     import collections  # used almost only here
     binfo:BranchInfo  # typing info
+    remotes:List[str] = _._extractRemotesFromArguments(options)
     deps:List[Tuple[int,int]] = [(binfo.number, binfo.revision) for binfo in _.branches.values() if binfo.parent is not None and branch in _.getParentBranches(binfo.number, 0)]  # all transitively depending branches
     newcommits:Dict[int,Dict[int,CommitInfo]] = collections.defaultdict(dict)  # gathers commit info of re-created branches (branch -> revision -> info)
     if deps:  # need to copy all parent revisions to dependent branches first
@@ -282,7 +285,7 @@ class Metadata:
     printo(pure.ljust() + "\r")  # clean line output
     for remote in [None] + remotes:
       tryOrIgnore(() -> shutil.rmtree(encode(branchFolder(branch, base = remote) + BACKUP_SUFFIX)))  # remove previous backup first
-      tryOrIgnore(() -> os.rename(encode(branchFolder(branch, base = remote)), encode(branchFolder(branch, base = remote) + BACKUP_SUFFIX)), (E) -> Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", exception = E))
+      tryOrIgnore(() -> os.rename(encode(branchFolder(branch, base = remote)), encode(branchFolder(branch, base = remote) + BACKUP_SUFFIX)), (E) -> Exit("Cannot rename branch metadata to prepare removal. Are there locked or open files?", excp = E))
     binfo = _.branches[branch]  # keep reference to removed branch info for caller
     del _.branches[branch]
     _.branch = (branch + 1) if (branch + 1) in _.branches else max(_.branches)  # switch to another valid branch
@@ -437,26 +440,27 @@ class Metadata:
     f{} if not (_.track or _.picky) else frozenset(_.branches[branch ?? _.branch].untracked if negative else _.branches[branch ?? _.branch].tracked)
 
   def parseRevisionString(_, argument:str) -> Union[Tuple[int?,int?],NoReturn]:
-    ''' Commit identifiers can be str or int for branch, and int for revision.
-        Revision identifiers can be negative, with -1 being last commit.
-        None is returned in case of error
-        Code will sys.exit in case of unknown specified branch/revision
+    ''' Parse (an optionally) combined branch and revision string, separated by a slash.
+        Commit identifiers can be str or int for branch, and int for revision.
+        Revision identifiers can be negative, with -1 being last commit (Python convention)
+        (None, None) is returned in case of illegal inputs
+        sys.exit() is called in case of unknown branch/revision
     '''
-    if argument is None or argument == SLASH: return (_.branch, -1)  # no branch/revision specified
-    if argument == "": return (None, None)  # nothing specified by user, raise error in caller
-    argument = argument.strip()
+    argument = (argument ?? "/").strip()
+    if argument == SLASH: return (_.branch, -1)  # no branch/revision specified
+    if argument == "":    return (None, None)  # nothing specified by user, raise error in caller
     if argument.startswith(SLASH): return (_.branch, _.getRevisionByName(argument[1:]))  # current branch
     if argument.endswith(SLASH):
       try: return (_.getBranchByName(argument[:-1]), -1)
-      except ValueError as E: Exit("Unknown branch label '%s'" % argument, exception = E)
+      except ValueError as E: Exit("Unknown branch label '%s'" % argument, excp = E)
     if SLASH in argument:
       b, r = argument.split(SLASH)[:2]
       try: return (_.getBranchByName(b), _.getRevisionByName(r))
-      except ValueError as E: Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r), exception = E)
-    branch:int = _.getBranchByName(argument)  # returns number if given (revision) integer
+      except ValueError as E: Exit("Unknown branch label or wrong number format '%s/%s'" % (b, r), excp = E)
+    branch:int? = _.getBranchByName(argument)  # returns number if given (revision) integer
     if branch not in _.branches: branch = None
-    try: return (branch ?? _.branch, int(argument if argument else "-1") if branch is None else -1)  # either branch name/number or reverse/absolute revision number
-    except Exception as E: Exit("Unknown branch label or wrong number format", exception = E)
+    try: return (branch ?? _.branch, (_.getRevisionByName(argument) ?? -1) if branch is None else -1)  # either branch name/number or reverse/absolute revision number
+    except Exception as E: Exit("Unknown branch label or wrong branch/revision number format", excp = E)
     Exit("This should never happen. Please create an issue report")
 
   def findRevision(_, branch:int, revision:int, nameHash:str) -> Tuple[int,str] =
@@ -545,7 +549,7 @@ def offline(name:str? = None, initialMessage:str? = None, options:str[] = [], re
         resource = metaFolder + os.sep + entry
         if os.path.isdir(resource): shutil.rmtree(encode(resource))
         else: os.unlink(encode(resource))
-    except Exception as E: Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder, exception = E)
+    except Exception as E: Exit("Cannot reliably remove previous repository contents. Please remove %s folder manually prior to going offline" % metaFolder, excp = E)
   for remote in remotes:
     try: os.makedirs(os.path.join(remote, metaFolder))
     except Exception as E: error("Creating remote repository metadata in %s" % remote)
@@ -571,7 +575,7 @@ def online(options:str[] = []):
   remotes:List[str] = m._extractRemotesFromArguments(options)
   strict:bool = '--strict' in options or m.strict
   m.loadBranches()
-  if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (modified) branches\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions.")
+  if any([not b.inSync for b in m.branches.values()]) and not force: Exit("There are still unsynchronized (modified) branches\nUse 'sos log' to list them.\nUse 'sos commit' and 'sos switch' to commit out-of-sync branches to your VCS before leaving offline mode.\nUse 'sos online --force' to erase all aggregated offline revisions without further action.")
   m.loadBranch(m.branch)
   maxi:int = max(m.commits) if m.commits else m.branches[m.branch].revision  # one commit guaranteed for first offline branch, for fast-branched branches a revision in branchinfo
   if options.count("--force") < 2:
@@ -583,7 +587,7 @@ def online(options:str[] = []):
       progress = '--progress' in options)  # HINT no option for --only/--except here on purpose. No check for picky here, because online is not a command that considers staged files (but we could use --only here, alternatively)
     if modified(changed): Exit("File tree is modified vs. current branch\nUse 'sos online --force --force' to continue with removing the offline repository")
   try: shutil.rmtree(encode(metaFolder)); info("Exited offline mode. Continue working with your traditional VCS." + (" Remote copies have to be removed manually." if remotes else ""))
-  except Exception as E: Exit("Error removing offline repository.", exception = E)
+  except Exception as E: Exit("Error removing offline repository.", excp = E)
   info(MARKER + "Offline repository removed, you're back online")
 
 def branch(name:str? = None, initialMessage:str? = None, options:str[] = []):
@@ -749,7 +753,7 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     Fore.RESET))  # TODO #259 bad choice of unicode symbols for changed vs. unchanged
   sl:int = max([len(b.name ?? "") for b in m.branches.values()])
   for branch in sorted(m.branches.values(), key = (b) -> b.number):
-    payload:int = 0; overhead:int = 0; original:int = 0  # count used storage per branch
+    payload:int = 0; overhead:int = 0
     for dn, ds, fs in os.walk(branchFolder(branch.number)):
       for f in fs:  # TODO #260 count all backup folders as overhead instead? check "onlydeveloped" code for that logic
         if f == metaFile or f.endswith(BACKUP_SUFFIX): overhead += tryOrDefault(-> os.stat(encode(os.path.join(dn, f))).st_size, 0)
@@ -757,11 +761,13 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
     pl_amount:float = float(payload) / MEBI; oh_amount:float = float(overhead) / MEBI
     # if pl_amount >= 1100.:   convert to string
     m.loadBranch(branch.number)  # knows commit history
+    original:int = 0; updates:int[] = []  # compute occupied storage per branch
     for commit_ in range(1 + max(m.commits) if m.commits else 0):
       m.loadCommit(m.branch, commit_)
       for pinfo in m.paths.values(): original += pinfo.size ?? 0
+      updates.append(len(m.paths))  # number of additions or removals TODO count moves as 1 instead of 2
     maxi = max(m.commits) if m.commits else m.branches[branch.number].revision
-    printo("  %s b%d%s @%s (%s%s) with %d commits, using %.2f MiB (+%.3f%% SOS overhead%s)%s" % (
+    printo("  %s b%d%s @%s (%s%s) with %d commits (median %d each), using %.2f MiB (+%.3f%% SOS overhead%s)%s" % (
       "*" if current == branch.number else " ",
       branch.number,
       ((" %%%ds" % (sl + 2)) % (("'%s'" % branch.name) if branch.name else "")),
@@ -769,7 +775,9 @@ def status(argument:str? = None, vcs:str? = None, cmd:str? = None, options:str[]
       (Fore.GREEN + "in sync") if branch.inSync else (Fore.YELLOW + "modified"),
       Fore.RESET,
       len(m.commits),
-      pl_amount + oh_amount, oh_amount * 100. / (pl_amount + oh_amount),
+      median(updates) if updates else 0.0,
+      pl_amount + oh_amount,
+      oh_amount * 100. / (pl_amount + oh_amount),
       ", %s compression/deduplication" % (("%.2f%s" % (float(original) / float(payload), MULT_SYMBOL if m.c.useUnicodeFont else "x")) if payload > 0 else "full") if m.compress or (len(m.commits) > 0 and len(m.commits) != max(m.commits) + 1) else "",
       (". Last comment: '%s'" % m.commits[maxi].message) if maxi in m.commits and m.commits[maxi].message else ""))
   if m.track or m.picky and (len(m.branches[m.branch].tracked) > 0 or len(m.branches[m.branch].untracked) > 0):
@@ -1089,7 +1097,7 @@ def dump(argument:str, options:str[] = []):
       if verbose: info("Creating backup...")
       shutil.copy2(encode(argument), encode(argument + BACKUP_SUFFIX))
       if delta: with zipfile.ZipFile(argument, "r") as _zip: entries = _zip.namelist()  # list of pure relative paths without leading dot, normal slashes
-    except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry.", exception = E)
+    except Exception as E: Exit("Error creating backup copy before dumping. Please resolve and retry.", excp = E)
   if verbose: info("Dumping revisions...")
   if delta: warnings.filterwarnings('ignore', 'Duplicate name.*')  # , UserWarning, "zipfile", 0)  # don't show duplicate entries warnings
   with zipfile.ZipFile(argument, "a" if delta else "w", compression) as _zip:  # create
@@ -1140,24 +1148,28 @@ def publish(message:str?, cmd:str, options:str[] = [], onlys:FrozenSet[str]? = N
 #  debug(('%s commit -m "%s" %s' % (cmd, message ?? ("Committed from SOS %s/r%02d on %s" % (m.branches[branch].name ?? ("b%d" % m.branch), revision, strftime())).replace("\"", "\\\""), commitArgs ?? "")))
   if returncode != 0: Exit("Error committing files from SOS revision to underlying VCS. Please check current %s state" % cmd)
   if tracked: warn("Please note that all the files added in this commit will continue to be tracked by the underlying VCS")
+  m.branches[m.branch] = dataCopy(BranchInfo, m.branches[m.branch], inSync = True)  # mark as committed to underlying
+  m.saveBranches()
 
 def config(arguments:List[str?], options:List[str] = []):
+  ''' Configure command: manage configuration settings. '''
   command:str; key:str; value:str; v:str
   command, key, value = (arguments + [None] * 2)[:3]
   if command is None: usage.usage("help", verbose = True)
   if command not in ("set", "unset", "show", "list", "add", "rm"): Exit("Unknown config command %r" % command)
-  local:bool = "--local" in options
+  local:bool = "--local" in options  # otherwise user-global by default
   m:Metadata = Metadata()  # loads nested configuration (local - global - defaults)
-  c:configr.Configr = m.c if local else m.c.__defaults
+  c:configr.Configr = m.c if local else m.c.__defaults  # will only modify the selected parameter set
+  location:str = "local" if local else "global"
   if command == "set":
     if None in (key, value): Exit("Key or value not specified")
-    if key not in ((([] if local else ONLY_GLOBAL_FLAGS) + CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % ("local" if local else "global", key))  # TODO move defaultbranch to configurable_texts?
-    if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to '%s'. Try on/off instead" % value.lower())
+    if key not in ((([] if local else ONLY_GLOBAL_FLAGS) + CONFIGURABLE_FLAGS + ["defaultbranch"]) + CONFIGURABLE_LISTS + CONFIGURABLE_INTS): Exit("Unsupported key for %s configuration %r" % (location, key))  # TODO move defaultbranch to configurable_texts?
+    if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) and value.lower() not in TRUTH_VALUES + FALSE_VALUES: Exit("Cannot set flag to %r. Try 'on' or 'off' instead" % value.lower())
     c[key] = value.lower() in TRUTH_VALUES if key in (ONLY_GLOBAL_FLAGS + CONFIGURABLE_FLAGS) else (tryOrIgnore(-> int(value), (E) -> error("Not an integer value: %r" % E)) if key in CONFIGURABLE_INTS else (removePath(key, value.strip()) if key not in CONFIGURABLE_LISTS else [removePath(key, v) for v in safeSplit(value, ";")]))  # TODO sanitize texts?
   elif command == "unset":
     if key is None: Exit("No key specified")
     if key not in c.keys(with_nested = False):
-      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))
+      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, location))
     del c[key]
   elif command == "add":  # TODO copy list from defaults if not local/global
     if None in (key, value): Exit("Key or value not specified")
@@ -1169,7 +1181,7 @@ def config(arguments:List[str?], options:List[str] = []):
   elif command == "rm":
     if None in (key, value): Exit("Key or value not specified")
     if key not in c.keys(with_nested = False):
-      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, "local" if local else "global"))
+      Exit(("Unknown key %r" % key) if not key in c.keys(with_nested = local, with_defaults = True) else "Key %r not defined in %s scope" % (key, location))
     if value not in c[key]:  Exit("Unknown value %r" % value)
     c[key].remove(value)
     if local and len(c[key]) == 0 and "--prune" in options: del c[key]  # remove local entry, to fallback to global
@@ -1291,7 +1303,7 @@ def parse(vcs:str, cwd:str, cmd:str):
     else: Exit("Unknown command '%s'" % command)
     Exit(code = 0)  # regular exit
   except Exception, RuntimeError as E:
-    Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", exception = E)
+    Exit("An internal error occurred in SOS\nPlease report above message to the project maintainer at  https://github.com/ArneBachmann/sos/issues  via 'New Issue'.\nPlease state your installed version via 'sos version', and what you were doing.", excp = E)
 
 def main():
   global debug, info, warn, error  # to modify logger

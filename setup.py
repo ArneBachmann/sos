@@ -86,10 +86,10 @@ print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["chardet >= 3.0.4", "wcwidth", "configr >= 2018.2004.2239", "termwidth >= 2017.2204.2811", "PyFiglet >= 0.7.5", 'colorama >= 0.3.9;sys_platform=="win32"', 'enum34;python_version<"3.4"'],  # most of them are optional dependencies
+  install_requires = ["chardet >= 3.0.4", "wcwidth", "configr >= 2018.2004.2239", "termwidth >= 2019.1125.2909", "PyFiglet >= 0.7.5", 'colorama >= 0.3.9;sys_platform=="win32"', 'enum34;python_version<"3.4"'],  # most of them are optional dependencies
   python_requires = '>=%s' % COMPATIBILITY_LEVEL,  # https://www.python.org/dev/peps/pep-0508/#environment-markers
   setup_requires = "setuptools >= 39",
-#  requires = ["coconut-develop[jobs,mypy]"],  # doesn't work
+#  requires = ["coconut-develop[jobs,mypy-mypyc]"],  # doesn't work
   test_suite = "sos.tests",
   description = "Subversion Offline Solution (SOS)",
   long_description = README,

@@ -135,10 +135,10 @@ COMMANDS:Dict[str,Command] = {
     [
       Argument("[<branch>][/<revision>]", "Branch and/or revision")
     ],
-    "Integrate work from another branch into the file tree",
-    """Similarly to switch, this command updates the current file tree to the state of another revision, usually from another branch."
+    "Integrate work from another branch into the file tree without switching the branch",
+    """Similarly to switch, this command updates the current file tree to the state of another revision, usually from another branch.
        In addition, it allows merging differing contents interactively or by rules specified through command-line switches.
-       Default operation for files, lines and characters is add and remove"""
+       Default operation for files, lines and characters is add and remove (recreate other branch in file tree)"""
   ),
   "changes": Command(Category.Working_with_files,
     [
@@ -333,14 +333,23 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
   "debug": {
     None: "Enable logging of internal details (intended for developers only,)"
   },
-  "only <tracked pattern>": {
+  "only[=]<tracked pattern>[,<tracked pattern 2>[,...]]": {
     None: """Restrict operation to specified already tracked tracking patterns. Available for commands "changes", "commit", "diff", "switch", and "update". Use --only several times to include more file patterns"""
   },
-  "except <tracked pattern>": {
+  "except[=]<tracked pattern>[,<tracked pattern 2>[,...]]": {
     None: """Avoid operation for specified already tracked tracking patterns. Available for commands "changes", "commit", "diff", "switch", and "update". Use --except several times to exclude more file patterns"""
   },
-  "remote <file system path>": {
+  "remote[=]<file system path>[,<file sytem path 2>[,...]]": {
     ("offline",): """Add a secondary storage locations that replicates all repository metadata operations (use --remote several times for more remote locations,)"""
+  },
+  "no-remote[s]": {
+    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Do not operate on any remote targets"
+  },
+  "only-remote[s][=]<file system path>[,<file sytem path 2>[,...]]": {
+    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Only operate on specified remote targets (vs. all configured during 'offline')"
+  },
+  "except-remote[s][=]<file system path>[,<file sytem path 2>[,...]]": {
+    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Don't operate on specified remote targets"
   },
   "patterns": {
     ("ls",): "Only show tracking patterns"
@@ -372,34 +381,34 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
     ("commit",): "Store the commit message as a tag that can be used instead of numeric revisions"
   },
   "add": {
-    ("switch",): "Only add new files"
+    ("update",): "Only add new files (won't remove)"
   },
   "add-lines": {
-    ("switch",): "Only add inserted lines"
+    ("update",): "Only add inserted lines"
   },
-  "add-chars": {
-    ("switch",): "Only add new characters"
-  },
+#  "add-chars": {
+#    ("update",): "Only add new characters"
+#  },
   "rm": {
-    ("switch",): "Only remove vanished files"
+    ("update",): "Only remove vanished files (won't add)"
   },
   "rm-lines": {
-    ("switch",): "Only remove deleted lines"
+    ("update",): "Only remove deleted lines"
   },
-  "rm-chars": {
-    ("switch",): "Only remove vanished characters"
-  },
+#  "rm-chars": {
+#    ("update",): "Only remove vanished characters"
+#  },
   "ask": {
-    ("switch",): "Ask how to proceed with modified files"
+    ("update",): "Ask how to proceed with modified files"
   },
   "ask-lines": {
-    ("switch",): "Ask how to proceed with modified lines"
+    ("update",): "Ask how to proceed with modified lines"
   },
-  "ask-chars": {
-    ("switch",): "Ask how to proceed with modified characters"
-  },
+#  "ask-chars": {
+#    ("update",): "Ask how to proceed with modified characters"
+#  },
   "eol": {
-    ("switch",): "Use EOL style from the integrated file instead. Default: EOL style of current file"
+    ("update",): "Use EOL style from the integrated file instead. Default: EOL style of current file"
   },
 #  "to": {  # or --from?
 #    "diff": """Take "to" revision as target to compare against (instead of current file tree state,)"""
@@ -420,15 +429,6 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
   "prune": {
     ("config rm",): "Remove a list-type parameter together with the last entry"
   },
-  "no-remotes": {
-    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Do not operate on any remote targets"
-  },
-  "only-remotes": {
-    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Only operate on specified remote targets (vs. all configured during 'offline')"
-  },
-  "except-remotes": {
-    ("add", "branch", "commit", "config", "move", "remove", "switch", "update", ): "Don't operate on specified remote targets"
-  },
   "sos": {
     None: """Pass command and arguments to SOS, even when not in offline mode, e.g. "sos --sos config set key value" to avoid passing the command to Git or SVN"""
   },
@@ -442,6 +442,9 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
   },
   "classic": {
     ("diff",): """Show classic diff output (that can be piped to tools like colordiff)"""
+  },
+  "quiet": {
+    None: """Suppress exit message (error and code)"""
   }
 }
 
@@ -466,7 +469,7 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
   print("%s%s%s" % (MARKER_TEXT, APPNAME if version else APP, "" if not version else " (PyPI: %s)" % VERSION))
   if version: sys.exit(0)
   category:Category? = CategoryAbbrev.get(argument, None)  # convert shorthand for category
-  command:str? = argument if category is None else None
+  command:str? = argument if category is None and argument in COMMANDS.keys() else None
   if command is None: print("\nUsage:\n  sos <command> [<argument1>, [<argument2>]] [<option1>, [<options...]]")
   for _value, cat in sorted([(_.value, _) for _ in list(Category)]) if category is None else [(None, category)]:  # over one or all categories
     ofcategory:Dict[str,Command] = {command_: values for command_, values in COMMANDS.items() if values.category == cat and (command is None or command_ == command)}  # select commands from chosen category
@@ -479,14 +482,15 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
       if cmd.arguments: print("\n  Arguments:")
       maxlen:int = 4 + 2 + max(len(s.name) for s in cmd.arguments) if len(cmd.arguments) > 0 else 0  # argument name length max plus indentation
       for c in cmd.arguments: print(pure.ljust("    %s  " % c.name, maxlen) + ("\n" + pure.ljust(width = maxlen)).join(pure.splitStrip(c.long)))
-      matchingoptions:List[Tuple[str, str[]]] = [(optname, pure.splitStrip(dikt[[_k for _k in dikt.keys() if name in _k ?? {}][0]])) for optname, dikt in OPTIONS.items() if any(name in k for k in dikt.keys() if k is not None)]
-      if matchingoptions:
+      matchingoptions:List[Tuple[str, str[]]] = [(optname, pure.splitStrip(dikt[[_k for _k in dikt.keys() if name in _k ?? {}][0]])) for optname, dikt in OPTIONS.items() if any(name in k for k in dikt.keys() if k is not None)]  # filter options by specified command
+      if matchingoptions:  # print options for specified command, if any
         print("\n  Options:")
         maxoptlen:int = max([len(optname) for optname, __ in matchingoptions])
         for optname, descriptions in sorted(matchingoptions):
           if len(descriptions) == 0: continue
           print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen +  (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl = "\n") if len(descriptions) > 1 else ""))
-      matchingoptions = [] if cmd is None else [(optname, pure.splitStrip(dikt[None]) if None in dikt else []) for optname, dikt in OPTIONS.items()]  # add all text for the generic description
+      else:  # no command specified, get all options
+        matchingoptions = [] if cmd is None else [(optname, pure.splitStrip(dikt[None]) if None in dikt else []) for optname, dikt in OPTIONS.items()]  # add all text for the generic description
       if matchingoptions:
         print("\n  Common options:")
         maxoptlen = max([len(optname) for optname, __ in matchingoptions])
@@ -495,7 +499,7 @@ def usage(argument:str, version:bool = False, verbose:bool = False):
           print("    %s%s  %s%s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxoptlen +  (0 if len(optname) > 1 else 1)), descriptions[0], "\n" + pure.ajoin(" " * (6 + maxoptlen + (2 if len(optname) > 1 else 1)), descriptions[1:], nl = "\n") if len(descriptions) > 1 else ""))
   if command is None and category is None:
     print("\nCommon options:")
-    genericOptions:Dict[str,str] = {k: v[None] for k, v in OPTIONS.items() if None in v}
+    genericOptions:Dict[str,str] = {optname: dikt[None] for optname, dikt in OPTIONS.items() if None in dikt}
     maxlen = max(len(_) for _ in genericOptions)
     for optname, description in sorted(genericOptions.items()):
       print("  %s%s  %s" % ("--" if len(optname) > 1 else "-", pure.ljust(optname, maxlen), pure.ajoin(" " * (2 + 2 + maxlen + 2), pure.splitStrip(description), nl = "\n", first = False)))
