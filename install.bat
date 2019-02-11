@@ -1,7 +1,8 @@
 
 echo NOMYPY=%NOMYPY%
 
-python -m pip install -U pip
+rem Requirement for Python 3.4 compatibility is to use pip < 19.0 as 19.0+ will raise a deprecation warning
+python -m pip install -U "pip < 19.0"
 
 rem Workaround for conda problems with pip 19.0 vs. Python 3.4
 set PIP_NO_BUILD_ISOLATION=False
