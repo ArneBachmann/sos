@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+<action>
+	<icon>{icon}</icon>
+	<name>SOS {name}</name>
+	<unique-id>{timestamp}</unique-id>
+	<command>{command}</command>
+	<description>SOS {name}</description>
+	<patterns>*</patterns>{targets}
+</action>
+</actions>
