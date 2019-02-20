@@ -14,6 +14,9 @@ If you cannot run `regedit.exe` or `reg.exe` in your company, here is a workarou
 - In the newly opened shell, run `explore-integration.bat install --admin`
 - Close shells
 
+Be aware that using SOS commands from th Windows Explorer doesn't work for link files (`*.lnk`).
+Instead use Windows folder junctions (`mklink /J JunctionName OriginalFolder`). Doesn't work on ReFS file systems, though.
+
 
 ## Thunar integration (XFCE on Linux) ##
 

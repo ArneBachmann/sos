@@ -1,14 +1,12 @@
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import codecs, collections, enum, json, logging, os, shutil, sys, time, traceback, unittest, uuid
+import codecs, doctest, json, logging, os, shutil, sys, time, traceback, unittest, uuid
 from io import BytesIO, BufferedRandom, TextIOWrapper
 
-try:
-  if TYPE_CHECKING:  # true only during compilation/mypy run
-    from typing import Any, Dict, FrozenSet, List, Set, Tuple, Union
-    mock:Any  # to avoid mypy complaint
-except: pass
+if TYPE_CHECKING:
+  from typing import Any, Dict, FrozenSet, List, Set, Tuple, Union
+  mock:Any  # to avoid mypy complaint
 
 try: from unittest import mock  # Python 3
 except: import mock  # installed via pip
@@ -18,7 +16,7 @@ rmteFolder = os.path.abspath(os.path.join(os.getcwd(), "test", "remote"))
 os.environ["TEST"] = testFolder  # needed to mock configr library calls in sos
 
 import configr
-import sos  # import of package, not file
+import sos  # import of package, not file (!)
 
 sos.defaults["defaultbranch"] = "trunk"  # because sos.main() is never called
 sos.defaults["useChangesCommand"] = True
@@ -1302,9 +1300,8 @@ class Tests(unittest.TestCase):
 
 def load_tests(loader, tests, ignore) =
   ''' Python unittest by-convention test definition. '''
-  import doctest
-  tests.addTests(doctest.DocTestSuite("utility", optionflags = doctest.ELLIPSIS | doctest.REPORT_NDIFF | doctest.NORMALIZE_WHITESPACE))
-  tests.addTests(doctest.DocTestSuite("pure", optionflags = doctest.ELLIPSIS | doctest.REPORT_NDIFF | doctest.NORMALIZE_WHITESPACE))
+  tests.addTests(doctest.DocTestSuite("sos.pure", optionflags = doctest.ELLIPSIS | doctest.REPORT_NDIFF | doctest.NORMALIZE_WHITESPACE))
+  tests.addTests(doctest.DocTestSuite("sos.utility", optionflags = doctest.ELLIPSIS | doctest.REPORT_NDIFF | doctest.NORMALIZE_WHITESPACE))
   tests
 
 

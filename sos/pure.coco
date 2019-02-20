@@ -2,7 +2,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import math
-from typing import Any, FrozenSet, List, Tuple
+if TYPE_CHECKING: from typing import Any, FrozenSet, List, Tuple
+
 try:
   import wcwidth  # optional dependency for unicode support
   def wcswidth(string:str) -> int =

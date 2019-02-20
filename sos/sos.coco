@@ -3,26 +3,20 @@
 
 # Standard modules
 import codecs, fnmatch, json, logging, mimetypes, os, sys  # only essential modules
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # TODO #243 this looks just wrong, but is currently required (check again, why)
-try:  # try needed as paths differ when installed via pip TODO #243 investigate further
-  import sos.usage as usage
-  import sos.version as version
-  import sos.utility as _utility  # WARN necessary because "tests" can only mock "sos.utility.input", because "sos" does "import *" from "utility" and "sos.input" cannot be mocked for some reason
-  from sos.utility import *
-  from sos.pure import *
-except:
-  import usage
-  import version
-  import utility as _utility
-  from utility import *
-  from pure import *
+# TODO needed as paths differ when installed via pip TODO #243 investigate further
+from sos import usage
+from sos import version
+from sos import utility as _utility  # WARN necessary because "tests" can only mock "sos.utility.input", because "sos" does "import *" from "utility" and "sos.input" cannot be mocked for some reason
+from sos.utility import *
+from sos.pure import *
 
 # Dependencies
 try: import configr
-except: pass  # TODO this is here to avoid import error when setup.py is called but actually needs to install its dependencies first. enhance this
+except: pass  # TODO this is here to avoid import error when setup.py is called but actually needs to install its dependencies first. Enhance this
 
 
 # Lazy module auto-import for quick tool startup
+shutil:Union[object]
 class shutil: def __getattribute__(_, key):
   global shutil
   import shutil  # overrides global reference
@@ -52,13 +46,17 @@ class Metadata:
   singleton:configr.Configr? = None
 
   def __init__(_, path:str? = None, offline:bool = False, remotes:List[str] = []) -> None:
-    ''' Create empty container object for various repository operations, and import configuration. Offline initializes a repository. '''
+    ''' Create empty container object for various repository operations, and import configuration. Offline initializes a repository.
+        path: manual root path configuration, otherwise auto-detect
+        offline:
+        remotes: only used for "sos offline --remote ..." or "--only-remote[s]"
+    '''
     _.root:str = path ?? os.getcwd()
     _.tags:List[str] = []  # list of known (unique) tags
     _.branch:int? = None  # current branch number
     _.branches:Dict[int,BranchInfo] = {}  # branch number zero represents the initial state at branching
     _.repoConf:Dict[str,Any] = {}  # per-repo configuration items
-    _.track:bool; _.picky:bool; _.strict:bool; _.compress:bool; _.version:str?; _.format:int?
+    _.track:bool?; _.picky:bool?; _.strict:bool?; _.compress:bool?; _.version:str?; _.format:int?
     _.remotes:List[str] = []  # list of secondary storage locations (in same file system, no other protocols), which will replicate all write operations
     _.loadBranches(offline = offline, remotes = remotes)  # loads above values from repository, or uses application defaults
 
@@ -96,7 +94,10 @@ class Metadata:
     if len(changed.modifications) > 0: printo(ajoin("MOD ", [relp(m, root) + (" <binary>" if not _.isTextType(os.path.basename(m)) else "") + ("" if commitTime is None else (" <older than previously committed>" if pi.mtime < _.paths[m].mtime else "")) + ((" [%s%s %s%s]" % (pure.signedNumber(pi.size - _.paths[m].size), siSize(pi.size - _.paths[m].size), pure.signedNumber(pi.mtime - _.paths[m].mtime), pure.timeString(pi.mtime - _.paths[m].mtime)) if verbose else "") if pi is not None else "") for (m, pi) in sorted(changed.modifications.items())], "\n"), color = Fore.YELLOW)
 
   def loadBranches(_, offline:bool = False, remotes:List[str] = []):
-    ''' Load list of branches and current branch info from metadata file. offline = True command avoids message. '''
+    ''' Load list of branches and current branch info from metadata file.
+        offline: if True, avoid messages
+        remotes: manually provided remotes when using "sos offline --remote"
+    '''
     try:  # fails if not yet created (on initial branch/commit)
 #      branches:List[List]  # deserialized JSON is only list, while the real type of _.branches is a dict number -> BranchInfo (Coconut data type/named tuple)
       with codecs.open(encode(os.path.join(_.root, metaFolder, metaFile)), "r", encoding = UTF8) as fd:
@@ -120,7 +121,7 @@ class Metadata:
       _.repoConf = config  # local configuration stored with repository, not in user-wide configuration
       if _.format == 1 or _.remotes is None:  # before remotes
         _.format = METADATA_FORMAT
-        _.remotes = []  # default is no remotes
+        _.remotes = []  # default is no remotes, and this conversion can never happen at "sos offline"
         upgraded.append("1.7.0")  # remote URLs introduced
       if upgraded:
         for upgrade in upgraded: printo("WARNING  Upgraded repository metadata to match SOS version %r" % upgrade, color = Fore.YELLOW)
@@ -229,7 +230,7 @@ class Metadata:
     '''
     now:int = int(time.time() * 1000)
     remotes:List[str] = _._extractRemotesFromArguments(options)
-    simpleMode = not (_.track or _.picky)
+    simpleMode:bool = not (_.track or _.picky)
     tracked:List[str] =  [t for t in _.branches[_.branch].tracked]   if _.track and len(_.branches) > 0 else []  # in case of initial branch creation
     untracked:List[str] = [t for t in _.branches[_.branch].untracked] if _.track and len(_.branches) > 0 else []
     if verbose: info("Creating branch '%s'..." % name ?? "b%d" % branch)
@@ -256,7 +257,6 @@ class Metadata:
     ''' Entirely remove a branch and all its revisions from the file system.
         We currently implement a simplified logic that fully re-creates all revisions for all transitively depending branches instead of only removing the one parent branch.
     '''
-    remotes:List[str] = _._extractRemotesFromArguments(options)
     import collections  # used almost only here
     binfo:BranchInfo  # typing info
     remotes:List[str] = _._extractRemotesFromArguments(options)
@@ -402,7 +402,7 @@ class Metadata:
             compressed += written; original += last.size if inverse else size
           except Exception as E: printo(exception(E))
         else: continue  # with next file
-      if relPath in knownPaths: knownPaths[relPath][:] = list(set(knownPaths[relPath]) - set(walk))  # at least one file is tracked HINT may leave empty lists in dict, but removing them costs more than traversing them silently
+      if relPath in knownPaths: knownPaths[relPath][:] = list(set(knownPaths[relPath]) - set(walk))  # at least one file is tracked or --only HINT may leave empty lists in dict, but removing them costs more than traversing them silently
     for path, names in knownPaths.items():  # all paths that weren't walked by
       for file in names:
         if len([n for n in _.c.ignores if fnmatch.fnmatch(file, n)]) > 0 and len([p for p in _.c.ignoresWhitelist if fnmatch.fnmatch(file, p)]) == 0: continue  # don't mark ignored files as deleted
@@ -411,7 +411,7 @@ class Metadata:
     changed = dataCopy(ChangeSet, changed, moves = detectMoves(changed, _.strict))
     if progress: printo("\r" + pure.ljust() + "\r", nl = "")  # forces clean line of progress output
     elif verbose: info("Finished detecting changes")
-    tt:float = time.time() - start_time
+    tt:float = time.time() - start_time  # time taken
     speed:float = (original / (KIBI * tt)) if tt > 0. else 0.  # in KiBi
     msg:str = (("Compression advantage is %.1f%%" % (original * 100. / compressed - 100.)) if _.compress and write and compressed > 0 else "")
     msg = (msg + " | " if msg else "") + ("Processing speed was %.2f %siB/s." % (speed if speed < 1500. else speed / KIBI, "k" if speed < 1500. else "M") if original > 0 and tt > 0. else "")
@@ -634,7 +634,7 @@ def _diff(m:Metadata, branch:int, revision:int, changed:ChangeSet, ignoreWhitesp
   wrap:(str) -> str = ((s) -> s) if textWrap else ((s) -> s[:termWidth])  # HINT since we don't know the actual width of unicode strings, we cannot be sure this is really maximizing horizontal space (like ljust), but probably not worth iteratively finding the right size
   onlyBinaryModifications:ChangeSet = dataCopy(ChangeSet, changed, modifications = {k: v for k, v in changed.modifications.items() if not m.isTextType(os.path.basename(k))})
   m.listChanges(onlyBinaryModifications, commitTime = m.commits[max(m.commits)].ctime)  # only list modified binary files
-  for path, pinfo in (c for c in changed.modifications.items() if m.isTextType(os.path.basename(c[0]))):  # only consider modified text files
+  for path, pinfo in sorted(c for c in changed.modifications.items() if m.isTextType(os.path.basename(c[0]))):  # only consider modified text files TODO also show timestamp change for binary files (+full compare?)
     content:bytes? = b""  # stored state (old = "curr")
     if pinfo.size != 0: content = m.restoreFile(None, branch, revision, pinfo); assert content is not None  # versioned file
     abspath:str = os.path.normpath(os.path.join(m.root, path.replace(SLASH, os.sep)))  # current state (new = "into")
@@ -929,13 +929,14 @@ def update(argument:str, options:str[] = [], onlys:FrozenSet[str]? = None, excps
         printo("THR " + path, color = Fore.MAGENTA); m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash, toFile = into)  # blockwise copy of contents
       elif op == "m":
         with open(encode(into), "rb") as fd: current:bytes = fd.read()  # TODO slurps current file
-        file:bytes? = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # parse lines
+        file:bytes? = m.readOrCopyVersionedFile(branch, revision, pinfo.nameHash) if pinfo.size > 0 else b''  # slurp versioned file
         if current == file and verbose: info("No difference to versioned file")
         elif file is not None:  # if None, error message was already logged
           merged:bytes; nl:bytes
           merged, nl = merge(file = file, into = current, mergeOperation = mrgline, charMergeOperation = mrgchar, eol = eol)
-          if merged != current:
-            with open(encode(path), "wb") as fd: fd.write(merged)  # TODO write to temp file first, in case writing fails
+          if merged != into:
+            printo("MRG " + path, color = Fore.CYAN)
+            with open(encode(into), "wb") as fd: fd.write(merged)  # TODO write to temp file first, in case writing fails
           elif verbose: info("No change")  # TODO but update timestamp?
       else:  # mine or wrong input
         printo("MNE " + path, color = Fore.CYAN)  # nothing to do! same as skip
@@ -1317,7 +1318,8 @@ def main():
   debug("Detected VCS root folder: %s" % (vcs ?? "-"))
   defaults["defaultbranch"] = vcsBranches.get(cmd, vcsBranches[SVN]) ?? "default"  # sets dynamic default with SVN fallback
   defaults["useChangesCommand"] = cmd == "fossil"  # sets dynamic default with SVN fallback
-  if (not force_vcs or force_sos) and (root is not None or (command ?? "")[:2] == "of" or (command ?? "_")[:1] in "hv"):  # in offline mode or just going offline
+  if (not force_vcs or force_sos) and (root is not None or (command ?? "")[:2] == "of" or (command ?? "_")[:1] in "hv")\
+  or force_sos and (root is not None or (command ?? "")[:3] == "con"):  # in offline mode or just going offline
     cwd = os.getcwd()
     os.chdir(cwd if command[:2] == "of" else root ?? cwd)
     parse(vcs, cwd, cmd)

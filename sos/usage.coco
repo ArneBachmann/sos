@@ -1,8 +1,11 @@
+# Copyright Arne Bachmann
+
 import enum, sys
-from typing import Dict, List, Tuple
-import pure
-try: import sos.version as version
-except: import version
+if TYPE_CHECKING: from typing import Dict, List, Tuple
+
+from sos import pure
+from sos import version
+
 try: from pyfiglet import Figlet
 except: Figlet = None  # optional dependency
 

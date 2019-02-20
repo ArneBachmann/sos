@@ -1,7 +1,7 @@
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from typing import Dict, List
+if TYPE_CHECKING: from typing import Dict, List, Tuple
 try: import enum
 except: raise Exception("SOS requires the enum module (Python 3.4+). You may try to manually install it via 'pip install enum34' or use 'pip install -U sos-vcs[backport]'")
 

@@ -1,7 +1,10 @@
 # Copyright Arne Bachmann
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import os, shutil, subprocess, sys, time, unittest
+# Options: clean build release sdist --mypy --force test --log cover --verbose test checkdocs
+
+
+import os, shutil, subprocess, sys, time
 from setuptools import setup, find_packages
 
 COMPATIBILITY_LEVEL = "3.4"
@@ -48,13 +51,10 @@ __release_version__ = '{release}'""".format(version = version, fullName = versio
   if 0 != subprocess.Popen("pandoc --from=markdown --to=rst --output=README.rst README.md", shell = True, bufsize = 1).wait(): print("Warning: Cannot run pandoc")
   if not os.path.exists("README.rst"): shutil.copy("README.md", "README.rst")  # just to continue
 
-  import sos.sos as sos
-
 if 'test' in sys.argv:
   import logging  # manual setup of logger in current main thread
   logging.basicConfig(level = logging.DEBUG, stream = sys.stderr, format = "%(asctime)-23s %(levelname)-8s %(name)s:%(lineno)d | %(message)s" if '--log' in sys.argv else "%(message)s")
   sys.argv.append("--verbose")
-  import sos.sos as sos
   sys.argv.pop()  # remove --verbose flag
   print("Warning: Won't create distribution archive after running unit tests")
 
@@ -86,10 +86,10 @@ print("\nRunning setup() for SOS version " + sos.version.__version__)
 setup(
   name = 'sos-vcs',
   version = sos.version.__version__.split("-")[0],  # without extra
-  install_requires = ["chardet >= 3.0.4", "wcwidth", "configr >= 2018.2004.2239", "termwidth >= 2019.1125.2909", "PyFiglet >= 0.7.5", 'colorama >= 0.3.9;sys_platform=="win32"', 'enum34;python_version<"3.4"'],  # most of them are optional dependencies
+  install_requires = ["chardet>=3.0.4", "wcwidth", "configr>=2018.2004.2239", "termwidth>=2019.1125.2909", "PyFiglet>=0.7.5", 'colorama>=0.3.9;sys_platform=="win32"', 'enum34;python_version<"3.4"'],  # most of them are optional dependencies
   python_requires = '>=%s' % COMPATIBILITY_LEVEL,  # https://www.python.org/dev/peps/pep-0508/#environment-markers
   setup_requires = "setuptools >= 39",
-#  requires = ["coconut-develop[jobs,mypy-mypyc]"],  # doesn't work
+#  requires = ["coconut-develop[cPyparsing,jobs,mypy-mypyc]"],  # doesn't work
   test_suite = "sos.tests",
   description = "Subversion Offline Solution (SOS)",
   long_description = README,

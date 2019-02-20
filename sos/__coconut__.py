@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # type: ignore
 
-# Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
+# Compiled with Coconut version 1.4.0-post_dev8 [Ernest Scribbler]
 
 """Built-in Coconut utilities."""
 
@@ -11,8 +11,9 @@
 import sys as _coconut_sys
 from builtins import chr, filter, hex, input, int, map, object, oct, open, print, range, str, zip, filter, reversed, enumerate
 py_chr, py_hex, py_input, py_int, py_map, py_object, py_oct, py_open, py_print, py_range, py_str, py_zip, py_filter, py_reversed, py_enumerate = chr, hex, input, int, map, object, oct, open, print, range, str, zip, filter, reversed, enumerate
+_coconut_str = str
 class _coconut:
-    import collections, copy, functools, types, itertools, operator, types, weakref
+    import collections, copy, functools, types, itertools, operator, types, weakref, threading
     if _coconut_sys.version_info >= (3, 4):
         import asyncio
     else:
@@ -27,9 +28,12 @@ class _coconut:
         abc = collections
     else:
         import collections.abc as abc
+    class typing:
+        @staticmethod
+        def NamedTuple(name, fields):
+            return _coconut.collections.namedtuple(name, [x for x, t in fields])
     Ellipsis, Exception, ImportError, IndexError, KeyError, NameError, TypeError, ValueError, StopIteration, classmethod, dict, enumerate, filter, float, frozenset, getattr, hasattr, hash, id, int, isinstance, issubclass, iter, len, list, map, min, max, next, object, property, range, reversed, set, slice, str, sum, super, tuple, zip, repr = Ellipsis, Exception, ImportError, IndexError, KeyError, NameError, TypeError, ValueError, StopIteration, classmethod, dict, enumerate, filter, float, frozenset, getattr, hasattr, hash, id, int, isinstance, issubclass, iter, len, list, map, min, max, next, object, property, range, reversed, set, slice, str, sum, super, tuple, zip, repr
-def _coconut_NamedTuple(name, fields):
-    return _coconut.collections.namedtuple(name, [x for x, t in fields])
+_coconut_sentinel = _coconut.object()
 class MatchError(Exception):
     """Pattern-matching error. Has attributes .pattern and .value."""
     __slots__ = ("pattern", "value")
@@ -131,24 +135,24 @@ class reiterable:
     def __reduce__(self):
         return (self.__class__, (self.iter,))
     def __copy__(self):
-        return self.__class__(_coconut.copy.copy(self.iter))
+        self.iter, new_iter = _coconut_tee(self.iter)
+        return self.__class__(new_iter)
     def __fmap__(self, func):
         return _coconut_map(func, self)
 class scan:
     """Reduce func over iterable, yielding intermediate results,
     optionally starting from initializer."""
     __slots__ = ("func", "iter", "initializer")
-    empty_initializer = _coconut.object()
-    def __init__(self, function, iterable, initializer=empty_initializer):
+    def __init__(self, function, iterable, initializer=_coconut_sentinel):
         self.func = function
         self.iter = iterable
         self.initializer = initializer
     def __iter__(self):
         acc = self.initializer
-        if acc is not self.empty_initializer:
+        if acc is not _coconut_sentinel:
             yield acc
         for item in self.iter:
-            if acc is self.empty_initializer:
+            if acc is _coconut_sentinel:
                 acc = item
             else:
                 acc = self.func(acc, item)
@@ -445,19 +449,46 @@ def recursive_iterator(func):
             tee_store[key], to_return = _coconut_tee(tee_store.get(key) or func(*args, **kwargs))
         return to_return
     return recursive_iterator_func
+class _coconut_FunctionMatchErrorContext(object):
+    __slots__ = ('exc_class', 'taken')
+    threadlocal_var = _coconut.threading.local()
+    def __init__(self, exc_class):
+        self.exc_class = exc_class
+        self.taken = False
+    def __enter__(self):
+        try:
+            self.threadlocal_var.contexts.append(self)
+        except AttributeError:
+            self.threadlocal_var.contexts = [self]
+    def __exit__(self, type, value, traceback):
+        self.threadlocal_var.contexts.pop()
+    @classmethod
+    def get(cls):
+        try:
+            ctx = cls.threadlocal_var.contexts[-1]
+        except (AttributeError, IndexError):
+            return MatchError
+        if not ctx.taken:
+            ctx.taken = True
+            return ctx.exc_class
+        return MatchError
+_coconut_get_function_match_error = _coconut_FunctionMatchErrorContext.get
 def addpattern(base_func):
     """Decorator to add a new case to a pattern-matching function,
     where the new case is checked last."""
     def pattern_adder(func):
+        FunctionMatchError = type(_coconut_str("MatchError"), (MatchError,), {})
         @_coconut_tco
         @_coconut.functools.wraps(func)
         def add_pattern_func(*args, **kwargs):
             try:
-                return base_func(*args, **kwargs)
-            except _coconut_MatchError:
+                with _coconut_FunctionMatchErrorContext(FunctionMatchError):
+                    return base_func(*args, **kwargs)
+            except FunctionMatchError:
                 return _coconut_tail_call(func, *args, **kwargs)
         return add_pattern_func
     return pattern_adder
+_coconut_addpattern = addpattern
 def prepattern(base_func):
     """DEPRECATED: Use addpattern instead."""
     def pattern_prepender(func):

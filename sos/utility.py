@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# __coconut_hash__ = 0xffb8c162
+# __coconut_hash__ = 0xd23d24ac
 
-# Compiled with Coconut version 1.4.0-post_dev2 [Ernest Scribbler]
+# Compiled with Coconut version 1.4.0-post_dev8 [Ernest Scribbler]
 
 # Coconut Header: -------------------------------------------------------------
 
@@ -12,7 +12,7 @@ _coconut_cached_module = _coconut_sys.modules.get("__coconut__")
 if _coconut_cached_module is not None and _coconut_os_path.dirname(_coconut_cached_module.__file__) != _coconut_file_path:
     del _coconut_sys.modules["__coconut__"]
 _coconut_sys.path.insert(0, _coconut_file_path)
-from __coconut__ import _coconut, _coconut_NamedTuple, _coconut_MatchError, _coconut_tail_call, _coconut_tco, _coconut_igetitem, _coconut_base_compose, _coconut_forward_compose, _coconut_back_compose, _coconut_forward_star_compose, _coconut_back_star_compose, _coconut_pipe, _coconut_star_pipe, _coconut_back_pipe, _coconut_back_star_pipe, _coconut_bool_and, _coconut_bool_or, _coconut_none_coalesce, _coconut_minus, _coconut_map, _coconut_partial
+from __coconut__ import _coconut, _coconut_MatchError, _coconut_tail_call, _coconut_tco, _coconut_igetitem, _coconut_base_compose, _coconut_forward_compose, _coconut_back_compose, _coconut_forward_star_compose, _coconut_back_star_compose, _coconut_pipe, _coconut_star_pipe, _coconut_back_pipe, _coconut_back_star_pipe, _coconut_bool_and, _coconut_bool_or, _coconut_none_coalesce, _coconut_minus, _coconut_map, _coconut_partial, _coconut_get_function_match_error, _coconut_addpattern, _coconut_sentinel
 from __coconut__ import *
 _coconut_sys.path.remove(_coconut_file_path)
 
@@ -30,7 +30,7 @@ sys = _coconut_sys  # early time tracking  # line 4
 import time  # early time tracking  # line 4
 START_TIME = time.time()  # early time tracking  # line 4
 
-try:  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
+if TYPE_CHECKING:  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
     from typing import Any  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
     from typing import AnyStr  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
     from typing import Dict  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
@@ -48,17 +48,10 @@ try:  # we cannot delay this import, since we need to type-check the Coconut ver
     from typing import Type  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
     from typing import TypeVar  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
     from typing import Union  # we cannot delay this import, since we need to type-check the Coconut version-detection, which again is required to know if we actually can type-check...  # line 6
-except:  # TODO import this only when running mypy?  # line 7
-    pass  # TODO import this only when running mypy?  # line 7
 
-try:  # line 9
-    from sos import pure  # line 9
-    from sos.values import *  # line 9
-    from sos import usage  # line 9
-except:  # line 10
-    import pure  # line 10
-    from values import *  # line 10
-    import usage  # line 10
+from sos import pure  # line 8
+from sos.values import *  # line 9
+from sos import usage  # line 10
 
 
 # Lazy imports for quicker initialization TODO make mypy accept this
@@ -97,8 +90,8 @@ debug_ = [None] if os.environ.get("DEBUG", "False").lower() == "true" or '--debu
 # Classes
 class Accessor(dict):  # line 33
     ''' Dictionary with attribute access. '''  # line 34
-    def __init__(_, mapping: 'Dict[str, Any]'={}) -> 'None':  # TODO remove -> None when fixed in Coconut stub  # line 35
-        dict.__init__(_, mapping)  # TODO remove -> None when fixed in Coconut stub  # line 35
+    def __init__(_, mapping: 'Dict[str, Any]'={}) -> 'None':  # line 35
+        dict.__init__(_, mapping)  # line 35
     @_coconut_tco  # or simply class C(dict): __getattr__ = dict.__getitem__  # line 36
     def __getattribute__(_, name: 'str') -> 'Any':  # or simply class C(dict): __getattr__ = dict.__getitem__  # line 36
         try:  # line 37
@@ -269,15 +262,15 @@ def guessEncoding(binary: 'bytes') -> 'List[str]':  # line 176
   >>> print(guessEncoding(b"abcd0234"))
   ['ascii']
   >>> print(guessEncoding(bytes([0b00100100, 0b11000010, 0b10100010, 0b11100010, 0b10000010, 0b10101100, 0b11110000, 0b10011010, 0b10110011, 0b10011001])))  # utf_8  1:$ 2:cent 3:€, 4:? -> gives 5 options, but it's UTF-8
-  ['utf_16_be', 'utf_16_le', 'utf_16', 'utf_8_sig', 'utf_8']
+  ['utf_16_be', 'utf_16_le', 'utf_8']
   >>> print(guessEncoding(bytes([0b00000000, 0b00100100, 0b11011000, 0b01010010, 0b11011111, 0b01100010])))  # utf_16 $ ? -> gives 3 options, on is correct
-  ['utf_16_be', 'utf_16_le', 'utf_16']
+  ['utf_16_be', 'utf_16_le']
   >>> print(guessEncoding(bytes([0b00100100, 0b11000010, 0b10100010])))  # utf_8  1:$ 2:cent 3:€, 4:? -> gives 2 UTF-8 options
-  ['utf_8_sig', 'utf_8']
+  ['utf_8']
   '''  # line 186
     if all((bite < 128 for bite in binary)):  # TODO move as first detection step  # line 187
         return ["ascii"]  # TODO move as first detection step  # line 187
-    decoded = list(filter(lambda _=None: tryOrDefault(lambda: codecs.encode(codecs.decode(binary, _), _) and True, None), CODEC_FUNCTIONS))  # type: List[str]  # line 188
+    decoded = list(filter(lambda _=None: tryOrDefault(lambda: codecs.encode(codecs.decode(binary, _), _) == binary, None), CODEC_FUNCTIONS))  # type: List[str]  # line 188
     if (len(binary) >> 1) << 1 != len(binary):  # only utf-8 variants possible here  # line 189
         decoded[:] = list(filter(lambda _=None: "8" in _, decoded))  # only utf-8 variants possible here  # line 189
     return decoded  # line 190

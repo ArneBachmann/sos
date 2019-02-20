@@ -1,5 +1,6 @@
 @echo off
 rem TODO add nested menu https://www.askvg.com/add-cascading-menus-for-your-favorite-programs-in-windows-7-desktop-context-menu/
+rem TODO add script option for nested menu https://stackoverflow.com/questions/20449316/how-add-context-menu-item-to-windows-explorer-for-folders
 rem HINT replace Directory with LibraryFolder to make this work in libraries
 
 set remove=false

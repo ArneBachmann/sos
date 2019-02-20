@@ -423,7 +423,7 @@ sos diff
 Which results in:
 
 ```
-IF ./make.bat  <LF>
+DIF ./make.bat  <LF>
 old 1 |echo Compiling...|
 now 1 |echo Compiling|
 
@@ -442,7 +442,7 @@ sos log
 ```
 
 ```
-OD ./make.bat <older than previously committed>
+MOD ./make.bat <older than previously committed>
 MOD rese/sunamount.coco
 Processing speed was 6.54 MiB/s.
 /SOS/ Created new revision r02 'Added import statement' (+00/-00/±02/⇌00) summing 16.31 KiB in 2 files (2.12% SOS overhead)
