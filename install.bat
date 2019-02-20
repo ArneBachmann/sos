@@ -1,4 +1,3 @@
-
 echo NOMYPY=%NOMYPY%
 
 rem Requirement for Python 3.4 compatibility is to use pip < 19.0 as 19.0+ will raise a deprecation warning
