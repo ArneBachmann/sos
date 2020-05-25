@@ -5,7 +5,7 @@
 
 
 import os, shutil, subprocess, sys, time
-from setuptools import setup, find_packages
+from setuptools import setup
 
 COMPATIBILITY_LEVEL = "3.4"
 
@@ -45,7 +45,7 @@ __version_info__ = ({version[0]}, {version[1]}, {version[2]})
 __version__ = r'{fullName}'
 __release_version__ = '{release}'""".format(version = version, fullName = versionString + "-" + extra, release = RELEASE))
 
-  README = "\n".join(["# SOS v%s #" % RELEASE] + open(readmeFile, "r", encoding = "utf-8").read().split("\n")[1:])  # replace title in original README.md file
+  README = "\n".join(["# SOS v%s" % RELEASE] + open(readmeFile, "r", encoding = "utf-8").read().split("\n")[1:])  # replace title in original README.md file
   with open(readmeFile, "w", encoding = "utf-8") as fd: fd.write(README.replace("\r", ""))
   print("Preparing documentation for PyPI by converting from Markdown to reStructuredText via pandoc")
   if 0 != subprocess.Popen("pandoc --from=markdown --to=rst --output=README.rst README.md", shell = True, bufsize = 1).wait(): print("Warning: Cannot run pandoc")
@@ -108,6 +108,7 @@ setup(
         Programming Language :: Python :: 3.4
         Programming Language :: Python :: 3.5
         Programming Language :: Python :: 3.6
+        Programming Language :: Python :: 3.7
         Programming Language :: Python :: 3 :: Only
         """.split('\n') if c.strip()],  # https://pypi.python.org/pypi?:action=list_classifiers
   #      Programming Language :: Coconut
@@ -118,9 +119,9 @@ setup(
   maintainer_email = 'ArneBachmann@users.noreply.github.com',
   url = 'http://github.com/ArneBachmann/sos',
   license = 'MPL-2.0',
-  packages = find_packages(),  # should return ["sos"], but returns []
+  packages = ["", "sos"],  # find_packages(),  # should return ["sos"], but returns []
   package_dir = {"sos": "sos"},
-  package_data = {"": ["../LICENSE", "../*.md", "../README.rst", "*.coco", "docs/*.md"]},  # *.py is included in any case
+  package_data = {"sos": ["../RELEASE", "../LICENSE", "../*.md", "../docs/*.md", "../README.rst", "*.coco", "../explorer-integration.bat", "../thunar-integration.sh", "../LICENSE.spdx"]},
   include_package_data = False,  # if True, will *NOT* package the data!
   zip_safe = False,  # TODO re-add and test extras section for backport = enum34
   extras_require = { ':python_version < "3.5"': 'typing >= 3.5.3' },

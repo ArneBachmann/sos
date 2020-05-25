@@ -3,6 +3,22 @@ rem TODO add nested menu https://www.askvg.com/add-cascading-menus-for-your-favo
 rem TODO add script option for nested menu https://stackoverflow.com/questions/20449316/how-add-context-menu-item-to-windows-explorer-for-folders
 rem HINT replace Directory with LibraryFolder to make this work in libraries
 
+if "%1" == "" (
+	goto :help
+)
+if "%1" == "help" (
+	goto :help
+)
+if "%1" == "/h" (
+	goto :help
+)
+if "%1" == "/H" (
+	goto :help
+)
+if "%1" == "--help" (
+	goto :help
+)
+
 set remove=false
 if "%1" == "uninstall" (
   set remove=true
@@ -64,7 +80,7 @@ if "%install%" == "true" (
 		reg add "HKCR\Directory\shell\SOS Changes\command" /t REG_SZ /d "cmd.exe /C echo SOS changes \"%%1\" & cd /D \"%%1\" && sos changes & pause" /f
 		reg add "HKCR\Directory\shell\SOS Changes" /v Position /t REG_SZ /d Bottom /f
 		reg add "HKCR\Directory\shell\SOS Changes" /v Icon /t REG_SZ /d "%CD%\extras\logo.ico" /f
-		reg add "HKCR\Directory\shell\SOS Commit\command" /t REG_SZ /d "cmd.exe /C echo SOS commit \"%%1\" & cd /D \"%%1\" && echo CTRL+C to abort. & timeout /t 10 && sos commit & pause" /f
+		reg add "HKCR\Directory\shell\SOS Commit\command" /t REG_SZ /d "cmd.exe /C echo SOS commit \"%%1\" & cd /D \"%%1\" && sos changes && echo CTRL+C to abort. & timeout /t 10 && sos commit & pause" /f
 		reg add "HKCR\Directory\shell\SOS Commit" /v Position /t REG_SZ /d Bottom /f
 		reg add "HKCR\Directory\shell\SOS Commit" /v Icon /t REG_SZ /d "%CD%\extras\logo.ico" /f
 		reg add "HKCR\Directory\shell\SOS Diff\command" /t REG_SZ /d "cmd.exe /C echo SOS diff \"%%1\" & cd /D \"%%1\" && sos diff & pause" /f
@@ -109,7 +125,7 @@ if "%install%" == "true" (
 		reg add "HKCU\Software\Classes\Directory\shell\SOS Changes\command" /t REG_SZ /d "cmd.exe /C echo SOS changes \"%%1\" & cd /D \"%%1\" && sos changes & pause" /f
 		reg add "HKCU\Software\Classes\Directory\shell\SOS Changes" /v Position /t REG_SZ /d Bottom /f
 		reg add "HKCU\Software\Classes\Directory\shell\SOS Changes" /v Icon /t REG_SZ /d "%CD%\extras\logo.ico" /f
-		reg add "HKCU\Software\Classes\Directory\shell\SOS Commit\command" /t REG_SZ /d "cmd.exe /C echo SOS commit \"%%1\" & cd /D \"%%1\" && echo CTRL+C to abort. & timeout /t 10 && sos commit & pause" /f
+		reg add "HKCU\Software\Classes\Directory\shell\SOS Commit\command" /t REG_SZ /d "cmd.exe /C echo SOS commit \"%%1\" & cd /D \"%%1\" && sos changes && echo CTRL+C to abort. & timeout /t 10 && sos commit & pause" /f
 		reg add "HKCU\Software\Classes\Directory\shell\SOS Commit" /v Position /t REG_SZ /d Bottom /f
 		reg add "HKCU\Software\Classes\Directory\shell\SOS Commit" /v Icon /t REG_SZ /d "%CD%\extras\logo.ico" /f
 		reg add "HKCU\Software\Classes\Directory\shell\SOS Diff\command" /t REG_SZ /d "cmd.exe /C echo SOS diff \"%%1\" & cd /D \"%%1\" && sos diff & pause" /f
@@ -161,3 +177,7 @@ rem %[HKEY_CLASSES_ROOT\DesktopBackground\shell\SOS Log\command]
 rem %[HKEY_CLASSES_ROOT\DesktopBackground\shell\SOS Diff\command]
 
 echo Finished.
+goto :eof
+
+:help
+echo explorer-integration.bat help^|install^|remove [--admin]

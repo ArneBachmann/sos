@@ -1,4 +1,5 @@
-# Copyright Arne Bachmann
+# Copyright (c) 2017-2020  Arne Bachmann
+# This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import enum, sys
 if TYPE_CHECKING: from typing import Dict, List, Tuple
@@ -6,7 +7,7 @@ if TYPE_CHECKING: from typing import Dict, List, Tuple
 from sos import pure
 from sos import version
 
-try: from pyfiglet import Figlet
+try: from pyfiglet import Figlet, FontNotFound
 except: Figlet = None  # optional dependency
 
 MARKER_TEXT:str = r"/SOS/ "
@@ -304,7 +305,19 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
     ("dump",): "Don't create a backup of a previous dump archive before dumping the repository"""
   },
   "changes": {
-    ("log",): "List differential changeset for each revision"
+    ("log",): "List differential changeset for each change"
+  },
+  "only-adds": {
+    ("log",): "Show only additions with --changes"
+  },
+  "only-dels": {
+    ("log",): "Show only deletions with --changes"
+  },
+  "only-mods": {
+    ("log",): "Show only modifications with --changes"
+  },
+  "only-movs": {
+    ("log",): "Show only moves with --changes"
   },
   "diff": {
     ("log",): "Display textual diff for each revision"
@@ -454,9 +467,15 @@ OPTIONS:Dict[str,Dict[Tuple[str, ...]?,str]] = {  # option -> command (or None =
 
 def getTitleFont(text:str, width:int) -> Tuple[str,str] =
   ''' Finds best fitting font for terminal's window width, falling back to SOS marker if nothing fits current terminal width. Returns (actual text, selected Figlet font). '''
-  x:List[Tuple[int,str]] = sorted(t for t in [(max(len(_) for _ in Figlet(font = f, width = 999).renderText(text).split("\n")), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width)
-  if len(x) == 0: text = MARKER_TEXT  # replace by shortest text
-  (text, sorted(t for t in [(max(len(_) for _ in Figlet(font = f, width = 999).renderText(text).split("\n")), f) for f in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"]] if t[0] <= width)[-1][1])
+  def tryNew(font):
+    try: return Figlet(font = font, width = 999)
+    except FontNotFound: return None
+    except: return None
+  fonts = [_ for _ in ["big", "modular", "bell", "nscript", "pebbles", "puffy", "roman", "rounded", "santaclara", "script", "small", "soft", "standard", "univers", "thin"] if tryNew(_)]
+  x:List[Tuple[int,str]] = sorted(t for t in [(max(len(_) for _ in tryNew(f).renderText(text).split("\n")), f) for f in fonts] if t and t[0] <= width)
+  if len(x) == 0: text = MARKER_TEXT  # if no fitting found, replace by short text
+  (text, sorted(t for t in [(max(len(_) for _ in tryNew(f).renderText(text).split("\n")), f) for f in fonts] if t[0] <= width)[-1][1])
+
 
 def getTitle(large:bool = True) -> str?:  # https://github.com/pwaller/pyfiglet/blob/master/doc/figfont.txt
   ''' Large: use ascii-art. '''
@@ -464,6 +483,7 @@ def getTitle(large:bool = True) -> str?:  # https://github.com/pwaller/pyfiglet/
   if not Figlet: return None
   text, font = getTitleFont(APP, width = pure.termWidth)
   return "\n".join(_ for _ in Figlet(font = font, width = pure.termWidth).renderText(text).split("\n") if _.replace(" ", "") != "")
+
 
 def usage(argument:str, version:bool = False, verbose:bool = False):
   if version:
